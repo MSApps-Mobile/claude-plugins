@@ -1,0 +1,12 @@
+{
+  "name": "google-drive-upload-free",
+  "version": "1.0.0",
+  "description": "Upload files from Claude directly to Google Drive — Free tier (5 uploads/month)",
+  "author": {
+    "name": "MSApps",
+    "url": "https://msapps.mobi"
+  },
+  "homepage": "https://msapps.mobi/plugins",
+  "license": "MIT",
+  "keywords": ["google-drive", "upload", "files", "productivity"]
+}
