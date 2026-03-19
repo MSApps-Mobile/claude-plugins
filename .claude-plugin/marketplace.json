@@ -41,6 +41,22 @@
       "keywords": ["google-drive", "upload", "files", "productivity", "pro", "unlimited"],
       "category": "productivity",
       "tags": ["google-drive", "file-upload", "cloud-storage", "pro", "unlimited"]
+    },
+    {
+      "name": "toggl-time-tracker",
+      "source": "./plugins/toggl-time-tracker",
+      "description": "Track time and pull reports from Toggl Track — start/stop timers, log hours, weekly summaries",
+      "version": "1.0.0",
+      "author": {
+        "name": "MSApps",
+        "email": "hello@msapps.mobi"
+      },
+      "homepage": "https://msapps.mobi/plugins",
+      "repository": "https://github.com/msmobileapps/claude-plugins",
+      "license": "MIT",
+      "keywords": ["toggl", "time-tracking", "timer", "productivity", "reports"],
+      "category": "productivity",
+      "tags": ["toggl", "time-tracking", "timer", "timesheet", "reports"]
     }
   ]
 }
