@@ -29,4 +29,4 @@ That's it. Your API token stays on your machine and is never shared.
 
 ---
 
-Built by [MSApps](https://msapps.mobi) · Support: hello@msapps.mobi
+Built by [MSApps](https://msapps.mobi) · Support: michal@msapps.mobi

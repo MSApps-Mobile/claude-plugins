@@ -2,7 +2,7 @@
   "name": "msapps-plugins",
   "owner": {
     "name": "MSApps",
-    "email": "hello@msapps.mobi"
+    "email": "michal@msapps.mobi"
   },
   "metadata": {
     "description": "Claude plugins by MSApps — Google Drive integration and more",
@@ -17,7 +17,7 @@
       "version": "1.0.0",
       "author": {
         "name": "MSApps",
-        "email": "hello@msapps.mobi"
+        "email": "michal@msapps.mobi"
       },
       "homepage": "https://msapps.mobi/plugins",
       "repository": "https://github.com/msmobileapps/claude-plugins",
@@ -33,7 +33,7 @@
       "version": "1.0.0",
       "author": {
         "name": "MSApps",
-        "email": "hello@msapps.mobi"
+        "email": "michal@msapps.mobi"
       },
       "homepage": "https://msapps.mobi/plugins",
       "repository": "https://github.com/msmobileapps/claude-plugins",
@@ -49,7 +49,7 @@
       "version": "1.0.0",
       "author": {
         "name": "MSApps",
-        "email": "hello@msapps.mobi"
+        "email": "michal@msapps.mobi"
       },
       "homepage": "https://msapps.mobi/plugins",
       "repository": "https://github.com/msmobileapps/claude-plugins",

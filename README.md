@@ -30,5 +30,5 @@ Full setup guide: [msapps.mobi/plugins](https://msapps.mobi/plugins)
 
 ## Support
 
-- Email: hello@msapps.mobi
+- Email: michal@msapps.mobi
 - Pro license: [Get Pro ($9 lifetime)](https://michalicious361.gumroad.com/l/gdrive-claude-pro)

@@ -39,4 +39,4 @@ Full setup guide: https://msapps.mobi/plugins
 
 ---
 
-Built by [MSApps](https://msapps.mobi) · Support: hello@msapps.mobi
+Built by [MSApps](https://msapps.mobi) · Support: michal@msapps.mobi
