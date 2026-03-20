@@ -5,42 +5,26 @@
     "email": "michal@msapps.mobi"
   },
   "metadata": {
-    "description": "Claude plugins by MSApps — Google Drive integration and more",
-    "version": "1.0.0",
+    "description": "Free Claude plugins by MSApps — Google Drive upload, Toggl time tracking, and more",
+    "version": "1.1.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
     {
-      "name": "google-drive-upload-free",
+      "name": "google-drive-upload",
       "source": "./plugins/google-drive-upload-free",
-      "description": "Upload files from Claude directly to Google Drive — Free tier (5 uploads/month)",
-      "version": "1.0.0",
+      "description": "Upload files from Claude directly to Google Drive — unlimited uploads, completely free",
+      "version": "1.1.0",
       "author": {
         "name": "MSApps",
         "email": "michal@msapps.mobi"
       },
       "homepage": "https://msapps.mobi/plugins",
-      "repository": "https://github.com/msmobileapps/claude-plugins",
+      "repository": "https://github.com/MSApps-Mobile/claude-plugins",
       "license": "MIT",
       "keywords": ["google-drive", "upload", "files", "productivity"],
       "category": "productivity",
-      "tags": ["google-drive", "file-upload", "cloud-storage", "free"]
-    },
-    {
-      "name": "google-drive-upload-pro",
-      "source": "./plugins/google-drive-upload-pro",
-      "description": "Upload files from Claude directly to Google Drive — Pro License (unlimited uploads)",
-      "version": "1.0.0",
-      "author": {
-        "name": "MSApps",
-        "email": "michal@msapps.mobi"
-      },
-      "homepage": "https://msapps.mobi/plugins",
-      "repository": "https://github.com/msmobileapps/claude-plugins",
-      "license": "MIT",
-      "keywords": ["google-drive", "upload", "files", "productivity", "pro", "unlimited"],
-      "category": "productivity",
-      "tags": ["google-drive", "file-upload", "cloud-storage", "pro", "unlimited"]
+      "tags": ["google-drive", "file-upload", "cloud-storage", "free", "unlimited"]
     },
     {
       "name": "toggl-time-tracker",
@@ -52,7 +36,7 @@
         "email": "michal@msapps.mobi"
       },
       "homepage": "https://msapps.mobi/plugins",
-      "repository": "https://github.com/msmobileapps/claude-plugins",
+      "repository": "https://github.com/MSApps-Mobile/claude-plugins",
       "license": "MIT",
       "keywords": ["toggl", "time-tracking", "timer", "productivity", "reports"],
       "category": "productivity",

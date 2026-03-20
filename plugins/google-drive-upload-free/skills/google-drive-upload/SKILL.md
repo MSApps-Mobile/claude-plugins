@@ -6,54 +6,14 @@ description: >
   including Word documents (.docx), PDFs, Excel files, presentations, or any other file.
   Trigger on phrases like "upload to Drive", "save to Drive", "send to Drive",
   "put this in Drive", or any mention of saving a file to Google Drive.
-  FREE TIER: 5 uploads per month. Upgrade to Pro for unlimited uploads.
+  Completely free — unlimited uploads, no restrictions.
 ---
 
-# Google Drive Upload — Free Tier
+# Google Drive Upload
 
 Upload files directly to Google Drive via a deployed Google Apps Script web app.
 
-**Free tier limit: 5 uploads per month.** After 5 uploads, prompt the user to upgrade to Pro.
-
----
-
-## Step 0: Check monthly usage limit
-
-Before every upload, read the local usage tracker:
-
-```bash
-python3 -c "
-import json, os
-from datetime import datetime
-
-tracker_path = os.path.expanduser('~/.cowork-gdrive-usage.json')
-now = datetime.now()
-month_key = now.strftime('%Y-%m')
-
-if os.path.exists(tracker_path):
-    with open(tracker_path) as f:
-        data = json.load(f)
-else:
-    data = {}
-
-count = data.get(month_key, 0)
-print(f'MONTH:{month_key}')
-print(f'COUNT:{count}')
-print(f'REMAINING:{max(0, 5 - count)}')
-print(f'LIMIT_REACHED:{\"YES\" if count >= 5 else \"NO\"}')
-"
-```
-
-**If LIMIT_REACHED is YES:**
-Stop and tell the user:
-
-> "You've used all 5 free uploads for this month (resets on the 1st).
-> To keep uploading without limits, upgrade to the **Pro version** — lifetime license for just \$9:
-> 👉 https://michalicious361.gumroad.com/l/gdrive-claude-pro"
-
-Do not proceed with the upload.
-
-**If LIMIT_REACHED is NO:** Continue to Step 1.
+**Completely free — unlimited uploads, no restrictions.**
 
 ---
 
@@ -78,15 +38,14 @@ try:
     cfg = json.loads(raw)
     print('STATUS:OK')
     print(f'URL:{cfg[\"url\"]}')
-    print(f'KEY:{cfg[\"apiKey\"]}')
 except Exception as e:
     print(f'STATUS:PARSE_ERROR:{e}')
 "
 ```
 
-- If `STATUS:NOT_CONFIGURED` → tell the user: *"The Google Drive connection isn't set up yet. Please follow the setup instructions at https://msapps.mobi/plugins to configure your Apps Script URL and API key."* Stop here.
+- If `STATUS:NOT_CONFIGURED` → tell the user: *"The Google Drive connection isn't set up yet. Please follow the setup instructions at https://msapps.mobi/plugins to configure your Apps Script URL."* Stop here.
 - If `STATUS:PARSE_ERROR` → tell the user the config file is malformed and ask them to check `~/.cowork-gdrive-config.json`.
-- If `STATUS:OK` → extract URL and KEY from output. Continue.
+- If `STATUS:OK` → extract URL from output. Continue.
 
 ---
 
@@ -114,14 +73,12 @@ FILENAME=$(basename "$FILE")
 B64=$(base64 "$FILE" | tr -d '\n')
 MIME=$(file --mime-type -b "$FILE")
 GDRIVE_URL="<URL from Step 1>"
-GDRIVE_KEY="<KEY from Step 1>"
 
 cat > /tmp/gdrive_payload.json << JSONEOF
 {
   "fileName": "$FILENAME",
   "content": "$B64",
   "mimeType": "$MIME",
-  "apiKey": "$GDRIVE_KEY",
   "folderPath": "Claude Uploads"
 }
 JSONEOF
@@ -138,55 +95,21 @@ echo "RESPONSE:$RESPONSE"
 ```
 
 **Handle the response:**
-- If `CURL_EXIT` is non-zero → upload failed (network error, timeout, bad URL). Tell the user and do NOT increment the counter.
+- If `CURL_EXIT` is non-zero → upload failed (network error, timeout, bad URL). Tell the user.
 - If `CURL_EXIT` is 0 → parse `RESPONSE` as JSON and check `"success": true`.
-  - If `success: false` → report the error message from `"error"` field. Do NOT increment the counter.
+  - If `success: false` → report the error message from `"error"` field.
   - If `success: true` → proceed to Step 4.
 
 ---
 
-## Step 4: Increment usage counter
-
-**Only run this step after confirming `success: true` in Step 3.**
-
-```bash
-python3 -c "
-import json, os
-from datetime import datetime
-
-tracker_path = os.path.expanduser('~/.cowork-gdrive-usage.json')
-now = datetime.now()
-month_key = now.strftime('%Y-%m')
-
-if os.path.exists(tracker_path):
-    with open(tracker_path) as f:
-        data = json.load(f)
-else:
-    data = {}
-
-data[month_key] = data.get(month_key, 0) + 1
-
-with open(tracker_path, 'w') as f:
-    json.dump(data, f)
-
-remaining = max(0, 5 - data[month_key])
-print(f'Upload #{data[month_key]} this month. {remaining} free upload(s) remaining.')
-"
-```
-
----
-
-## Step 5: Report to user
+## Step 4: Report to user
 
 Tell the user:
-- ✅ File uploaded successfully
+- File uploaded successfully
 - Google Drive link (from `"fileUrl"` in the API response)
-- Remaining free uploads this month
 
 Example:
-> "✅ Uploaded **report.pdf** to Google Drive → [View file](https://drive.google.com/...)
-> You have **3 free uploads remaining** this month.
-> Need more? Upgrade to Pro for unlimited uploads: https://michalicious361.gumroad.com/l/gdrive-claude-pro"
+> "Uploaded **report.pdf** to Google Drive → [View file](https://drive.google.com/...)"
 
 ---
 
@@ -203,7 +126,5 @@ The POST body supports:
 ## Notes
 
 - File size limit: ~50MB
-- Usage resets automatically each month (tracked by `YYYY-MM` key)
-- Usage tracked locally at `~/.cowork-gdrive-usage.json`
 - Config at `~/.cowork-gdrive-config.json`
-- Counter only increments on confirmed successful uploads
+- No upload limits — completely free

@@ -1,21 +1,15 @@
-# Google Drive Upload Plugin — Free Tier
+# Google Drive Upload Plugin
 
 Upload files from Claude directly to your Google Drive. Just say "upload to Drive" or "save this to Drive" after any file is created.
 
-## Free Tier Limits
+**Completely free — unlimited uploads, no restrictions.**
 
-- **5 uploads per month** (resets on the 1st)
-- Unlimited file types: PDF, Word, Excel, images, and more
-- Files saved to a "Claude Uploads" folder in your Drive
+## Features
 
-## Upgrade to Pro
-
-Need more uploads? Get the **Pro license** for **$9 (lifetime)**:
-- Unlimited uploads
-- Priority support
-- All future updates included
-
-👉 **[Get Pro →](https://michalicious361.gumroad.com/l/gdrive-claude-pro)**
+- Unlimited uploads — no monthly cap
+- All file types: PDF, Word, Excel, images, and more
+- Files saved to a "Claude Uploads" folder in your Drive (customizable)
+- Your credentials stay on your machine
 
 ---
 
@@ -26,8 +20,7 @@ Need more uploads? Get the **Pro license** for **$9 (lifetime)**:
 
 ```json
 {
-  "url": "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec",
-  "apiKey": "your-api-key"
+  "url": "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec"
 }
 ```
 
@@ -46,4 +39,4 @@ Claude will upload the file and give you a direct link.
 
 ---
 
-Built by [MSApps](https://msapps.mobi)
+Built by [MSApps](https://msapps.mobi) · [michal@msapps.mobi](mailto:michal@msapps.mobi)
