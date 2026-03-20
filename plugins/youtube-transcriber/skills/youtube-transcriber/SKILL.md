@@ -40,8 +40,9 @@ extract the video ID and use the canonical format above.
 Use `javascript_tool` to click "...more" on the description:
 
 ```javascript
-const btn = document.querySelector('tp-yt-paper-button#expand');
-if (btn) btn.click();
+const expandBtn = document.querySelector('#description-inline-expander #expand')
+              || document.querySelector('tp-yt-paper-button#expand');
+if (expandBtn) expandBtn.click();
 ```
 
 Wait 1-2 seconds for the description to expand.
@@ -54,7 +55,7 @@ Use `javascript_tool` to find and click the "Show transcript" button:
 const buttons = document.querySelectorAll('button.yt-spec-button-shape-next');
 let clicked = false;
 buttons.forEach(b => {
-  if (b.innerText.includes('Show transcript') || b.innerText.includes('הצגת תמליל')) {
+  if (b.innerText.includes('Show transcript') || b.innerText.includes('הצגת תמליל') || b.innerText.includes('להצגת התמליל')) {
     b.click();
     clicked = true;
   }
@@ -71,7 +72,7 @@ Wait 2 seconds for the transcript panel to load.
 YouTube lazy-loads transcript segments. Scroll the engagement panel to trigger loading:
 
 ```javascript
-(async () => {
+(() => {
   const panel = document.querySelector(
     'ytd-engagement-panel-section-list-renderer[visibility="ENGAGEMENT_PANEL_VISIBILITY_EXPANDED"]'
   );
@@ -80,15 +81,14 @@ YouTube lazy-loads transcript segments. Scroll the engagement panel to trigger l
   const scroller = panel.querySelector('#content');
   if (!scroller) return 'No scrollable content found';
 
-  for (let i = 0; i < 15; i++) {
-    scroller.scrollTop = scroller.scrollHeight;
-    await new Promise(r => setTimeout(r, 300));
-  }
-  return 'Scrolled transcript panel to load all segments';
+  // Scroll to bottom to trigger lazy-load
+  scroller.scrollTop = scroller.scrollHeight;
+  return 'Scrolled transcript panel';
 })();
 ```
 
-Wait 1 second after scrolling completes.
+**Important**: Run this scroll snippet 2-3 times with a short pause between each call
+to ensure all segments load. For long videos (10+ minutes), scroll more aggressively.
 
 ### Step 5: Extract the transcript text
 
