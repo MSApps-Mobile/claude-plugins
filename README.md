@@ -14,6 +14,7 @@ Free plugins for Claude by [MSApps](https://msapps.mobi).
 |--------|-------------|---------|
 | **google-drive-upload** | Upload files to Google Drive — unlimited, free | `/plugin install google-drive-upload@msapps-plugins` |
 | **toggl-time-tracker** | Track time with Toggl — start/stop timers, reports | `/plugin install toggl-time-tracker@msapps-plugins` |
+| **youtube-transcriber** | Transcribe YouTube videos & playlists — no API key needed | `/plugin install youtube-transcriber@msapps-plugins` |
 
 ## Setup
 
@@ -36,6 +37,10 @@ Save your Toggl API token to `~/.toggl-config.json`:
   "apiToken": "your-toggl-api-token"
 }
 ```
+
+### YouTube Transcriber
+
+No setup needed — just requires the **Claude in Chrome** extension. Paste any YouTube video or playlist URL and ask Claude to transcribe it.
 
 Full setup guide: [msapps.mobi/plugins](https://msapps.mobi/plugins)
 
