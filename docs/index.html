@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MSApps Claude Plugins — Free & Open Source</title>
+    <meta name="description" content="Free Claude plugins by MSApps — Google Drive Upload, Toggl Time Tracker, YouTube Transcriber, and Notion Memory. Open source, zero cost.">
+    <style>
+        :root {
+            --bg: #0f0f13;
+            --surface: #1a1a24;
+            --surface2: #232336;
+            --accent: #6c63ff;
+            --accent2: #a78bfa;
+            --text: #e8e8f0;
+            --text-muted: #9a9ab0;
+            --green: #34d399;
+            --border: #2a2a3d;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+        .hero { text-align: center; padding: 80px 0 60px; background: linear-gradient(180deg, #16162a 0%, var(--bg) 100%); }
+        .hero-badge { display: inline-block; background: rgba(108, 99, 255, 0.15); color: var(--accent2); padding: 6px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; margin-bottom: 20px; border: 1px solid rgba(108, 99, 255, 0.25); }
+        .hero h1 { font-size: 2.8rem; font-weight: 700; margin-bottom: 16px; background: linear-gradient(135deg, #fff 0%, var(--accent2) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero p { font-size: 1.15rem; color: var(--text-muted); max-width: 600px; margin: 0 auto 32px; }
+        .hero-stats { display: flex; justify-content: center; gap: 48px; margin-top: 40px; }
+        .stat { text-align: center; }
+        .stat-num { font-size: 2rem; font-weight: 700; color: var(--accent2); }
+        .stat-label { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
+        .plugins { padding: 60px 0 80px; }
+        .section-title { text-align: center; font-size: 1.8rem; font-weight: 700; margin-bottom: 12px; }
+        .section-subtitle { text-align: center; color: var(--text-muted); margin-bottom: 48px; font-size: 1rem; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px 28px; transition: transform 0.2s, border-color 0.2s; }
+        .card:hover { transform: translateY(-4px); border-color: var(--accent); }
+        .card-icon { font-size: 2.2rem; margin-bottom: 16px; }
+        .card h3 { font-size: 1.2rem; font-weight: 600; margin-bottom: 8px; }
+        .card p { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 20px; min-height: 60px; }
+        .card-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+        .tag { font-size: 0.75rem; padding: 4px 10px; border-radius: 12px; background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
+        .tag.free { background: rgba(52, 211, 153, 0.12); color: var(--green); border-color: rgba(52, 211, 153, 0.25); }
+        .card-install { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace; font-size: 0.8rem; color: var(--accent2); word-break: break-all; position: relative; }
+        .card-install::before { content: '$ '; color: var(--text-muted); }
+        .setup { padding: 60px 0; background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+        .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 32px; margin-top: 40px; }
+        .step { text-align: center; padding: 24px; }
+        .step-num { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px; background: rgba(108, 99, 255, 0.15); color: var(--accent2); font-weight: 700; font-size: 1.1rem; margin-bottom: 16px; }
+        .step h4 { font-size: 1.05rem; margin-bottom: 8px; }
+        .step p { color: var(--text-muted); font-size: 0.9rem; }
+        .faq { padding: 60px 0 80px; }
+        .faq-item { border-bottom: 1px solid var(--border); padding: 24px 0; }
+        .faq-item:first-child { border-top: 1px solid var(--border); }
+        .faq-q { font-weight: 600; font-size: 1.05rem; margin-bottom: 8px; }
+        .faq-a { color: var(--text-muted); font-size: 0.95rem; }
+        footer { text-align: center; padding: 40px 0; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; }
+        footer a { color: var(--accent2); text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+        @media (max-width: 600px) { .hero h1 { font-size: 2rem; } .hero-stats { gap: 24px; } .stat-num { font-size: 1.5rem; } }
+    </style>
+</head>
+<body>
+
+<section class="hero">
+    <div class="container">
+        <div class="hero-badge">100% Free &amp; Open Source</div>
+        <h1>Claude Plugins by MSApps</h1>
+        <p>Supercharge your Claude experience with production-ready plugins. No paywalls, no license keys — just install and go.</p>
+        <div class="hero-stats">
+            <div class="stat"><div class="stat-num">4</div><div class="stat-label">Plugins</div></div>
+            <div class="stat"><div class="stat-num">$0</div><div class="stat-label">Forever Free</div></div>
+            <div class="stat"><div class="stat-num">MIT</div><div class="stat-label">Licensed</div></div>
+        </div>
+    </div>
+</section>
+
+<section class="plugins">
+    <div class="container">
+        <h2 class="section-title">Our Plugins</h2>
+        <p class="section-subtitle">Each plugin installs in seconds. No API keys, no complex setup.</p>
+        <div class="grid">
+            <div class="card">
+                <div class="card-icon">📁</div>
+                <h3>Google Drive Upload</h3>
+                <p>Upload any file from Claude directly to your Google Drive. Say "upload to Drive" and it works. Supports all file types up to 50MB.</p>
+                <div class="card-tags"><span class="tag free">Free</span><span class="tag">Unlimited uploads</span><span class="tag">All file types</span></div>
+                <div class="card-install">/plugin marketplace add MSApps-Mobile/claude-plugins</div>
+            </div>
+            <div class="card">
+                <div class="card-icon">⏱️</div>
+                <h3>Toggl Time Tracker</h3>
+                <p>Track time directly from Claude — start/stop timers, log hours to projects, and get weekly summaries without leaving your conversation.</p>
+                <div class="card-tags"><span class="tag free">Free</span><span class="tag">Start/Stop timers</span><span class="tag">Weekly reports</span></div>
+                <div class="card-install">/plugin install toggl-time-tracker@msapps-plugins</div>
+            </div>
+            <div class="card">
+                <div class="card-icon">🎬</div>
+                <h3>YouTube Transcriber</h3>
+                <p>Transcribe any YouTube video or entire playlists. Browser-based caption extraction — no API key needed, any language supported.</p>
+                <div class="card-tags"><span class="tag free">Free</span><span class="tag">Zero config</span><span class="tag">Any language</span></div>
+                <div class="card-install">/plugin install youtube-transcriber@msapps-plugins</div>
+            </div>
+            <div class="card">
+                <div class="card-icon">🧠</div>
+                <h3>Notion Memory</h3>
+                <p>Long-term memory for Claude. Remembers your preferences, decisions, and project context across sessions using Notion as persistent storage.</p>
+                <div class="card-tags"><span class="tag free">Free</span><span class="tag">Cross-session</span><span class="tag">Auto-saves</span></div>
+                <div class="card-install">/plugin install notion-memory@msapps-plugins</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="setup">
+    <div class="container">
+        <h2 class="section-title">Get Started in 3 Steps</h2>
+        <div class="steps">
+            <div class="step"><div class="step-num">1</div><h4>Add Marketplace</h4><p>Run <code>/plugin marketplace add MSApps-Mobile/claude-plugins</code> in Claude</p></div>
+            <div class="step"><div class="step-num">2</div><h4>Install a Plugin</h4><p>Run <code>/plugin install [plugin-name]@msapps-plugins</code></p></div>
+            <div class="step"><div class="step-num">3</div><h4>Just Use It</h4><p>Start talking to Claude — the plugin activates automatically when relevant</p></div>
+        </div>
+    </div>
+</section>
+
+<section class="faq">
+    <div class="container">
+        <h2 class="section-title">FAQ</h2>
+        <div style="max-width: 700px; margin: 32px auto 0;">
+            <div class="faq-item"><div class="faq-q">Is this really free?</div><div class="faq-a">Yes — 100% free, no limits, no paywalls, no license keys. All plugins are MIT-licensed open source.</div></div>
+            <div class="faq-item"><div class="faq-q">Do I need technical skills to install?</div><div class="faq-a">Not at all. Just paste the install command in Claude and you're done. Some plugins (like Google Drive) need a one-time 5-minute setup.</div></div>
+            <div class="faq-item"><div class="faq-q">Does Google Drive Upload require an API key?</div><div class="faq-a">No API key needed. You deploy a simple Google Apps Script to your own Google account (takes 5 minutes), and the plugin handles the rest.</div></div>
+            <div class="faq-item"><div class="faq-q">Can I contribute or suggest new plugins?</div><div class="faq-a">Absolutely! Open an issue or PR on our <a href="https://github.com/MSApps-Mobile/claude-plugins" style="color: var(--accent2);">GitHub repo</a>. We'd love community contributions.</div></div>
+            <div class="faq-item"><div class="faq-q">Who made these?</div><div class="faq-a">MSApps — a boutique software studio specializing in mobile development, AI integration, and developer tools. We build these plugins to give back to the Claude community.</div></div>
+        </div>
+    </div>
+</section>
+
+<footer>
+    <div class="container">
+        <p style="margin-bottom: 8px;">Built with ❤️ by <a href="https://msapps.mobi">MSApps</a></p>
+        <p><a href="https://github.com/MSApps-Mobile/claude-plugins">GitHub</a> · <a href="mailto:michal@msapps.mobi">Contact</a></p>
+    </div>
+</footer>
+
+</body>
+</html>
