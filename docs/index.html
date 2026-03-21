@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MSApps Claude Plugins — Free & Open Source</title>
-    <meta name="description" content="Free Claude plugins by MSApps — Google Drive Upload, Toggl Time Tracker, YouTube Transcriber, and Notion Memory. Open source, zero cost.">
+    <meta name="description" content="Free Claude plugins by MSApps — Google Drive Upload, Toggl Time Tracker, YouTube Transcriber, Notion Memory, and Session Backup. Open source, zero cost.">
     <style>
         :root {
             --bg: #0f0f13;
@@ -37,7 +37,7 @@
         .section-title { text-align: center; font-size: 1.8rem; font-weight: 700; margin-bottom: 12px; }
         .section-subtitle { text-align: center; color: var(--text-muted); margin-bottom: 48px; font-size: 1rem; }
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
-        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px 28px; transition: transform 0.2s, border-color 0.2s; }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px 28px; transition: transform 0.2s, border-color 0.2s; text-decoration: none; color: inherit; display: block; }
         .card:hover { transform: translateY(-4px); border-color: var(--accent); }
         .card-icon { font-size: 2.2rem; margin-bottom: 16px; }
         .card h3 { font-size: 1.2rem; font-weight: 600; margin-bottom: 8px; }
@@ -45,8 +45,8 @@
         .card-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
         .tag { font-size: 0.75rem; padding: 4px 10px; border-radius: 12px; background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
         .tag.free { background: rgba(52, 211, 153, 0.12); color: var(--green); border-color: rgba(52, 211, 153, 0.25); }
-        .card-install { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace; font-size: 0.8rem; color: var(--accent2); word-break: break-all; position: relative; }
-        .card-install::before { content: '$ '; color: var(--text-muted); }
+        .card-cta { display: inline-block; font-size: 0.85rem; color: var(--accent2); font-weight: 600; }
+        .card-cta::after { content: ' \2192'; }
         .setup { padding: 60px 0; background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
         .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 32px; margin-top: 40px; }
         .step { text-align: center; padding: 24px; }
@@ -72,7 +72,7 @@
         <h1>Claude Plugins by MSApps</h1>
         <p>Supercharge your Claude experience with production-ready plugins. No paywalls, no license keys — just install and go.</p>
         <div class="hero-stats">
-            <div class="stat"><div class="stat-num">4</div><div class="stat-label">Plugins</div></div>
+            <div class="stat"><div class="stat-num">5</div><div class="stat-label">Plugins</div></div>
             <div class="stat"><div class="stat-num">$0</div><div class="stat-label">Forever Free</div></div>
             <div class="stat"><div class="stat-num">MIT</div><div class="stat-label">Licensed</div></div>
         </div>
@@ -82,36 +82,43 @@
 <section class="plugins">
     <div class="container">
         <h2 class="section-title">Our Plugins</h2>
-        <p class="section-subtitle">Each plugin installs in seconds. No API keys, no complex setup.</p>
+        <p class="section-subtitle">Each plugin installs in seconds. Click any card to see full docs.</p>
         <div class="grid">
-            <div class="card">
+            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/google-drive-upload/README.md">
                 <div class="card-icon">📁</div>
                 <h3>Google Drive Upload</h3>
                 <p>Upload any file from Claude directly to your Google Drive. Say "upload to Drive" and it works. Supports all file types up to 50MB.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">Unlimited uploads</span><span class="tag">All file types</span></div>
-                <div class="card-install">/plugin marketplace add MSApps-Mobile/claude-plugins</div>
-            </div>
-            <div class="card">
+                <span class="card-cta">View docs &amp; setup</span>
+            </a>
+            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/toggl-time-tracker/README.md">
                 <div class="card-icon">⏱️</div>
                 <h3>Toggl Time Tracker</h3>
                 <p>Track time directly from Claude — start/stop timers, log hours to projects, and get weekly summaries without leaving your conversation.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">Start/Stop timers</span><span class="tag">Weekly reports</span></div>
-                <div class="card-install">/plugin install toggl-time-tracker@msapps-plugins</div>
-            </div>
-            <div class="card">
+                <span class="card-cta">View docs &amp; setup</span>
+            </a>
+            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/youtube-transcriber/README.md">
                 <div class="card-icon">🎬</div>
                 <h3>YouTube Transcriber</h3>
                 <p>Transcribe any YouTube video or entire playlists. Browser-based caption extraction — no API key needed, any language supported.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">Zero config</span><span class="tag">Any language</span></div>
-                <div class="card-install">/plugin install youtube-transcriber@msapps-plugins</div>
-            </div>
-            <div class="card">
+                <span class="card-cta">View docs &amp; setup</span>
+            </a>
+            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/notion-memory/README.md">
                 <div class="card-icon">🧠</div>
                 <h3>Notion Memory</h3>
                 <p>Long-term memory for Claude. Remembers your preferences, decisions, and project context across sessions using Notion as persistent storage.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">Cross-session</span><span class="tag">Auto-saves</span></div>
-                <div class="card-install">/plugin install notion-memory@msapps-plugins</div>
-            </div>
+                <span class="card-cta">View docs &amp; setup</span>
+            </a>
+            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/session-backup/README.md">
+                <div class="card-icon">💾</div>
+                <h3>Session Backup</h3>
+                <p>Automated daily backups of your Cowork skills, plugins, scheduled tasks, and configs to Google Drive. Set it and forget it.</p>
+                <div class="card-tags"><span class="tag free">Free</span><span class="tag">Daily backups</span><span class="tag">Google Drive</span></div>
+                <span class="card-cta">View docs &amp; setup</span>
+            </a>
         </div>
     </div>
 </section>
@@ -142,7 +149,7 @@
 
 <footer>
     <div class="container">
-        <p style="margin-bottom: 8px;">Built with ❤️ by <a href="https://msapps.mobi">MSApps</a></p>
+        <p style="margin-bottom: 8px;">Built with care by <a href="https://msapps.mobi">MSApps</a></p>
         <p><a href="https://github.com/MSApps-Mobile/claude-plugins">GitHub</a> · <a href="mailto:michal@msapps.mobi">Contact</a></p>
     </div>
 </footer>
