@@ -1,10 +1,11 @@
 {
   "name": "session-backup",
-  "version": "0.2.0",
-  "description": "Zero-config daily backups of Claude session data, skills, and configs to cloud storage — collision-safe with unique instance IDs",
+  "version": "0.3.0",
+  "description": "Automated daily backups of Cowork skills, scheduled tasks, plugins, and configs to Google Drive. Supports multi-account merge and split uploads for large backups.",
   "author": {
-    "name": "Michal Shatz",
-    "homepage": "https://msapps.co.il"
+    "name": "MSApps",
+    "url": "https://msapps.mobi"
   },
-  "keywords": ["backup", "session", "skills", "google-drive", "automation", "scheduled"]
+  "license": "MIT",
+  "keywords": ["backup", "session", "skills", "google-drive", "automation", "scheduled", "cowork"]
 }

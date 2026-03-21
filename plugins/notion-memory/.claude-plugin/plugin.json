@@ -1,5 +1,11 @@
 {
   "name": "notion-memory",
   "description": "Long-term memory for Claude — remembers preferences, decisions, and project context across sessions using Notion",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "author": {
+    "name": "MSApps",
+    "url": "https://msapps.mobi"
+  },
+  "license": "MIT",
+  "keywords": ["notion", "memory", "context", "preferences", "sessions"]
 }
