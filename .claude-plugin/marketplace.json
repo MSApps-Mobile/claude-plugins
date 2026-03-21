@@ -5,8 +5,8 @@
     "email": "michal@msapps.mobi"
   },
   "metadata": {
-    "description": "Free Claude plugins by MSApps — Google Drive upload, Toggl time tracking, and more",
-    "version": "1.1.0",
+    "description": "Free Claude plugins by MSApps — Google Drive upload, Toggl time tracking, session backups, and more",
+    "version": "1.2.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -41,6 +41,22 @@
       "keywords": ["toggl", "time-tracking", "timer", "productivity", "reports"],
       "category": "productivity",
       "tags": ["toggl", "time-tracking", "timer", "timesheet", "reports"]
+    },
+    {
+      "name": "session-backup",
+      "source": "./plugins/session-backup",
+      "description": "Zero-config daily backups of Claude session data, skills, and configs to cloud storage — collision-safe with unique instance IDs",
+      "version": "0.2.0",
+      "author": {
+        "name": "MSApps",
+        "email": "michal@msapps.mobi"
+      },
+      "homepage": "https://msapps.mobi/plugins",
+      "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+      "license": "MIT",
+      "keywords": ["backup", "session", "skills", "google-drive", "automation", "scheduled"],
+      "category": "productivity",
+      "tags": ["backup", "session", "skills", "cloud-storage", "automation", "daily-backup", "free"]
     }
   ]
 }

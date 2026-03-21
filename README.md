@@ -15,13 +15,12 @@ Free plugins for Claude by [MSApps](https://msapps.mobi).
 | **google-drive-upload** | Upload files to Google Drive — unlimited, free | `/plugin install google-drive-upload@msapps-plugins` |
 | **toggl-time-tracker** | Track time with Toggl — start/stop timers, reports | `/plugin install toggl-time-tracker@msapps-plugins` |
 | **youtube-transcriber** | Transcribe YouTube videos & playlists — no API key needed | `/plugin install youtube-transcriber@msapps-plugins` |
+| **session-backup** | Zero-config daily backups of sessions, skills & configs | `/plugin install session-backup@msapps-plugins` |
 
 ## Setup
 
 ### Google Drive Upload
-
 One-time Google Apps Script deployment. After installing, save your config to `~/.cowork-gdrive-config.json`:
-
 ```json
 {
   "url": "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec"
@@ -29,9 +28,7 @@ One-time Google Apps Script deployment. After installing, save your config to `~
 ```
 
 ### Toggl Time Tracker
-
 Save your Toggl API token to `~/.toggl-config.json`:
-
 ```json
 {
   "apiToken": "your-toggl-api-token"
@@ -39,8 +36,10 @@ Save your Toggl API token to `~/.toggl-config.json`:
 ```
 
 ### YouTube Transcriber
-
 No setup needed — just requires the **Claude in Chrome** extension. Paste any YouTube video or playlist URL and ask Claude to transcribe it.
+
+### Session Backup
+No setup needed — just run `/backup-now`. Auto-detects your environment (Cowork or Claude Code), generates a unique instance ID, and backs up your skills, sessions, and configs to cloud storage. Run `/backup-setup` to customize schedule, folders, or retention policy.
 
 Full setup guide: [msapps.mobi/plugins](https://msapps.mobi/plugins)
 
