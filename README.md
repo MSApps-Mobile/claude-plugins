@@ -16,6 +16,7 @@ Free plugins for Claude by [MSApps](https://msapps.mobi).
 | **toggl-time-tracker** | Track time with Toggl — start/stop timers, reports | `/plugin install toggl-time-tracker@msapps-plugins` |
 | **youtube-transcriber** | Transcribe YouTube videos & playlists — no API key needed | `/plugin install youtube-transcriber@msapps-plugins` |
 | **session-backup** | Zero-config daily backups of sessions, skills & configs | `/plugin install session-backup@msapps-plugins` |
+| **notion-memory** | Long-term memory for Claude across sessions via Notion | `/plugin install notion-memory@msapps-plugins` |
 
 ## Setup
 
@@ -41,9 +42,12 @@ No setup needed — just requires the **Claude in Chrome** extension. Paste any 
 ### Session Backup
 No setup needed — just run `/backup-now`. Auto-detects your environment (Cowork or Claude Code), generates a unique instance ID, and backs up your skills, sessions, and configs to cloud storage. Run `/backup-setup` to customize schedule, folders, or retention policy.
 
+### Notion Memory
+Requires **Notion MCP** connected to Claude. In Cowork: Settings → Connectors → Notion. In Claude Code: add a Notion MCP server to your `.mcp.json`. On first use, Claude creates a "Claude Memory" page in your Notion workspace to store preferences, decisions, project context, and session summaries.
+
 Full setup guide: [msapps.mobi/plugins](https://msapps.mobi/plugins)
 
 ## Support
 
 - Email: michal@msapps.mobi
-- Issues: [GitHub Issues](https://github.com/MSApps-Mobile/claude-plugins/issues)
+- - Issues: [GitHub Issues](https://github.com/MSApps-Mobile/claude-plugins/issues)
