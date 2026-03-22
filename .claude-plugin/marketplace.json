@@ -57,6 +57,19 @@
       "keywords": ["backup", "session", "skills", "google-drive", "automation", "scheduled"],
       "category": "productivity",
       "tags": ["backup", "session", "skills", "cloud-storage", "automation", "daily-backup", "free"]
+    },
+    {
+      "name": "digital-presence",
+      "source": "./plugins/digital-presence",
+      "description": "Manage your entire online presence — analyze activity, score platforms, and create optimized content across LinkedIn, Instagram, X, Facebook, YouTube, GitHub, and your website",
+      "version": "0.1.0",
+      "author": { "name": "MSApps", "email": "michal@msapps.mobi" },
+      "homepage": "https://msapps.mobi/plugins",
+      "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+      "license": "MIT",
+      "keywords": ["social-media", "content-creation", "linkedin", "github", "digital-presence", "brand-voice"],
+      "category": "marketing",
+      "tags": ["social-media", "content", "linkedin", "instagram", "twitter", "github", "brand-voice", "presence-audit", "free"]
     }
   ]
 }
