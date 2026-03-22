@@ -10,7 +10,7 @@ description: >
 # Session Backup
 
 Back up all Cowork-related content to Google Drive. Designed to run as a daily scheduled task
-or on-demand.
+or on-demand. Uploads each component as a separate file to stay under Apps Script's payload limit.
 
 ---
 
@@ -18,7 +18,7 @@ or on-demand.
 
 1. **Skills** — All Cowork skill definitions from the skills plugin directory
 2. **Plugins** — Installed plugins, marketplace cache, plugin configs
-3. **Claude Docs** — Scheduled tasks, session context files, MCP source code
+3. **Claude Docs** — Scheduled tasks, session context files, MCP source code (split into 3 parts)
 4. **Configs** — `claude_desktop_config.json` and connection config files
 
 ---
@@ -34,124 +34,110 @@ Parse the JSON to get `url` and `apiKey`. If the file doesn't exist, tell the us
 
 ---
 
-## Step 2: Try downloading the existing backup
+## Step 2: Build backup components into /tmp/cowork-backup/
 
-Attempt to download the current backup from Drive for merge:
+Create zips of each component. **Always exclude** `node_modules/`, `.git/`, `.next/`,
+images (`*.png/*.jpg/*.jpeg/*.gif`), `*.pyc`, and `package-lock.json`.
+
+### 2a: Skills
 
 ```applescript
-with timeout of 120 seconds
-  do shell script "curl -s -L 'APPS_SCRIPT_URL?action=download&fileName=cowork-full-backup-latest.zip&apiKey=API_KEY' -o /tmp/cowork-existing-backup.zip 2>&1; echo exit:$?"
-end timeout
+do shell script "mkdir -p /tmp/cowork-backup && cd '/Users/michalshatz/Library/Application Support/Claude/local-agent-mode-sessions/skills-plugin/27490a98-e7a1-4f0e-aa81-0f24f38544c6/22a74de5-a2af-47b2-b30e-eab1eb168f03' && zip -r /tmp/cowork-backup/skills-backup.zip skills/ 2>&1 | tail -2 && echo done"
 ```
 
-If the download returns a valid zip, extract to `/tmp/cowork-base/` for merging.
-If not (JSON response or error), proceed with new content only.
+### 2b: Claude Documents folder — split into 3 parts
+
+The ~/Documents/Claude/ folder contains large projects (opsAgent, gcal-mcp) that must be
+split to stay under upload limits. Each part excludes node_modules, .git, .next, images.
+
+**Part 1 — opsAgent (~6 MB):**
+```applescript
+do shell script "cd '/Users/michalshatz/Documents' && zip -r /tmp/cowork-backup/claude-docs-opsagent.zip Claude/opsAgent/ -x '*/node_modules/*' -x '*/.git/*' -x '*/.next/*' -x '*.pyc' -x '*.png' -x '*.jpg' -x '*.jpeg' -x '*.gif' -x '*/package-lock.json' 2>&1 | tail -1 && ls -lh /tmp/cowork-backup/claude-docs-opsagent.zip"
+```
+
+**Part 2 — gcal-mcp (~6 MB):**
+```applescript
+do shell script "cd '/Users/michalshatz/Documents' && zip -r /tmp/cowork-backup/claude-docs-gcalmcp.zip Claude/gcal-mcp/ -x '*/node_modules/*' -x '*/.git/*' -x '*.pyc' -x '*.png' -x '*.jpg' 2>&1 | tail -1 && ls -lh /tmp/cowork-backup/claude-docs-gcalmcp.zip"
+```
+
+**Part 3 — everything else (~2 MB):**
+```applescript
+do shell script "cd '/Users/michalshatz/Documents' && zip -r /tmp/cowork-backup/claude-docs-rest.zip Claude/ -x 'Claude/opsAgent/*' -x 'Claude/gcal-mcp/*' -x '*/node_modules/*' -x '*/.git/*' -x '*/.next/*' -x '*.pyc' -x '*.png' -x '*.jpg' -x '*.jpeg' -x '*.gif' -x '*/package-lock.json' 2>&1 | tail -1 && ls -lh /tmp/cowork-backup/claude-docs-rest.zip"
+```
+
+### 2c: Plugins
+
+```applescript
+do shell script "cd '/Users/michalshatz/Library/Application Support/Claude/local-agent-mode-sessions/22a74de5-a2af-47b2-b30e-eab1eb168f03/27490a98-e7a1-4f0e-aa81-0f24f38544c6' && zip -r /tmp/cowork-backup/plugins-backup.zip cowork_plugins/ 2>&1 | tail -2 && echo done"
+```
+
+### 2d: Config files
+
+```applescript
+do shell script "mkdir -p /tmp/cowork-backup/configs && cp '/Users/michalshatz/.cowork-gdrive-config.json' /tmp/cowork-backup/configs/ && cp '/Users/michalshatz/Library/Application Support/Claude/claude_desktop_config.json' /tmp/cowork-backup/configs/ && cd /tmp/cowork-backup && zip -r /tmp/cowork-backup/configs-backup.zip configs/ && echo done"
+```
 
 ---
 
-## Step 3: Build new backup content
+## Step 3: Upload each component to Google Drive
 
-Create zips of each component. **Exclude** `node_modules/`, `.git/`, images (`*.png/*.jpg`),
-and `package-lock.json` to keep sizes manageable.
+For each zip file in /tmp/cowork-backup/, upload individually using Python to build a base64 payload and curl to POST it.
 
-### 3a: Skills
-Zip the skills directory from the Cowork skills plugin path.
-
-### 3b: Claude Docs
-Zip `~/Documents/Claude/` excluding heavy directories:
-```bash
-find Claude/ -not -path '*/node_modules/*' -not -path '*/.git/*' \
-  -not -name '*.png' -not -name '*.jpg' -not -name 'package-lock.json' \
-  -type f | zip /tmp/cowork-new/claude-docs-backup.zip -@
-```
-
-### 3c: Plugins
-Zip the cowork_plugins directory.
-
-### 3d: Configs
-Copy `claude_desktop_config.json` and `~/.cowork-gdrive-config.json`.
-
----
-
-## Step 4: Merge old and new
-
-Use Python to merge: old backup provides the base, new content overlays (new wins conflicts):
-
+Build the payload:
 ```python
-import os, shutil
-
-base = '/tmp/cowork-base'      # Old backup (if any)
-new_dir = '/tmp/cowork-new'    # Fresh content
-merged = '/tmp/cowork-merged'
-
-os.makedirs(merged, exist_ok=True)
-
-# Copy old backup first
-if os.path.exists(base) and os.listdir(base):
-    shutil.copytree(base, merged, dirs_exist_ok=True)
-
-# Overlay new content (new files win)
-for fname in os.listdir(new_dir):
-    src = os.path.join(new_dir, fname)
-    dst = os.path.join(merged, fname)
-    if os.path.isdir(src):
-        shutil.copytree(src, dst, dirs_exist_ok=True)
-    else:
-        shutil.copy2(src, dst)
-```
-
----
-
-## Step 5: Upload to Google Drive
-
-**Split upload** — upload each component separately (Apps Script has ~10 MB payload limit):
-
-For each zip file, build a base64-encoded JSON payload and POST to the Apps Script URL:
-
-```json
-{
-  "fileName": "cowork-skills-backup.zip",
-  "content": "<base64>",
-  "mimeType": "application/zip",
-  "apiKey": "API_KEY",
-  "folderPath": "Cowork-Backups",
-  "replaceExisting": true
+import base64, json
+with open('FILEPATH', 'rb') as f:
+    b64 = base64.b64encode(f.read()).decode()
+payload = {
+    'fileName': 'FILENAME',
+    'content': b64,
+    'mimeType': 'application/zip',
+    'apiKey': 'API_KEY_FROM_CONFIG',
+    'folderPath': 'Cowork-Backups',
+    'replaceExisting': True
 }
+with open('/tmp/upload_payload.json', 'w') as f:
+    json.dump(payload, f)
 ```
 
-Upload order: configs (tiny) → plugins (~2 MB) → skills (~3 MB) → docs (~8 MB).
-
-Check each response for `"success": true` before proceeding.
-
----
-
-## Step 6: Clean up
-
-Remove all temp files:
+Then upload with curl (timeout 180s):
 ```bash
-rm -rf /tmp/cowork-base /tmp/cowork-new /tmp/cowork-merged \
-  /tmp/cowork-existing-backup.zip /tmp/cowork-full-backup.zip \
-  /tmp/upload_*.json
+curl -s -L -H 'Content-Type: application/json' -d @/tmp/upload_payload.json 'APPS_SCRIPT_URL_FROM_CONFIG'
+```
+
+Upload all 6 files one by one:
+1. configs-backup.zip (tiny, good to verify connectivity)
+2. plugins-backup.zip (~2 MB)
+3. skills-backup.zip (~3 MB)
+4. claude-docs-opsagent.zip (~6 MB)
+5. claude-docs-gcalmcp.zip (~6 MB)
+6. claude-docs-rest.zip (~2 MB)
+
+Each should return `{"success": true}`.
+
+---
+
+## Step 4: Clean up
+
+```bash
+rm -rf /tmp/cowork-backup /tmp/upload_payload.json
 ```
 
 ---
 
-## Step 7: Report
+## Step 5: Report
 
-For each uploaded component, report:
-- File name
-- Size
-- Google Drive link (from `fileUrl` in the response)
-
+For each uploaded component, report file name, size, and Google Drive link.
 If any upload failed, report the error.
 
 ---
 
 ## Important notes
 
-- Always use `replaceExisting: true` so each run overwrites the previous backup
-- The merge strategy preserves files that exist only in the old backup
-- If the download endpoint isn't supported, skip merge and upload new content only
+- Upload as **SEPARATE files** (not one giant zip) to stay under Apps Script's ~50 MB payload limit
+- Always use `replaceExisting: true` so each run overwrites the previous version
 - `folderPath` must be `Cowork-Backups`
-- Exclude `node_modules/`, `.git/`, images, and lockfiles to keep uploads small
-- All uploads go to the same Drive folder — both accounts can contribute
+- **Always exclude**: `*/node_modules/*`, `*/.git/*`, `*/.next/*`, `*.pyc`, `*.png`, `*.jpg`, `*.jpeg`, `*.gif`, `*/package-lock.json`
+- If any individual upload fails with 413, split that component further
+- The 6 backup files in Drive: skills-backup.zip, claude-docs-opsagent.zip, claude-docs-gcalmcp.zip, claude-docs-rest.zip, plugins-backup.zip, configs-backup.zip
+- Both accounts share the same Drive folder — each run replaces its own files
