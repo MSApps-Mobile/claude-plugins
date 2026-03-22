@@ -96,6 +96,36 @@ For detailed guidance on any platform, read `references/[platform].md`.
 - Don't use excessive emojis as bullet points (🔥 📌 💡 🚀)
 - Don't include AI giveaway phrases ("In today's rapidly evolving landscape...")
 
+## Tagging Rules
+
+Every post MUST include tags/mentions for all relevant entities. This is not optional.
+
+### Who to tag
+- **Your own brand** — always tag your company/personal brand account
+- **Tools & platforms mentioned** — if you mention a product, tool, or company by name, tag them
+- **Social platforms discussed** — if the post talks about LinkedIn, Instagram, X, etc., tag their official accounts
+- **People mentioned** — if you reference someone specific, tag them
+- **Partners / collaborators** — anyone involved in what you're sharing
+
+### Platform-specific tagging format
+- **LinkedIn:** Use @CompanyName or @PersonName (LinkedIn auto-suggests)
+- **X/Twitter:** Use @handles — find the correct handle for each brand
+- **Instagram:** Use @handles in caption body or tag in the image
+- **Facebook:** Use @PageName — Facebook auto-links recognized pages
+
+### Common tags to remember
+| Brand | LinkedIn | X/Twitter | Instagram | Facebook |
+|-------|----------|-----------|-----------|----------|
+| Anthropic | @Anthropic | @AnthropicAI | @anthropic | @Anthropic |
+| Claude | @Claude | @ClaudeAI | — | — |
+| GitHub | @GitHub | @github | @github | @GitHub |
+| LinkedIn | — | @LinkedIn | @linkedin | @LinkedIn |
+| Instagram | — | @Instagram | — | @Instagram |
+| X/Twitter | — | @X | @x | — |
+
+### Why this matters
+Tags drive visibility. Every tag is a chance the tagged brand sees your post, engages, or reshares. Missing tags = missing reach. Always over-tag rather than under-tag.
+
 ## Output Format
 
 Present the post ready to copy-paste. After the post, briefly note:
