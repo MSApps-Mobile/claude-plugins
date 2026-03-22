@@ -5,7 +5,7 @@
     "email": "michal@msapps.mobi"
   },
   "metadata": {
-    "description": "Free Claude plugins by MSApps — Google Drive upload, Toggl time tracking, session backups, and more",
+    "description": "Free Claude plugins by MSApps \u2014 Google Drive upload, Toggl time tracking, session backups, and more",
     "version": "1.2.0",
     "pluginRoot": "./plugins"
   },
@@ -13,7 +13,7 @@
     {
       "name": "google-drive-upload",
       "source": "./plugins/google-drive-upload-free",
-      "description": "Upload files from Claude directly to Google Drive — unlimited uploads, completely free",
+      "description": "Upload files from Claude directly to Google Drive \u2014 unlimited uploads, completely free",
       "version": "1.1.0",
       "author": {
         "name": "MSApps",
@@ -22,14 +22,25 @@
       "homepage": "https://msapps.mobi/plugins",
       "repository": "https://github.com/MSApps-Mobile/claude-plugins",
       "license": "MIT",
-      "keywords": ["google-drive", "upload", "files", "productivity"],
+      "keywords": [
+        "google-drive",
+        "upload",
+        "files",
+        "productivity"
+      ],
       "category": "productivity",
-      "tags": ["google-drive", "file-upload", "cloud-storage", "free", "unlimited"]
+      "tags": [
+        "google-drive",
+        "file-upload",
+        "cloud-storage",
+        "free",
+        "unlimited"
+      ]
     },
     {
       "name": "toggl-time-tracker",
       "source": "./plugins/toggl-time-tracker",
-      "description": "Track time and pull reports from Toggl Track — start/stop timers, log hours, weekly summaries",
+      "description": "Track time and pull reports from Toggl Track \u2014 start/stop timers, log hours, weekly summaries",
       "version": "1.0.0",
       "author": {
         "name": "MSApps",
@@ -38,14 +49,26 @@
       "homepage": "https://msapps.mobi/plugins",
       "repository": "https://github.com/MSApps-Mobile/claude-plugins",
       "license": "MIT",
-      "keywords": ["toggl", "time-tracking", "timer", "productivity", "reports"],
+      "keywords": [
+        "toggl",
+        "time-tracking",
+        "timer",
+        "productivity",
+        "reports"
+      ],
       "category": "productivity",
-      "tags": ["toggl", "time-tracking", "timer", "timesheet", "reports"]
+      "tags": [
+        "toggl",
+        "time-tracking",
+        "timer",
+        "timesheet",
+        "reports"
+      ]
     },
     {
       "name": "session-backup",
       "source": "./plugins/session-backup",
-      "description": "Zero-config daily backups of Claude session data, skills, and configs to cloud storage — collision-safe with unique instance IDs",
+      "description": "Zero-config daily backups of Claude session data, skills, and configs to cloud storage \u2014 collision-safe with unique instance IDs",
       "version": "0.2.0",
       "author": {
         "name": "MSApps",
@@ -54,22 +77,57 @@
       "homepage": "https://msapps.mobi/plugins",
       "repository": "https://github.com/MSApps-Mobile/claude-plugins",
       "license": "MIT",
-      "keywords": ["backup", "session", "skills", "google-drive", "automation", "scheduled"],
+      "keywords": [
+        "backup",
+        "session",
+        "skills",
+        "google-drive",
+        "automation",
+        "scheduled"
+      ],
       "category": "productivity",
-      "tags": ["backup", "session", "skills", "cloud-storage", "automation", "daily-backup", "free"]
+      "tags": [
+        "backup",
+        "session",
+        "skills",
+        "cloud-storage",
+        "automation",
+        "daily-backup",
+        "free"
+      ]
     },
     {
       "name": "digital-presence",
       "source": "./plugins/digital-presence",
-      "description": "Manage your entire online presence — analyze activity, score platforms, and create optimized content across LinkedIn, Instagram, X, Facebook, YouTube, GitHub, and your website",
+      "description": "Manage your entire online presence \u2014 analyze, score, and create content across all platforms. Private plugin \u2014 contact michal@msapps.mobi for access.",
       "version": "0.1.0",
-      "author": { "name": "MSApps", "email": "michal@msapps.mobi" },
+      "author": {
+        "name": "MSApps",
+        "email": "michal@msapps.mobi"
+      },
       "homepage": "https://msapps.mobi/plugins",
       "repository": "https://github.com/MSApps-Mobile/claude-plugins",
-      "license": "MIT",
-      "keywords": ["social-media", "content-creation", "linkedin", "github", "digital-presence", "brand-voice"],
+      "license": "UNLICENSED",
+      "keywords": [
+        "social-media",
+        "content-creation",
+        "linkedin",
+        "github",
+        "digital-presence",
+        "brand-voice"
+      ],
       "category": "marketing",
-      "tags": ["social-media", "content", "linkedin", "instagram", "twitter", "github", "brand-voice", "presence-audit", "free"]
+      "tags": [
+        "social-media",
+        "content",
+        "linkedin",
+        "instagram",
+        "twitter",
+        "github",
+        "brand-voice",
+        "presence-audit",
+        "private"
+      ]
     }
   ]
 }
