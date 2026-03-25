@@ -5,16 +5,32 @@ description: גיבוי יומי של תיקיות הסקילס, המשימות 
 
 Back up all Cowork-related folders to Google Drive.
 
+> **Environment note:** This skill works in both Claude Code and Cowork. In Claude Code, bash commands run directly on the Mac. In Cowork, osascript is used to bridge the VM to the host machine. The instructions below provide both methods where needed.
+
 ## Step 1: Read the Google Drive upload config
+
+**In Claude Code:**
+```bash
+cat ~/.cowork-gdrive-config.json
+```
+
+**In Cowork:**
 ```applescript
 do shell script "cat '/Users/michalshatz/.cowork-gdrive-config.json'"
 ```
+
 Parse to get `url` and `apiKey`.
 
 ## Step 2: Flush debug screenshots
 Delete temporary debug screenshots from ~/Documents/Claude/ before building the backup.
 These are not needed for recovery and waste space.
 
+**In Claude Code:**
+```bash
+find ~/Documents/Claude -maxdepth 1 -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" -o -name "*.gif" \) -delete && echo "Screenshots flushed"
+```
+
+**In Cowork:**
 ```applescript
 do shell script "find '/Users/michalshatz/Documents/Claude' -maxdepth 1 -type f \\( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' -o -name '*.gif' \\) -delete && echo 'Screenshots flushed'"
 ```
@@ -23,15 +39,37 @@ do shell script "find '/Users/michalshatz/Documents/Claude' -maxdepth 1 -type f 
 
 **All zips must exclude**: `*/node_modules/*`, `*/.git/*`, `*/.next/*`, `*.pyc`, `*.png`, `*.jpg`, `*.jpeg`, `*.gif`, `*/package-lock.json`
 
+### Locating directories
+
+The paths to skills, plugins, and docs directories depend on the environment:
+
+**In Claude Code** — check for the standard Cowork paths on the host Mac:
+```bash
+# Skills directory (find dynamically)
+SKILLS_DIR=$(find ~/Library/Application\ Support/Claude/local-agent-mode-sessions -name "skills" -type d 2>/dev/null | head -1)
+
+# Plugins directory (find dynamically)
+PLUGINS_DIR=$(find ~/Library/Application\ Support/Claude/local-agent-mode-sessions -name "cowork_plugins" -type d 2>/dev/null | head -1)
+
+# Docs directory
+DOCS_DIR=~/Documents/Claude
+```
+
+**In Cowork** — use the known paths via osascript (same as the original skill).
+
 ### 3a: Skills
-```applescript
-do shell script "mkdir -p /tmp/cowork-backup && cd '/Users/michalshatz/Library/Application Support/Claude/local-agent-mode-sessions/skills-plugin/27490a98-e7a1-4f0e-aa81-0f24f38544c6/22a74de5-a2af-47b2-b30e-eab1eb168f03' && zip -r /tmp/cowork-backup/skills-backup.zip skills/ 2>&1 | tail -2 && echo done"
+```bash
+mkdir -p /tmp/cowork-backup
+cd "$SKILLS_DIR/.." && zip -r /tmp/cowork-backup/skills-backup.zip skills/ 2>&1 | tail -2 && echo done
 ```
 
 ### 3b: Claude Documents folder
 First try as ONE zip (with all exclusions). If the resulting base64 is under ~45MB, upload as one file.
-```applescript
-do shell script "cd '/Users/michalshatz/Documents' && zip -r /tmp/cowork-backup/claude-docs-backup.zip Claude/ -x '*/node_modules/*' -x '*/.git/*' -x '*/.next/*' -x '*.pyc' -x '*.png' -x '*.jpg' -x '*.jpeg' -x '*.gif' -x '*/package-lock.json' 2>&1 | tail -1 && ls -lh /tmp/cowork-backup/claude-docs-backup.zip"
+```bash
+cd ~/Documents && zip -r /tmp/cowork-backup/claude-docs-backup.zip Claude/ \
+  -x '*/node_modules/*' -x '*/.git/*' -x '*/.next/*' -x '*.pyc' \
+  -x '*.png' -x '*.jpg' -x '*.jpeg' -x '*.gif' -x '*/package-lock.json' \
+  2>&1 | tail -1 && ls -lh /tmp/cowork-backup/claude-docs-backup.zip
 ```
 
 **If the zip is over 30MB** (which means base64 will be over 40MB and may hit 413), split into 3 parts instead:
@@ -42,13 +80,16 @@ do shell script "cd '/Users/michalshatz/Documents' && zip -r /tmp/cowork-backup/
 Each part uses the same exclusion flags.
 
 ### 3c: Plugins
-```applescript
-do shell script "cd '/Users/michalshatz/Library/Application Support/Claude/local-agent-mode-sessions/22a74de5-a2af-47b2-b30e-eab1eb168f03/27490a98-e7a1-4f0e-aa81-0f24f38544c6' && zip -r /tmp/cowork-backup/plugins-backup.zip cowork_plugins/ 2>&1 | tail -2 && echo done"
+```bash
+cd "$PLUGINS_DIR/.." && zip -r /tmp/cowork-backup/plugins-backup.zip cowork_plugins/ 2>&1 | tail -2 && echo done
 ```
 
 ### 3d: Config files
-```applescript
-do shell script "mkdir -p /tmp/cowork-backup/configs && cp '/Users/michalshatz/.cowork-gdrive-config.json' /tmp/cowork-backup/configs/ && cp '/Users/michalshatz/Library/Application Support/Claude/claude_desktop_config.json' /tmp/cowork-backup/configs/ && cd /tmp/cowork-backup && zip -r /tmp/cowork-backup/configs-backup.zip configs/ && echo done"
+```bash
+mkdir -p /tmp/cowork-backup/configs
+cp ~/.cowork-gdrive-config.json /tmp/cowork-backup/configs/ 2>/dev/null
+cp ~/Library/Application\ Support/Claude/claude_desktop_config.json /tmp/cowork-backup/configs/ 2>/dev/null
+cd /tmp/cowork-backup && zip -r /tmp/cowork-backup/configs-backup.zip configs/ && echo done
 ```
 
 ## Step 4: Upload to Google Drive

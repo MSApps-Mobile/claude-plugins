@@ -12,6 +12,8 @@ Also runs automatically when triggered as a scheduled task.
 
 Work through each phase in order. Communicate with the user in whatever language they used.
 
+> **Environment note:** This skill works in both Claude Code (native Bash tool) and Cowork (Desktop Commander). Use whichever shell execution method is available in your environment to run the bash commands below.
+
 ---
 
 ## Phase 1 — Measure before

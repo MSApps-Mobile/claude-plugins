@@ -14,13 +14,16 @@ description: >
 Extract transcripts from YouTube videos and playlists using browser-based caption extraction.
 Works with any video that has auto-generated or manual captions — no API key required.
 
+> **Environment note:** This skill works in both Claude Code and Cowork. It requires the **Claude in Chrome** extension in both environments. The Chrome MCP tools (`navigate`, `javascript_tool`, `get_page_text`, etc.) work identically in both.
+
 ---
 
 ## Prerequisites
 
 This skill requires **Claude in Chrome** (browser automation). If the Chrome MCP tools
-(`navigate`, `javascript_tool`, `get_page_text`, etc.) are not available, inform the user
-that this skill needs the Claude in Chrome extension to work.
+(`navigate`, `javascript_tool`, `get_page_text`, etc.) are not available, inform the user:
+- **Cowork**: "Install the Claude in Chrome extension from your browser"
+- **Claude Code**: "Add the Chrome MCP extension and ensure it's running"
 
 ---
 
@@ -111,11 +114,9 @@ Use `javascript_tool` to extract text from the engagement panel and parse it:
   for (let i = 0; i < lines.length; i++) {
     if (timestampRe.test(lines[i])) {
       const ts = lines[i];
-      // Next line might be a Hebrew duration description — skip those
       let text = '';
       if (i + 1 < lines.length && !timestampRe.test(lines[i + 1])) {
         if (hebrewTimeWords.test(lines[i + 1])) {
-          // Skip Hebrew time description, get the line after
           if (i + 2 < lines.length && !timestampRe.test(lines[i + 2])) {
             text = lines[i + 2];
             i += 2;
@@ -235,7 +236,7 @@ Save to outputs as `{playlist-name}-transcripts.txt`.
 | Hebrew/Arabic time descriptions mixed in | The extraction script filters these out using the `hebrewTimeWords` regex. If new patterns appear, add them. |
 | Wrong language detected by YouTube | YouTube sometimes misdetects the language for songs. Note this in the output but still extract whatever text is available. |
 | Very short video (<30 seconds) | May not have auto-generated captions. Inform the user and offer to describe the video content instead. |
-| `navigate` tool not available | This skill requires Claude in Chrome. Suggest the user install the Chrome extension. |
+| `navigate` tool not available | This skill requires Claude in Chrome. Suggest installing the Chrome extension. |
 
 ---
 

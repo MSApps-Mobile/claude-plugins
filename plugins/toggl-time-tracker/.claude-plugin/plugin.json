@@ -1,6 +1,6 @@
 {
   "name": "toggl-time-tracker",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Track time and pull reports from Toggl Track — start/stop timers, log hours, weekly summaries",
   "author": {
     "name": "MSApps",
@@ -8,5 +8,6 @@
   },
   "homepage": "https://msapps.mobi/plugins",
   "license": "MIT",
-  "keywords": ["toggl", "time-tracking", "timer", "productivity", "reports"]
+  "keywords": ["toggl", "time-tracking", "timer", "productivity", "reports"],
+  "platforms": ["claude-code", "cowork"]
 }

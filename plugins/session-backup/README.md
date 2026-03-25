@@ -42,11 +42,23 @@ Excludes heavy regeneratable content to stay within upload limits:
 
 This typically reduces the docs backup from ~140 MB to ~8 MB.
 
+## Installation
+
+**Claude Code (CLI):**
+```bash
+/plugin marketplace add MSApps-Mobile/claude-plugins
+/plugin install session-backup@msapps-plugins
+```
+
+**Cowork:** Search for "session-backup" in Settings → Plugins, or install from the [MSApps marketplace](https://github.com/MSApps-Mobile/claude-plugins).
+
 ## Requirements
 
 - **Google Drive Upload connector** — Apps Script web app (see CONNECTORS.md)
 - **Config file** at `~/.cowork-gdrive-config.json`
-- **macOS** — uses `osascript` for host machine access
+- One of the following:
+  - **Claude Code** (CLI) — runs bash commands directly on your Mac
+  - **Claude Cowork** — uses osascript to access host machine files
 
 ## Setup
 

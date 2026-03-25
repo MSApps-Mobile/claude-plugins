@@ -1,11 +1,12 @@
 {
   "name": "session-backup",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Automated daily backups of Cowork skills, scheduled tasks, plugins, and configs to Google Drive. Supports multi-account merge and split uploads for large backups.",
   "author": {
     "name": "MSApps",
     "url": "https://msapps.mobi"
   },
   "license": "MIT",
-  "keywords": ["backup", "session", "skills", "google-drive", "automation", "scheduled", "cowork"]
+  "keywords": ["backup", "session", "skills", "google-drive", "automation", "scheduled", "cowork"],
+  "platforms": ["claude-code", "cowork"]
 }

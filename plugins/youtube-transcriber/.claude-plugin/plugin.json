@@ -1,6 +1,6 @@
 {
   "name": "youtube-transcriber",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Transcribe YouTube videos and playlists using browser-based caption extraction — free, no API key needed",
   "author": {
     "name": "MSApps",
@@ -8,5 +8,6 @@
   },
   "homepage": "https://msapps.mobi/plugins",
   "license": "MIT",
-  "keywords": ["youtube", "transcribe", "captions", "subtitles", "video", "education", "playlist"]
+  "keywords": ["youtube", "transcribe", "captions", "subtitles", "video", "education", "playlist"],
+  "platforms": ["claude-code", "cowork"]
 }
