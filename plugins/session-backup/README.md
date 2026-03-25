@@ -50,7 +50,7 @@ This typically reduces the docs backup from ~140 MB to ~8 MB.
 /plugin install session-backup@msapps-plugins
 ```
 
-**Cowork:** Search for "session-backup" in Settings → Plugins, or install from the [MSApps marketplace](https://github.com/MSApps-Mobile/claude-plugins).
+**Cowork:** Search for "session-backup" in Settings → Plugins.
 
 ## Requirements
 

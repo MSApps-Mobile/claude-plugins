@@ -28,7 +28,7 @@ All memory lives in a "Claude Memory" page in your Notion workspace, organized i
 /plugin install notion-memory@msapps-plugins
 ```
 
-**Cowork:** Search for "notion-memory" in Settings → Plugins, or install from the [MSApps marketplace](https://github.com/MSApps-Mobile/claude-plugins).
+**Cowork:** Search for "notion-memory" in Settings → Plugins.
 
 ## Requirements
 

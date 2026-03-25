@@ -35,8 +35,6 @@ That's it. The plugin is now active — just start talking to Claude and it will
 
 Go to **Settings → Plugins**, search for the plugin name (e.g. "mac-disk-cleaner"), and click Install.
 
-Or install directly from the [MSApps marketplace](https://github.com/MSApps-Mobile/claude-plugins).
-
 ## Available Plugins
 
 | Plugin | Description | Install |
