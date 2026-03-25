@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartMacCleaner — AI-Powered Mac Disk Cleaner by MSApps</title>
+    <meta name="description" content="SmartMacCleaner finds what other cleaners miss. AI-powered, context-aware Mac disk cleaner by MSApps. Free download.">
+    <style>
+        :root {
+            --bg:#080c1e; --surface:#0d1530; --surface2:#111d3d;
+            --cyan:#00c3ff; --cyan-dim:rgba(0,195,255,0.12); --cyan-border:rgba(0,195,255,0.22);
+            --text:#e4eeff; --muted:#7a9ac0; --border:#1a2d55;
+        }
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);line-height:1.6;}
+        a{color:var(--cyan);text-decoration:none;}
+        .wrap{max-width:1080px;margin:0 auto;padding:0 24px;}
+
+        nav{border-bottom:1px solid var(--border);padding:16px 0;}
+        nav .inner{display:flex;align-items:center;justify-content:space-between;max-width:1080px;margin:0 auto;padding:0 24px;}
+        .logo{display:flex;align-items:center;gap:10px;font-weight:700;}
+        .logo .dot{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,#00c3ff,#2864f0);}
+        .nav-link{color:var(--muted);font-size:.9rem;}
+        .nav-link:hover{color:var(--text);}
+
+        .hero{text-align:center;padding:90px 0 70px;background:radial-gradient(ellipse 80% 50% at 50% 0%,rgba(0,100,255,.1) 0%,transparent 70%);}
+        .badge{display:inline-block;background:var(--cyan-dim);color:var(--cyan);border:1px solid var(--cyan-border);padding:5px 16px;border-radius:20px;font-size:.8rem;font-weight:600;letter-spacing:.04em;margin-bottom:22px;}
+        .hero h1{font-size:clamp(2.2rem,5vw,3.4rem);font-weight:800;line-height:1.1;letter-spacing:-.02em;background:linear-gradient(135deg,#fff 30%,var(--cyan) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:18px;}
+        .hero .sub{font-size:1.1rem;color:var(--muted);max-width:540px;margin:0 auto 34px;}
+        .cta-row{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;}
+        .btn-p{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#00c3ff,#2864f0);color:#fff;font-weight:700;font-size:1rem;padding:13px 30px;border-radius:12px;box-shadow:0 4px 24px rgba(0,150,255,.3);transition:opacity .2s;}
+        .btn-p:hover{opacity:.85;}
+        .btn-s{display:inline-flex;align-items:center;gap:8px;background:var(--surface2);color:var(--text);font-weight:600;font-size:.95rem;padding:12px 26px;border-radius:12px;border:1px solid var(--border);transition:border-color .2s;}
+        .btn-s:hover{border-color:var(--cyan);}
+        .meta{margin-top:16px;font-size:.8rem;color:var(--muted);}
+        .icon-wrap{margin:52px auto 0;width:130px;height:130px;border-radius:30px;background:linear-gradient(135deg,#080c1e,#0d1f4a);border:1px solid var(--cyan-border);box-shadow:0 0 50px rgba(0,195,255,.12),0 8px 32px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;font-size:64px;}
+
+        section{padding:76px 0;border-top:1px solid var(--border);}
+        .label{text-align:center;font-size:.78rem;font-weight:700;letter-spacing:.1em;color:var(--cyan);text-transform:uppercase;margin-bottom:10px;}
+        .title{text-align:center;font-size:clamp(1.6rem,3vw,2.3rem);font-weight:800;letter-spacing:-.02em;margin-bottom:14px;}
+        .sec-sub{text-align:center;color:var(--muted);max-width:520px;margin:0 auto 52px;}
+
+        .compare{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:780px;margin:0 auto;}
+        .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:26px;}
+        .card.good{border-color:var(--cyan-border);background:var(--surface2);}
+        .card h3{font-size:.95rem;font-weight:700;margin-bottom:14px;}
+        .card.bad h3{color:var(--muted);}
+        .card.good h3{color:var(--cyan);}
+        .card ul{list-style:none;display:flex;flex-direction:column;gap:9px;}
+        .card li{font-size:.88rem;color:var(--muted);display:flex;gap:10px;}
+        .card.good li{color:var(--text);}
+        .card.bad li::before{content:"✗";color:#f87171;flex-shrink:0;}
+        .card.good li::before{content:"✓";color:var(--cyan);flex-shrink:0;}
+
+        .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:18px;}
+        .fcard{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:22px;transition:border-color .2s;}
+        .fcard:hover{border-color:var(--cyan-border);}
+        .ficon{width:40px;height:40px;border-radius:10px;background:var(--cyan-dim);display:flex;align-items:center;justify-content:center;font-size:19px;margin-bottom:12px;}
+        .fcard h3{font-size:.92rem;font-weight:700;margin-bottom:5px;}
+        .fcard p{font-size:.83rem;color:var(--muted);}
+
+        .req{text-align:center;}
+        .pills{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:22px;}
+        .pill{background:var(--surface2);border:1px solid var(--border);padding:7px 18px;border-radius:20px;font-size:.83rem;color:var(--muted);}
+
+        footer{border-top:1px solid var(--border);padding:28px 0;text-align:center;font-size:.8rem;color:var(--muted);}
+        footer a{color:var(--muted);}
+        footer a:hover{color:var(--cyan);}
+
+        @media(max-width:600px){.compare{grid-template-columns:1fr;}.hero h1{font-size:2rem;}}
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="inner">
+        <div class="logo"><div class="dot"></div>MSApps</div>
+        <a href="https://msapps.mobi" class="nav-link">msapps.mobi →</a>
+    </div>
+</nav>
+
+<section class="hero" style="border-top:none;">
+    <div class="wrap">
+        <div class="badge">macOS 13+ · Free Download</div>
+        <h1>The Mac cleaner that<br>actually understands your disk</h1>
+        <p class="sub">SmartMacCleaner finds what other cleaners miss — and never deletes what it shouldn't. Powered by Claude AI.</p>
+        <div class="cta-row">
+            <a href="https://github.com/MSApps-Mobile/smart-mac-cleaner/releases/latest" class="btn-p">↓ Download for Mac</a>
+            <a href="https://github.com/MSApps-Mobile/smart-mac-cleaner" class="btn-s">View on GitHub</a>
+        </div>
+        <p class="meta">v0.1.0 · macOS 13 Ventura or later · Apple Silicon &amp; Intel</p>
+        <div class="icon-wrap">🧹</div>
+    </div>
+</section>
+
+<section>
+    <div class="wrap">
+        <p class="label">Why SmartMacCleaner</p>
+        <h2 class="title">Other cleaners got it wrong</h2>
+        <p class="sec-sub">CleanMyMac charges $40/year, still misses real waste — and deletes things it shouldn't. We built the alternative.</p>
+        <div class="compare">
+            <div class="card bad">
+                <h3>Other cleaners</h3>
+                <ul>
+                    <li>Miss dev caches (npm, yarn, pip, Gradle)</li>
+                    <li>Miss Xcode DerivedData &amp; iOS backups</li>
+                    <li>Delete files without context</li>
+                    <li>Generic one-size recommendations</li>
+                    <li>Subscription required</li>
+                </ul>
+            </div>
+            <div class="card good">
+                <h3>SmartMacCleaner</h3>
+                <ul>
+                    <li>Finds all developer caches specifically</li>
+                    <li>Detects Xcode data, iOS backups, large files</li>
+                    <li>Shows exactly what it will delete first</li>
+                    <li>Claude AI explains your disk in your language</li>
+                    <li>Free direct download</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section>
+    <div class="wrap">
+        <p class="label">Features</p>
+        <h2 class="title">Everything in one scan</h2>
+        <p class="sec-sub">Takes about 10 seconds. Shows you everything. You decide what goes.</p>
+        <div class="grid">
+            <div class="fcard"><div class="ficon">🤖</div><h3>Claude AI Insight</h3><p>After every scan, Claude explains your disk usage and gives personalized recommendations — in your language.</p></div>
+            <div class="fcard"><div class="ficon">🧑‍💻</div><h3>Developer Cache Scan</h3><p>npm, yarn, pip, Homebrew, Gradle, Swift PM, Xcode DerivedData, iOS DeviceSupport — all found automatically.</p></div>
+            <div class="fcard"><div class="ficon">🌐</div><h3>Browser Caches</h3><p>Chrome and Safari caches regenerate automatically — completely safe to clean at any time.</p></div>
+            <div class="fcard"><div class="ficon">📱</div><h3>iOS Backups</h3><p>Old iPhone and iPad backups grow to tens of GB. SmartMacCleaner flags them for your review.</p></div>
+            <div class="fcard"><div class="ficon">📦</div><h3>Large File Detection</h3><p>Scans Desktop, Downloads, Documents and Movies for files over 500 MB you may have forgotten.</p></div>
+            <div class="fcard"><div class="ficon">✋</div><h3>You're in Control</h3><p>Nothing is deleted without your approval. Select exactly what to clean — item by item.</p></div>
+        </div>
+    </div>
+</section>
+
+<section class="req">
+    <div class="wrap">
+        <p class="label">Requirements</p>
+        <h2 class="title">Works on your Mac</h2>
+        <div class="pills">
+            <span class="pill">macOS 13 Ventura or later</span>
+            <span class="pill">Apple Silicon &amp; Intel</span>
+            <span class="pill">~500 KB download</span>
+            <span class="pill">Claude API key optional</span>
+        </div>
+    </div>
+</section>
+
+<footer>
+    <div class="wrap">
+        Built by <a href="https://msapps.mobi">MSApps</a> &nbsp;·&nbsp;
+        <a href="https://github.com/MSApps-Mobile/smart-mac-cleaner">GitHub</a> &nbsp;·&nbsp;
+        <a href="mailto:msmobileapps@gmail.com">Contact</a>
+    </div>
+</footer>
+
+</body>
+</html>
