@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Free Claude plugins by MSApps — Google Drive upload, Toggl time tracking, YouTube transcription, Notion memory, session backups, and more",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -151,6 +151,36 @@
         "persistent-storage",
         "cross-session",
         "preferences",
+        "free"
+      ]
+    },
+    {
+      "name": "mac-disk-cleaner",
+      "source": "./plugins/mac-disk-cleaner",
+      "description": "Free up disk space on Mac by clearing caches, finding large files, and getting smart storage recommendations. Works in any language.",
+      "version": "0.1.0",
+      "author": {
+        "name": "MSApps",
+        "email": "michal@msapps.mobi"
+      },
+      "homepage": "https://msapps.mobi/plugins",
+      "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+      "license": "MIT",
+      "keywords": [
+        "mac",
+        "disk",
+        "cleanup",
+        "cache",
+        "storage",
+        "space"
+      ],
+      "category": "utilities",
+      "tags": [
+        "mac",
+        "disk-cleanup",
+        "cache-cleaner",
+        "storage",
+        "free-space",
         "free"
       ]
     },
