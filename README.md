@@ -17,6 +17,7 @@ Free plugins for Claude by [MSApps](https://msapps.mobi).
 | **youtube-transcriber** | Transcribe YouTube videos & playlists — no API key needed | `/plugin install youtube-transcriber@msapps-plugins` |
 | **session-backup** | Zero-config daily backups of sessions, skills & configs | `/plugin install session-backup@msapps-plugins` |
 | **notion-memory** | Long-term memory for Claude across sessions via Notion | `/plugin install notion-memory@msapps-plugins` |
+| **mac-disk-cleaner** | Reclaim disk space on macOS — clean caches, find large files | `/plugin install mac-disk-cleaner@msapps-plugins` |
 | **digital-presence** | Analyze & improve your online presence across all platforms — **private, contact for access** | [Contact us](mailto:michal@msapps.mobi) |
 
 ## Setup
@@ -43,8 +44,12 @@ No setup needed — just requires the **Claude in Chrome** extension. Paste any 
 ### Session Backup
 No setup needed — just run `/backup-now`. Auto-detects your environment (Cowork or Claude Code), generates a unique instance ID, and backs up your skills, sessions, and configs to cloud storage. Run `/backup-setup` to customize schedule, folders, or retention policy.
 
+
+### Mac Disk Cleaner
+Requires macOS Ventura+ with **Desktop Commander** MCP connected. Just ask Claude to "clean up my Mac" or "check disk space". Only touches auto-regenerated caches — never deletes personal files.
+
 ### Digital Presence (Private)
-This plugin is currently private. Contact michal@msapps.mobi or [connect on LinkedIn](https://linkedin.com/in/michalmsapps) for access and inquiries.
+This plugin is currently private. Contac michal@msapps.mobi or [connect on LinkedIn](https://linkedin.com/in/michalmsapps) for access and inquiries.
 
 ### Notion Memory
 Requires **Notion MCP** connected to Claude. In Cowork: Settings → Connectors → Notion. In Claude Code: add a Notion MCP server to your `.mcp.json`. On first use, Claude creates a "Claude Memory" page in your Notion workspace to store preferences, decisions, project context, and session summaries.
