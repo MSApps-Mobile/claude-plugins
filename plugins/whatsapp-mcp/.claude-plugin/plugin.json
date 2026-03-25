@@ -1,0 +1,13 @@
+{
+  "name": "whatsapp-mcp",
+  "version": "0.1.0",
+  "description": "Connect Claude to WhatsApp — search messages, read conversations, send texts and media, and manage business outreach. Works in any language.",
+  "author": {
+    "name": "MSApps",
+    "url": "https://msapps.mobi"
+  },
+  "license": "MIT",
+  "homepage": "https://msapps.mobi/plugins",
+  "platforms": ["claude-code", "cowork"],
+  "keywords": ["whatsapp", "messaging", "outreach", "crm", "chat", "business", "follow-up"]
+}

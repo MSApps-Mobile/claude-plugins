@@ -28,7 +28,6 @@ Replace `<plugin-name>` with the plugin you want from the table below. For examp
 ```
 /plugin install mac-disk-cleaner@msapps-plugins
 ```
-
 That's it. The plugin is now active — just start talking to Claude and it will use the plugin when relevant.
 
 ### Cowork (Desktop App)
@@ -45,8 +44,8 @@ Go to **Settings → Plugins**, search for the plugin name (e.g. "mac-disk-clean
 | **session-backup** | Automated daily backups of sessions, skills & configs to Google Drive | `/plugin install session-backup@msapps-plugins` |
 | **notion-memory** | Long-term memory for Claude across sessions via Notion | `/plugin install notion-memory@msapps-plugins` |
 | **mac-disk-cleaner** | Reclaim disk space on macOS — clean caches, find large files | `/plugin install mac-disk-cleaner@msapps-plugins` |
+| **whatsapp-mcp** | Connect Claude to WhatsApp — search, read, send messages & business outreach | `/plugin install whatsapp-mcp@msapps-plugins` |
 | **digital-presence** | Analyze & improve your online presence across all platforms — **private, contact for access** | [Contact us](mailto:michal@msapps.mobi) |
-
 ## Setup
 
 ### Google Drive Upload
@@ -73,7 +72,6 @@ No config needed — just requires the **Claude in Chrome** extension (works in 
 
 ### Session Backup
 Requires the Google Drive Upload connector (see above). Backs up your skills, plugins, session data, and configs to a `Cowork-Backups` folder on Google Drive. Run `/backup-now` for an immediate backup, or set up a daily schedule.
-
 ### Mac Disk Cleaner
 Requires macOS Ventura or later. No config needed — just ask Claude to "clean up my Mac" or "check disk space". Works with Claude Code's native Bash tool or Cowork's Desktop Commander. Only touches auto-regenerated caches — never deletes personal files.
 
@@ -83,6 +81,13 @@ Requires a Notion connector:
 - **Cowork:** Settings → Connectors → Notion
 
 On first use, Claude creates a "Claude Memory" page in your Notion workspace to store preferences, decisions, project context, and session summaries.
+
+### WhatsApp MCP
+Requires the [WhatsApp MCP bridge](https://github.com/lharries/whatsapp-mcp) running locally:
+1. Install Go, UV, and optionally FFmpeg (`brew install go uv ffmpeg`)
+2. Clone and build the bridge: `git clone https://github.com/lharries/whatsapp-mcp.git ~/whatsapp-mcp && cd ~/whatsapp-mcp/whatsapp-bridge && go build -o whatsapp-bridge && ./whatsapp-bridge`
+3. Scan the QR code with WhatsApp on first run
+4. Set `WHATSAPP_MCP_PATH="$HOME/whatsapp-mcp"` in your shell profile
 
 ### Digital Presence (Private)
 This plugin is currently private. Contact michal@msapps.mobi or [connect on LinkedIn](https://linkedin.com/in/michalmsapps) for access.
