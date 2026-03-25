@@ -2,23 +2,40 @@
 
 Free plugins for Claude by [MSApps](https://msapps.mobi).
 
-All plugins work in both **Claude Code** (CLI) and **Cowork**.
+All plugins work in both **Claude Code** (CLI) and **Cowork** (desktop app).
+
+## What are Claude plugins?
+
+Plugins add new skills to Claude — things like uploading files to Google Drive, tracking time, transcribing YouTube videos, and more. Once installed, you don't need to learn any commands — just ask Claude naturally (e.g. "upload this to Drive" or "start a timer for client meeting") and the plugin kicks in automatically.
 
 ## Installation
 
-### Step 1: Add the marketplace (one-time)
+### Claude Code (CLI)
 
-```bash
+Open your terminal where Claude Code is running and type these two commands:
+
+**Step 1 — Add the MSApps marketplace (one-time):**
+```
 /plugin marketplace add MSApps-Mobile/claude-plugins
 ```
+This tells Claude Code where to find MSApps plugins. You only need to do this once.
 
-### Step 2: Install the plugin you want
-
-```bash
+**Step 2 — Install a plugin:**
+```
 /plugin install <plugin-name>@msapps-plugins
 ```
+Replace `<plugin-name>` with the plugin you want from the table below. For example:
+```
+/plugin install mac-disk-cleaner@msapps-plugins
+```
 
-**Cowork users:** You can also install from Settings → Plugins.
+That's it. The plugin is now active — just start talking to Claude and it will use the plugin when relevant.
+
+### Cowork (Desktop App)
+
+Go to **Settings → Plugins**, search for the plugin name (e.g. "mac-disk-cleaner"), and click Install.
+
+Or install directly from the [MSApps marketplace](https://github.com/MSApps-Mobile/claude-plugins).
 
 ## Available Plugins
 
