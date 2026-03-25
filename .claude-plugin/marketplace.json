@@ -5,15 +5,15 @@
     "email": "michal@msapps.mobi"
   },
   "metadata": {
-    "description": "Free Claude plugins by MSApps \u2014 Google Drive upload, Toggl time tracking, session backups, and more",
-    "version": "1.2.0",
+    "description": "Free Claude plugins by MSApps — Google Drive upload, Toggl time tracking, YouTube transcription, Notion memory, session backups, and more",
+    "version": "1.3.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
     {
       "name": "google-drive-upload",
-      "source": "./plugins/google-drive-upload-free",
-      "description": "Upload files from Claude directly to Google Drive \u2014 unlimited uploads, completely free",
+      "source": "./plugins/google-drive-upload",
+      "description": "Upload files from Claude directly to Google Drive — unlimited uploads, completely free",
       "version": "1.1.0",
       "author": {
         "name": "MSApps",
@@ -40,7 +40,7 @@
     {
       "name": "toggl-time-tracker",
       "source": "./plugins/toggl-time-tracker",
-      "description": "Track time and pull reports from Toggl Track \u2014 start/stop timers, log hours, weekly summaries",
+      "description": "Track time and pull reports from Toggl Track — start/stop timers, log hours, weekly summaries",
       "version": "1.0.0",
       "author": {
         "name": "MSApps",
@@ -68,7 +68,7 @@
     {
       "name": "session-backup",
       "source": "./plugins/session-backup",
-      "description": "Zero-config daily backups of Claude session data, skills, and configs to cloud storage \u2014 collision-safe with unique instance IDs",
+      "description": "Zero-config daily backups of Claude session data, skills, and configs to cloud storage — collision-safe with unique instance IDs",
       "version": "0.2.0",
       "author": {
         "name": "MSApps",
@@ -97,9 +97,67 @@
       ]
     },
     {
+      "name": "youtube-transcriber",
+      "source": "./plugins/youtube-transcriber",
+      "description": "Transcribe any YouTube video or entire playlists — no API key required, supports any language",
+      "version": "1.0.0",
+      "author": {
+        "name": "MSApps",
+        "email": "michal@msapps.mobi"
+      },
+      "homepage": "https://msapps.mobi/plugins",
+      "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+      "license": "MIT",
+      "keywords": [
+        "youtube",
+        "transcribe",
+        "captions",
+        "video",
+        "playlist"
+      ],
+      "category": "productivity",
+      "tags": [
+        "youtube",
+        "transcription",
+        "captions",
+        "video",
+        "browser-automation",
+        "free"
+      ]
+    },
+    {
+      "name": "notion-memory",
+      "source": "./plugins/notion-memory",
+      "description": "Long-term memory for Claude using Notion — saves preferences, project context, decisions, and session summaries across sessions",
+      "version": "1.0.0",
+      "author": {
+        "name": "MSApps",
+        "email": "michal@msapps.mobi"
+      },
+      "homepage": "https://msapps.mobi/plugins",
+      "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+      "license": "MIT",
+      "keywords": [
+        "notion",
+        "memory",
+        "persistent",
+        "context",
+        "cross-session"
+      ],
+      "category": "productivity",
+      "tags": [
+        "notion",
+        "memory",
+        "persistent-storage",
+        "cross-session",
+        "preferences",
+        "free"
+      ]
+    },
+    {
       "name": "digital-presence",
       "source": "./plugins/digital-presence",
-      "description": "Manage your entire online presence \u2014 analyze, score, and create content across all platforms. Private plugin \u2014 contact michal@msapps.mobi for access.",
+      "description": "Manage your entire online presence — analyze, score, and create content across all platforms. Private plugin — contact michal@msapps.mobi for access.",
       "version": "0.1.0",
       "author": {
         "name": "MSApps",
