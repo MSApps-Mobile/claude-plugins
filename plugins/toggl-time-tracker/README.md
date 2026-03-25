@@ -27,6 +27,23 @@ Track time and pull reports from Toggl Track, right from Claude. Start timers, s
 
 That's it. Your API token stays on your machine and is never shared.
 
+## Installation
+
+**Claude Code (CLI):**
+```bash
+/plugin marketplace add MSApps-Mobile/claude-plugins
+/plugin install toggl-time-tracker@msapps-plugins
+```
+
+**Cowork:** Search for "toggl-time-tracker" in Settings → Plugins, or install from the [MSApps marketplace](https://github.com/MSApps-Mobile/claude-plugins).
+
+## Requirements
+
+- A Toggl Track account (free tier works)
+- One of the following:
+  - **Claude Code** (CLI) — reads config and calls Toggl API directly
+  - **Claude Cowork** with Desktop Commander
+
 ---
 
 Built by [MSApps](https://msapps.mobi) · Support: michal@msapps.mobi

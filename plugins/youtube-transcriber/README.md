@@ -9,9 +9,19 @@ Transcribe YouTube videos and playlists directly from Claude using browser-based
 - **Any language**: Works with any language YouTube generates captions for
 - **Educational tools**: Use transcripts to create vocabulary sheets, summaries, and study guides
 
+## Installation
+
+**Claude Code (CLI):**
+```bash
+/plugin marketplace add MSApps-Mobile/claude-plugins
+/plugin install youtube-transcriber@msapps-plugins
+```
+
+**Cowork:** Search for "youtube-transcriber" in Settings → Plugins, or install from the [MSApps marketplace](https://github.com/MSApps-Mobile/claude-plugins).
+
 ## Requirements
 
-- **Claude in Chrome** extension (for browser automation)
+- **Claude in Chrome** extension (for browser automation) — works in both Cowork and Claude Code
 - A YouTube video or playlist with auto-generated or manual captions
 
 ## Usage
@@ -21,7 +31,8 @@ Just ask Claude naturally:
 - "Transcribe this video: https://youtube.com/watch?v=..."
 - "Get the transcript of this playlist: https://youtube.com/playlist?list=..."
 - "What does this video say?" + paste a YouTube link
-- "תמלל את הסרטון הזה" (Hebrew trigger)
+
+Or in any language — Hebrew, French, Spanish, German, etc.
 
 ## How it works
 

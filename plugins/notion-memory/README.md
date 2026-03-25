@@ -20,9 +20,21 @@ All memory lives in a "Claude Memory" page in your Notion workspace, organized i
 - **Session Archive** — past session summaries
 - **Quick Facts** — short key-value facts
 
+## Installation
+
+**Claude Code (CLI):**
+```bash
+/plugin marketplace add MSApps-Mobile/claude-plugins
+/plugin install notion-memory@msapps-plugins
+```
+
+**Cowork:** Search for "notion-memory" in Settings → Plugins, or install from the [MSApps marketplace](https://github.com/MSApps-Mobile/claude-plugins).
+
 ## Requirements
 
-- **Notion connector** — connect via Cowork Settings or add a Notion MCP server to Claude Code
+- **Notion connector** — connect via one of the following:
+  - **Cowork**: Settings → Connectors → Notion
+  - **Claude Code**: Add a Notion MCP server to your config (`.mcp.json` or settings)
 
 ## Usage
 

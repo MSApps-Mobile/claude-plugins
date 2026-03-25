@@ -2,7 +2,9 @@
 
 **Status: Private**
 
-Manage your entire online presence from Claude Cowork — analyze activity, score platforms, and create optimized content across LinkedIn, Instagram, X, Facebook, YouTube, GitHub, and your website.
+Manage your entire online presence from Claude — analyze activity, score platforms, and create optimized content across LinkedIn, Instagram, X, Facebook, YouTube, GitHub, and your website.
+
+Works in both **Claude Code** and **Cowork**.
 
 ## What it does
 

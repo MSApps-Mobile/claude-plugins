@@ -1,9 +1,10 @@
 {
   "name": "google-drive-upload",
   "description": "Upload files from Claude directly to Google Drive — completely free, unlimited uploads",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": "MSApps (https://msapps.mobi)",
   "license": "MIT",
   "keywords": ["google-drive", "upload", "files", "productivity"],
-  "homepage": "https://msapps.mobi/plugins"
+  "homepage": "https://msapps.mobi/plugins",
+  "platforms": ["claude-code", "cowork"]
 }

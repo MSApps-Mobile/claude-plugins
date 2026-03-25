@@ -13,12 +13,20 @@ description: >
 
 Track time and pull reports via the Toggl Track API.
 
+> **Environment note:** This skill works in both Claude Code and Cowork. The only difference is how the config file is read in Step 1 — Claude Code reads it directly, Cowork uses osascript.
+
 ---
 
 ## Step 1: Read the config
 
-The config lives on the Mac at `~/.toggl-config.json`. Read it via osascript (the VM cannot access the Mac home directly):
+The config lives on the Mac at `~/.toggl-config.json`.
 
+**In Claude Code** (direct file system access):
+```bash
+CONFIG=$(cat ~/.toggl-config.json 2>/dev/null || echo "NOT_CONFIGURED")
+```
+
+**In Cowork** (VM — needs osascript to reach the Mac home):
 ```bash
 CONFIG=$(osascript -e 'do shell script "cat ~/.toggl-config.json 2>/dev/null || echo NOT_CONFIGURED"')
 ```

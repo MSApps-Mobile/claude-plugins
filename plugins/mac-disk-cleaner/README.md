@@ -36,10 +36,22 @@ The cleanup only touches auto-regenerated caches. It **never** touches:
 To run the cleanup automatically every week, ask Claude:
 "Set up a weekly Mac cleanup for me"
 
+## Installation
+
+**Claude Code (CLI):**
+```bash
+/plugin marketplace add MSApps-Mobile/claude-plugins
+/plugin install mac-disk-cleaner@msapps-plugins
+```
+
+**Cowork:** Search for "mac-disk-cleaner" in Settings → Plugins, or install from the [MSApps marketplace](https://github.com/MSApps-Mobile/claude-plugins).
+
 ## Requirements
 
 - macOS (tested on macOS Ventura and later)
-- Claude Cowork with Desktop Commander
+- One of the following:
+  - **Claude Code** (CLI) — uses native Bash tool to run cleanup commands
+  - **Claude Cowork** with Desktop Commander
 
 ## Author
 

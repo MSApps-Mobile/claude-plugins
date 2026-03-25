@@ -5,8 +5,8 @@
     "email": "michal@msapps.mobi"
   },
   "metadata": {
-    "description": "Free Claude plugins by MSApps — Google Drive upload, Toggl time tracking, YouTube transcription, Notion memory, session backups, and more",
-    "version": "1.4.0",
+    "description": "Free Claude plugins by MSApps — Google Drive upload, Toggl time tracking, YouTube transcription, Notion memory, session backups, Mac disk cleaner, and more. Works in both Claude Code and Cowork.",
+    "version": "2.0.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -14,7 +14,8 @@
       "name": "google-drive-upload",
       "source": "./plugins/google-drive-upload",
       "description": "Upload files from Claude directly to Google Drive — unlimited uploads, completely free",
-      "version": "1.1.0",
+      "version": "1.2.0",
+      "platforms": ["claude-code", "cowork"],
       "author": {
         "name": "MSApps",
         "email": "michal@msapps.mobi"
@@ -41,7 +42,8 @@
       "name": "toggl-time-tracker",
       "source": "./plugins/toggl-time-tracker",
       "description": "Track time and pull reports from Toggl Track — start/stop timers, log hours, weekly summaries",
-      "version": "1.0.0",
+      "version": "1.1.0",
+      "platforms": ["claude-code", "cowork"],
       "author": {
         "name": "MSApps",
         "email": "michal@msapps.mobi"
@@ -68,8 +70,9 @@
     {
       "name": "session-backup",
       "source": "./plugins/session-backup",
-      "description": "Zero-config daily backups of Claude session data, skills, and configs to cloud storage — collision-safe with unique instance IDs",
-      "version": "0.2.0",
+      "description": "Automated daily backups of Claude session data, skills, and configs to Google Drive",
+      "version": "0.4.0",
+      "platforms": ["claude-code", "cowork"],
       "author": {
         "name": "MSApps",
         "email": "michal@msapps.mobi"
@@ -100,7 +103,8 @@
       "name": "youtube-transcriber",
       "source": "./plugins/youtube-transcriber",
       "description": "Transcribe any YouTube video or entire playlists — no API key required, supports any language",
-      "version": "1.0.0",
+      "version": "1.1.0",
+      "platforms": ["claude-code", "cowork"],
       "author": {
         "name": "MSApps",
         "email": "michal@msapps.mobi"
@@ -129,7 +133,8 @@
       "name": "notion-memory",
       "source": "./plugins/notion-memory",
       "description": "Long-term memory for Claude using Notion — saves preferences, project context, decisions, and session summaries across sessions",
-      "version": "1.0.0",
+      "version": "1.1.0",
+      "platforms": ["claude-code", "cowork"],
       "author": {
         "name": "MSApps",
         "email": "michal@msapps.mobi"
@@ -158,7 +163,8 @@
       "name": "mac-disk-cleaner",
       "source": "./plugins/mac-disk-cleaner",
       "description": "Free up disk space on Mac by clearing caches, finding large files, and getting smart storage recommendations. Works in any language.",
-      "version": "0.1.0",
+      "version": "0.2.0",
+      "platforms": ["claude-code", "cowork"],
       "author": {
         "name": "MSApps",
         "email": "michal@msapps.mobi"

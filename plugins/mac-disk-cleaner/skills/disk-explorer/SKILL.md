@@ -10,6 +10,8 @@ Use this skill when the user asks things like: "what's taking up space?", "where
 
 Run the commands below, analyze the output, and respond in the user's language with clear, prioritized recommendations.
 
+> **Environment note:** This skill works in both Claude Code (native Bash tool) and Cowork (Desktop Commander). Use whichever shell execution method is available in your environment to run the bash commands below.
+
 ---
 
 ## Step 1 — Overall disk usage

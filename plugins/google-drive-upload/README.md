@@ -9,6 +9,16 @@ Upload any file from Claude directly to your Google Drive. Free and unlimited.
 - Replace existing files by name
 - Works in Cowork and Claude Code
 
+## Installation
+
+**Claude Code (CLI):**
+```bash
+/plugin marketplace add MSApps-Mobile/claude-plugins
+/plugin install google-drive-upload@msapps-plugins
+```
+
+**Cowork:** Search for "google-drive-upload" in Settings → Plugins, or install from the [MSApps marketplace](https://github.com/MSApps-Mobile/claude-plugins).
+
 ## Setup (one-time)
 
 1. Deploy the Google Apps Script web app (accepts file uploads via POST)
