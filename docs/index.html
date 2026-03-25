@@ -12,15 +12,14 @@
         gtag('js', new Date());
         gtag('config', 'G-HFSWQXJ57Q');
     </script>
-    <meta name="description" content="Free Claude plugins by MSApps — Google Drive Upload, Toggl Time Tracker, YouTube Transcriber, Notion Memory, and Session Backup. Open source, zero cost.">
+    <meta name="description" content="Free Claude plugins by MSApps — Google Drive Upload, Toggl Time Tracker, YouTube Transcriber, WhatsApp MCP, Notion Memory, and more. Open source, zero cost.">
     <style>
         :root {
             --bg: #0f0f13;
             --surface: #1a1a24;
             --surface2: #232336;
             --accent: #6c63ff;
-            --accent2: #a78bfa;
-            --text: #e8e8f0;
+            --accent2: #a78bfa;            --text: #e8e8f0;
             --text-muted: #9a9ab0;
             --green: #34d399;
             --border: #2a2a3d;
@@ -40,8 +39,7 @@
         .hero-stats { display: flex; justify-content: center; gap: 48px; margin-top: 40px; }
         .stat { text-align: center; }
         .stat-num { font-size: 2rem; font-weight: 700; color: var(--accent2); }
-        .stat-label { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
-        .plugins { padding: 60px 0 80px; }
+        .stat-label { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }        .plugins { padding: 60px 0 80px; }
         .section-title { text-align: center; font-size: 1.8rem; font-weight: 700; margin-bottom: 12px; }
         .section-subtitle { text-align: center; color: var(--text-muted); margin-bottom: 48px; font-size: 1rem; }
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
@@ -60,8 +58,7 @@
         .step { text-align: center; padding: 24px; }
         .step-num { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px; background: rgba(108, 99, 255, 0.15); color: var(--accent2); font-weight: 700; font-size: 1.1rem; margin-bottom: 16px; }
         .step h4 { font-size: 1.05rem; margin-bottom: 8px; }
-        .step p { color: var(--text-muted); font-size: 0.9rem; }
-        .faq { padding: 60px 0 80px; }
+        .step p { color: var(--text-muted); font-size: 0.9rem; }        .faq { padding: 60px 0 80px; }
         .faq-item { border-bottom: 1px solid var(--border); padding: 24px 0; }
         .faq-item:first-child { border-top: 1px solid var(--border); }
         .faq-q { font-weight: 600; font-size: 1.05rem; margin-bottom: 8px; }
@@ -80,13 +77,12 @@
         <h1>Claude Plugins by MSApps</h1>
         <p>Supercharge your Claude experience with production-ready plugins. No paywalls, no license keys — just install and go.</p>
         <div class="hero-stats">
-            <div class="stat"><div class="stat-num">5</div><div class="stat-label">Plugins</div></div>
+            <div class="stat"><div class="stat-num">7</div><div class="stat-label">Plugins</div></div>
             <div class="stat"><div class="stat-num">$0</div><div class="stat-label">Forever Free</div></div>
             <div class="stat"><div class="stat-num">MIT</div><div class="stat-label">Licensed</div></div>
         </div>
     </div>
 </section>
-
 <section class="plugins">
     <div class="container">
         <h2 class="section-title">Our Plugins</h2>
@@ -111,6 +107,12 @@
                 <h3>YouTube Transcriber</h3>
                 <p>Transcribe any YouTube video or entire playlists. Browser-based caption extraction — no API key needed, any language supported.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">Zero config</span><span class="tag">Any language</span></div>
+                <span class="card-cta">View docs &amp; setup</span>
+            </a>            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/whatsapp-mcp/README.md">
+                <div class="card-icon">💬</div>
+                <h3>WhatsApp MCP</h3>
+                <p>Connect Claude to WhatsApp — search messages, read conversations, send texts and media, and manage business outreach. Works in any language.</p>
+                <div class="card-tags"><span class="tag free">Free</span><span class="tag">Send &amp; receive</span><span class="tag">Business outreach</span></div>
                 <span class="card-cta">View docs &amp; setup</span>
             </a>
             <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/notion-memory/README.md">
@@ -137,7 +139,6 @@
         </div>
     </div>
 </section>
-
 <section class="setup">
     <div class="container">
         <h2 class="section-title">Get Started in 3 Steps</h2>
