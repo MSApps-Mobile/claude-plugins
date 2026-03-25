@@ -183,39 +183,6 @@
         "free-space",
         "free"
       ]
-    },
-    {
-      "name": "digital-presence",
-      "source": "./plugins/digital-presence",
-      "description": "Manage your entire online presence — analyze, score, and create content across all platforms. Private plugin — contact michal@msapps.mobi for access.",
-      "version": "0.1.0",
-      "author": {
-        "name": "MSApps",
-        "email": "michal@msapps.mobi"
-      },
-      "homepage": "https://msapps.mobi/plugins",
-      "repository": "https://github.com/MSApps-Mobile/claude-plugins",
-      "license": "UNLICENSED",
-      "keywords": [
-        "social-media",
-        "content-creation",
-        "linkedin",
-        "github",
-        "digital-presence",
-        "brand-voice"
-      ],
-      "category": "marketing",
-      "tags": [
-        "social-media",
-        "content",
-        "linkedin",
-        "instagram",
-        "twitter",
-        "github",
-        "brand-voice",
-        "presence-audit",
-        "private"
-      ]
     }
   ]
 }
