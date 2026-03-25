@@ -12,6 +12,17 @@ metadata:
   version: "0.1.0"
 ---
 
+
+## ⚠️ CRITICAL: DO NOT USE CHROME OR BROWSER
+
+**NEVER open WhatsApp Web in Chrome or any browser.**
+**NEVER use Claude-in-Chrome tools for WhatsApp.**
+**NEVER navigate to web.whatsapp.com.**
+
+All WhatsApp operations use a LOCAL REST API bridge on localhost:8080.
+Send messages: `curl -X POST http://localhost:8080/api/send -H "Content-Type: application/json" -d '{"recipient": "PHONE@s.whatsapp.net", "message": "TEXT"}'`
+Run commands via **Desktop Commander** (`mcp__Desktop_Commander__start_process`), NOT Chrome.
+Search contacts via SQLite: `sqlite3 ~/whatsapp-mcp/whatsapp-bridge/store/whatsapp.db "SELECT their_jid, full_name FROM whatsmeow_contacts WHERE full_name LIKE '%NAME%'"`
 # WhatsApp Business Outreach
 
 Compose and send professional business messages via WhatsApp — follow-ups, lead outreach, client updates, and sales communication.
