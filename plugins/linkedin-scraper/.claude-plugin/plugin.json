@@ -1,0 +1,9 @@
+{
+  "name": "linkedin-scraper",
+  "version": "0.1.0",
+  "description": "Token-efficient LinkedIn data access via structured scraping MCP, with Chrome fallback",
+  "author": {
+    "name": "Michal Shatz"
+  },
+  "keywords": ["linkedin", "scraping", "leads", "profiles"]
+}

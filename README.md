@@ -45,6 +45,7 @@ Go to **Settings → Plugins**, search for the plugin name (e.g. "mac-disk-clean
 | **notion-memory** | Long-term memory for Claude across sessions via Notion | `/plugin install notion-memory@msapps-plugins` |
 | **mac-disk-cleaner** | Reclaim disk space on macOS — clean caches, find large files | `/plugin install mac-disk-cleaner@msapps-plugins` |
 | **whatsapp-mcp** | Connect Claude to WhatsApp — search, read, send messages & business outreach | `/plugin install whatsapp-mcp@msapps-plugins` |
+| **linkedin-scraper** | Scrape LinkedIn profiles, companies & jobs — 5-10x cheaper than Chrome | `/plugin install linkedin-scraper@msapps-plugins` |
 | **digital-presence** | Analyze & improve your online presence across all platforms — **private, contact for access** | [Contact us](mailto:michal@msapps.mobi) |
 ## Setup
 
@@ -88,6 +89,13 @@ Requires the [WhatsApp MCP bridge](https://github.com/lharries/whatsapp-mcp) run
 2. Clone and build the bridge: `git clone https://github.com/lharries/whatsapp-mcp.git ~/whatsapp-mcp && cd ~/whatsapp-mcp/whatsapp-bridge && go build -o whatsapp-bridge && ./whatsapp-bridge`
 3. Scan the QR code with WhatsApp on first run
 4. Set `WHATSAPP_MCP_PATH="$HOME/whatsapp-mcp"` in your shell profile
+
+### LinkedIn Scraper
+Requires Python 3.10+ with [uv](https://docs.astral.sh/uv/). Run once to authenticate:
+```bash
+uvx linkedin-scraper-mcp --login
+```
+Log in to LinkedIn in the browser window that opens. Session is saved automatically. Falls back to Chrome MCP if scraping fails.
 
 ### Digital Presence (Private)
 This plugin is currently private. Contact michal@msapps.mobi or [connect on LinkedIn](https://linkedin.com/in/michalmsapps) for access.

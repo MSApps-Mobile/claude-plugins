@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "linkedin-scraper": {
+      "command": "uvx",
+      "args": ["linkedin-scraper-mcp"],
+      "env": {}
+    }
+  }
+}
