@@ -56,7 +56,6 @@ Search for the plugin name (e.g. "mac-disk-cleaner") and click Install.
 | **vm-disk-cleanup** | Prevent and recover from disk-full errors in Cowork VMs & Claude Code sandboxes | `/plugin install vm-disk-cleanup@msapps-plugins` |
 | **x-content-intelligence** | Scrape X/Twitter for insights & generate community-matched content | `/plugin install x-content-intelligence@msapps-plugins` |
 | **wordpress-mcp** | Manage WordPress sites from Claude — posts, users, WooCommerce & more | `/plugin install wordpress-mcp@msapps-plugins` |
-| **claude-in-chrome-fixer** | Auto-diagnose & repair broken Claude in Chrome MCP connections | `/plugin install claude-in-chrome-fixer@msapps-plugins` |
 | **fix-chrome-connection** | Instantly fix stale Claude in Chrome connections caused by macOS user switching | `/plugin install fix-chrome-connection@msapps-plugins` |
 
 ## Setup
@@ -138,9 +137,6 @@ Set these environment variables after installing:
 | `WP_MCP_AUTH` | Base64-encoded `username:application-password` | `bWljaGFsOnhX...` |
 
 Requires the [WordPress MCP Adapter](https://developer.wordpress.org/news/2026/02/from-abilities-to-ai-agents-introducing-the-wordpress-mcp-adapter/) plugin installed on your WordPress 6.9+ site.
-
-### Claude-in-Chrome Fixer
-No config needed. Best run as a scheduled task — it self-diagnoses broken Claude in Chrome connections and commits learnings back to the repo automatically.
 
 ### Fix Chrome Connection
 No config needed. Run it when your Claude in Chrome extension stops responding (common after switching macOS users).
