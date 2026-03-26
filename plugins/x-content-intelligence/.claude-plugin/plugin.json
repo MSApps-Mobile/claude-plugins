@@ -1,0 +1,11 @@
+{
+  "name": "x-content-intelligence",
+  "version": "0.1.0",
+  "description": "Scrape X (Twitter) for insights, analyze community trends and tone, and generate matching content — posts, replies, and content calendars. Powered by Apify.",
+  "author": {
+    "name": "MSApps"
+  },
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "license": "MIT",
+  "keywords": ["x", "twitter", "content", "scraping", "insights", "social-media", "apify"]
+}
