@@ -32,7 +32,11 @@ That's it. The plugin is now active — just start talking to Claude and it will
 
 ### Cowork (Desktop App)
 
-Go to **Settings → Plugins**, search for the plugin name (e.g. "mac-disk-cleaner"), and click Install.
+**Step 1 — Add the MSApps marketplace (one-time):**
+Go to **Settings → Plugins → Marketplaces → Add**, and enter `MSApps-Mobile/claude-plugins`.
+
+**Step 2 — Install a plugin:**
+Search for the plugin name (e.g. "mac-disk-cleaner") and click **Install**.
 
 ## Available Plugins
 

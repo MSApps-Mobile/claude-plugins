@@ -18,16 +18,27 @@ A 3-phase cleanup that starts with the lightest operations (so they work even wh
 
 ## Installation
 
-### Claude Code (CLI)
+### Step 1: Add the MSApps marketplace (one-time)
 
-```bash
+**Claude Code (CLI):**
+```
 /plugin marketplace add MSApps-Mobile/claude-plugins
+```
+
+**Cowork (Desktop App):**
+Go to **Settings → Plugins → Marketplaces → Add**, and enter `MSApps-Mobile/claude-plugins`.
+
+You only need to do this once — it gives you access to all MSApps plugins.
+
+### Step 2: Install the plugin
+
+**Claude Code:**
+```
 /plugin install vm-disk-cleanup@msapps-plugins
 ```
 
-### Cowork (Desktop App)
-
-Go to **Settings → Plugins**, search for **vm-disk-cleanup**, and click Install.
+**Cowork:**
+Go to **Settings → Plugins**, search for **vm-disk-cleanup**, and click **Install**.
 ## Usage
 
 Just say any of these naturally:
