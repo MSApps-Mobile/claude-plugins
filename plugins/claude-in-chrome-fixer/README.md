@@ -1,5 +1,9 @@
 # Claude-in-Chrome Fixer
 
+> **Status: Private** — Superseded by [Fix Chrome Connection](../fix-chrome-connection/README.md), which includes both the repair workflow and a health-check skill. Use that instead.
+
+---
+
 Automatically diagnoses and repairs broken [Claude in Chrome](https://claude.ai/download) MCP connections. Designed to run as a scheduled task and **self-improves** after each run by committing learnings back to this repository.
 
 ## What it does
