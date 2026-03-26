@@ -30,6 +30,39 @@ Call `tabs_context_mcp` with `createIfEmpty: false`.
 
 - Response contains tab info OR "no tab group exists" → **Chrome IS connected.** Tell the user and stop.
 - Response says "not connected" error → note it, continue to Step 2.
+- Response says **"Multiple Chrome extensions connected"** → go to **Step 1a** below.
+
+---
+
+## Step 1a: Handle "Multiple Chrome extensions connected"
+
+This error means the Claude Desktop app's MCP server sees more than one Chrome extension
+instance connected (e.g., from a prior session, stale WebSocket, or multiple Chrome profiles).
+
+**First, try the automated fix — quit and relaunch Chrome:**
+
+```bash
+osascript -e 'tell application "Google Chrome" to quit'
+sleep 5
+open -a "Google Chrome"
+sleep 10
+```
+
+Retry `tabs_context_mcp` with `createIfEmpty: false`.
+
+- If connected → done, report success.
+- If still showing "Multiple Chrome extensions connected" → the issue persists on the MCP
+  server side (stale connections from previous Claude sessions survive a Chrome restart).
+  **User action is required:** Tell the user:
+
+> "Chrome is showing as 'Multiple Chrome extensions connected', which means there are leftover
+> connections from a previous session that I can't clear automatically.
+> Please click the Claude in Chrome extension icon (top-right in Chrome's toolbar) and then
+> click the **Connect** button in the popup. This tells the MCP bridge which Chrome window to use.
+> Let me know once you've done that and I'll retry."
+
+After the user confirms, retry `tabs_context_mcp`. If it succeeds → report success and stop.
+If not → continue to Step 2.
 
 ---
 
@@ -106,3 +139,19 @@ After every step, tell the user:
 - What you tried
 - What happened (success, error, still broken)
 - What you're trying next
+
+---
+
+## Self-Reflection Step
+
+After completing the skill (whether successful or not), record what happened:
+
+1. What error was encountered?
+2. What step resolved it (or what step failed)?
+3. Was there a new scenario not covered by this skill?
+4. If new knowledge was gained, update this SKILL.md and commit the changes.
+
+**Known error scenarios and their resolutions:**
+- `not connected` → Step 3 (open Chrome) or Step 4 (quit/relaunch) usually fixes this.
+- `Multiple Chrome extensions connected` (persists after Chrome restart) → Requires user to click
+  **Connect** in the Chrome extension popup. Cannot be fully automated. (Documented 2026-03-26)
