@@ -97,12 +97,44 @@ rm -rf ~/.npm-global/lib/node_modules/* 2>/dev/null
 
 If even Phase 1 Bash commands fail with ENOSPC:
 
-**In Cowork:** MCP-based tools (Notion, Gmail, Calendar, WhatsApp, Apollo,
-Desktop Commander) still work since they don't need local disk. Suggest the
-user start a new session — the VM resets automatically.
-
 **In Claude Code:** Suggest the user exit and restart Claude Code. The
 sandbox environment resets on restart.
+
+**In Cowork — important architecture note:**
+
+Cowork has **two separate disks** that fill independently:
+
+1. **Mac filesystem** (mounted as `/sessions/.../mnt/`) — the user's actual
+   folder on their computer. Has lots of free space typically.
+2. **VM internal disk** (everything else: `/tmp`, `~/.cache`, `/var/cache/apt`,
+   etc.) — a fixed-size overlay filesystem. This is what hits ENOSPC.
+
+When Bash is broken, try these in order:
+
+**Step 1 — Clean Mac-side workspace with Desktop Commander:**
+Use `mcp__Desktop_Commander__start_process` to run `rm -rf` on the Mac host
+for large dirs in the user's workspace folder. Common culprits:
+```
+rm -rf "/Users/<username>/Documents/Claude/<project>/node_modules"
+```
+Find the real Mac path via `mcp__Desktop_Commander__start_process` with
+`du -sh ~/Documents/Claude/**/node_modules 2>/dev/null | sort -rh | head`.
+Note: Desktop Commander **cannot** reach VM-internal paths like `/var/cache/apt/`.
+
+**Step 2 — Scan VM internal disk with Glob:**
+Glob can read VM-internal paths even when Bash is broken. Scan for large
+caches: `/var/cache/apt/archives/**`, `/tmp/**`, `~/.cache/**`.
+
+**Step 3 — `allow_cowork_file_delete` scope:**
+This tool only enables deletion for paths inside the mounted user workspace
+(the `mnt/` folder). It cannot grant access to VM-internal system paths.
+
+**Step 4 — If VM internal disk is the problem:**
+There is no way to clean the VM's internal disk (apt cache, pip cache, npm
+cache) from outside the VM when Bash is broken, Docker is not installed on
+the Mac, and Desktop Commander cannot reach those paths.
+**Recommend restarting the Cowork app** — this resets the VM entirely.
+The user's files in their workspace folder are safe and unaffected.
 
 ## Prevention Tips
 
@@ -111,3 +143,4 @@ Share these with the user when relevant:
 - Use `pip install --no-cache-dir` to avoid caching
 - Remove `node_modules` from old projects before starting new ones
 - For recurring maintenance, pair with a scheduled task that runs every 2 hours
+- In Cowork, the VM internal disk is the bottleneck — the Mac disk rarely fills up
