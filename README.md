@@ -46,6 +46,7 @@ Go to **Settings → Plugins**, search for the plugin name (e.g. "mac-disk-clean
 | **mac-disk-cleaner** | Reclaim disk space on macOS — clean caches, find large files | `/plugin install mac-disk-cleaner@msapps-plugins` |
 | **whatsapp-mcp** | Connect Claude to WhatsApp — search, read, send messages & business outreach | `/plugin install whatsapp-mcp@msapps-plugins` |
 | **linkedin-scraper** | Scrape LinkedIn profiles, companies & jobs — 5-10x cheaper than Chrome | `/plugin install linkedin-scraper@msapps-plugins` |
+| **vm-disk-cleanup** | Prevent & recover from disk-full errors in Cowork VMs and Claude Code sandboxes | `/plugin install vm-disk-cleanup@msapps-plugins` |
 | **digital-presence** | Analyze & improve your online presence across all platforms — **private, contact for access** | [Contact us](mailto:michal@msapps.mobi) |
 ## Setup
 
@@ -99,6 +100,9 @@ Log in to LinkedIn in the browser window that opens. Session is saved automatica
 
 ### Digital Presence (Private)
 This plugin is currently private. Contact michal@msapps.mobi or [connect on LinkedIn](https://linkedin.com/in/michalmsapps) for access.
+
+### VM Disk Cleanup
+No configuration needed. Works out of the box on both platforms. Just say "clean VM" or "disk full" and the plugin kicks in. For automatic maintenance, pair with a scheduled task that runs every 2 hours.
 
 ## Support
 

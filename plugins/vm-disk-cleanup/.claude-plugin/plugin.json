@@ -1,0 +1,10 @@
+{
+  "name": "vm-disk-cleanup",
+  "description": "Prevent and recover from disk-full errors in Cowork session VMs and Claude Code environments. Clears caches, temp files, build artifacts, and node_modules in phased cleanup.",
+  "version": "0.1.0",
+  "author": "MSApps (https://msapps.mobi)",
+  "license": "MIT",
+  "keywords": ["vm", "disk", "cleanup", "cowork", "claude-code", "ENOSPC", "session"],
+  "homepage": "https://msapps.mobi/plugins",
+  "platforms": ["claude-code", "cowork"]
+}
