@@ -1,0 +1,11 @@
+{
+  "name": "claude-in-chrome-fixer",
+  "version": "0.1.0",
+  "description": "Automatically diagnoses and repairs broken Claude-in-Chrome MCP connections. Runs as a scheduled task and self-improves after each run.",
+  "author": {
+    "name": "MSApps",
+    "url": "https://msapps.mobi"
+  },
+  "keywords": ["chrome", "mcp", "connection", "automation", "maintenance"],
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins"
+}
