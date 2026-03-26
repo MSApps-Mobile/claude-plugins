@@ -1,8 +1,0 @@
-{
-  "name": "close-inactive-chrome-tabs",
-  "version": "0.1.0",
-  "description": "Use this skill whenever Claude needs to clean up leftover browser tabs from previous automation runs.",
-  "author": {
-    "name": "MSApps"
-  }
-}

@@ -1,8 +1,0 @@
-{
-  "name": "receipts-collection",
-  "version": "0.1.0",
-  "description": "לא משויכות ב-iCount, מחפש עבורן חשבוניות ב-Zoho Mail, מעלה את שנמצאו ל-iCount,",
-  "author": {
-    "name": "MSApps"
-  }
-}
