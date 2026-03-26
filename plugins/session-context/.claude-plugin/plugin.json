@@ -1,0 +1,8 @@
+{
+  "name": "session-context",
+  "version": "0.1.0",
+  "description": "Use this skill whenever Michal says "save context", "document what we did", "save session", "create handoff",",
+  "author": {
+    "name": "MSApps"
+  }
+}

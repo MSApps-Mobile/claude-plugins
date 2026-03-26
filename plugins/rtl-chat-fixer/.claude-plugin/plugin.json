@@ -1,0 +1,9 @@
+{
+  "name": "rtl-chat-fixer",
+  "version": "0.1.0",
+  "description": "Fixes jumbled RTL text in Cowork/Claude Desktop chat by teaching Claude how to structure mixed-direction responses for Hebrew, Arabic, Persian, Urdu and other RTL languages.",
+  "author": {
+    "name": "Michal Shatz"
+  },
+  "keywords": ["rtl", "hebrew", "arabic", "persian", "urdu", "bidi", "bidirectional", "chat-formatting"]
+}
