@@ -1,0 +1,9 @@
+{
+  "name": "wordpress-mcp",
+  "version": "0.1.0",
+  "description": "Manage WordPress sites through the WordPress MCP Adapter — content, admin, WooCommerce, and more",
+  "author": {
+    "name": "MSApps"
+  },
+  "keywords": ["wordpress", "cms", "woocommerce", "content-management", "mcp"]
+}
