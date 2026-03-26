@@ -1,0 +1,9 @@
+{
+  "name": "opsagent-outreach",
+  "version": "1.1.0",
+  "description": "OpsAgent LinkedIn & email outreach — finds international prospects, writes personalized messages, sends via LinkedIn Chrome MCP and Zoho Mail, updates Notion log, and sends summary email",
+  "author": {
+    "name": "Michal Shatz"
+  },
+  "keywords": ["linkedin", "outreach", "opsagent", "sales", "prospecting", "email"]
+}
