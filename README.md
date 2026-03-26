@@ -52,7 +52,6 @@ Search for the plugin name (e.g. "mac-disk-cleaner") and click **Install**.
 | **[linkedin-scraper](plugins/linkedin-scraper)** | Scrape LinkedIn profiles, companies & jobs — 5-10x cheaper than Chrome | `/plugin install linkedin-scraper@msapps-plugins` |
 | **[vm-disk-cleanup](plugins/vm-disk-cleanup)** | Prevent & recover from disk-full errors in Cowork VMs and Claude Code sandboxes | `/plugin install vm-disk-cleanup@msapps-plugins` |
 | **[digital-presence](plugins/digital-presence)** | Analyze & improve your online presence across all platforms — **private, contact for access** | [Contact us](mailto:michal@msapps.mobi) |
-| **[x-ai-first-posting](plugins/x-ai-first-posting)** | Write & publish posts to the AI First Engineering community on X | `/plugin install x-ai-first-posting@msapps-plugins` |
 ## Setup
 
 ### Google Drive Upload
