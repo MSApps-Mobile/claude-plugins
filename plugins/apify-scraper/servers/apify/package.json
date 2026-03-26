@@ -1,0 +1,20 @@
+{
+  "name": "apify-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for Apify Web Scraping platform - full API coverage",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "npx tsx src/index.ts",
+    "dev": "npx tsx watch src/index.ts"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.6.1",
+    "axios": "^1.7.9",
+    "zod": "^3.23.8",
+    "tsx": "^4.19.2"
+  }
+}
