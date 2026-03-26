@@ -49,7 +49,16 @@ Search for the plugin name (e.g. "mac-disk-cleaner") and click Install.
 | **notion-memory** | Long-term memory for Claude across sessions via Notion | `/plugin install notion-memory@msapps-plugins` |
 | **mac-disk-cleaner** | Reclaim disk space on macOS — clean caches, find large files | `/plugin install mac-disk-cleaner@msapps-plugins` |
 | **whatsapp-mcp** | Connect Claude to WhatsApp — search, read, send messages & business outreach | `/plugin install whatsapp-mcp@msapps-plugins` |
-| **digital-presence** | Analyze & improve your online presence across all platforms — **private, contact for access** | [Contact us](mailto:michal@msapps.mobi) |
+| **linkedin-scraper** | Scrape LinkedIn profiles, companies & jobs — 5–10x cheaper than Chrome | `/plugin install linkedin-scraper@msapps-plugins` |
+| **apify-scraper** | Full Apify web scraping platform — run Actors, manage datasets & schedules | `/plugin install apify-scraper@msapps-plugins` |
+| **apollo** | Prospect leads, enrich contacts & load outreach sequences with Apollo.io | `/plugin install apollo@msapps-plugins` |
+| **rtl-chat-fixer** | Fix jumbled RTL/LTR text mixing (Hebrew, Arabic, Persian) in chat | `/plugin install rtl-chat-fixer@msapps-plugins` |
+| **vm-disk-cleanup** | Prevent and recover from disk-full errors in Cowork VMs & Claude Code sandboxes | `/plugin install vm-disk-cleanup@msapps-plugins` |
+| **x-content-intelligence** | Scrape X/Twitter for insights & generate community-matched content | `/plugin install x-content-intelligence@msapps-plugins` |
+| **wordpress-mcp** | Manage WordPress sites from Claude — posts, users, WooCommerce & more | `/plugin install wordpress-mcp@msapps-plugins` |
+| **claude-in-chrome-fixer** | Auto-diagnose & repair broken Claude in Chrome MCP connections | `/plugin install claude-in-chrome-fixer@msapps-plugins` |
+| **fix-chrome-connection** | Instantly fix stale Claude in Chrome connections caused by macOS user switching | `/plugin install fix-chrome-connection@msapps-plugins` |
+
 ## Setup
 
 ### Google Drive Upload
@@ -76,6 +85,7 @@ No config needed — just requires the **Claude in Chrome** extension (works in 
 
 ### Session Backup
 Requires the Google Drive Upload connector (see above). Backs up your skills, plugins, session data, and configs to a `Cowork-Backups` folder on Google Drive. Run `/backup-now` for an immediate backup, or set up a daily schedule.
+
 ### Mac Disk Cleaner
 Requires macOS Ventura or later. No config needed — just ask Claude to "clean up my Mac" or "check disk space". Works with Claude Code's native Bash tool or Cowork's Desktop Commander. Only touches auto-regenerated caches — never deletes personal files.
 
@@ -93,8 +103,47 @@ Requires the [WhatsApp MCP bridge](https://github.com/lharries/whatsapp-mcp) run
 3. Scan the QR code with WhatsApp on first run
 4. Set `WHATSAPP_MCP_PATH="$HOME/whatsapp-mcp"` in your shell profile
 
-### Digital Presence (Private)
-This plugin is currently private. Contact michal@msapps.mobi or [connect on LinkedIn](https://linkedin.com/in/michalmsapps) for access.
+### LinkedIn Scraper
+Requires Python 3.10+ with [uv](https://docs.astral.sh/uv/) installed. Run this once to authenticate:
+```bash
+uvx linkedin-scraper-mcp --login
+```
+A browser window opens — log in to LinkedIn, then close it. Your session is saved automatically.
+
+### Apify Scraper
+Set your Apify API token when installing the plugin:
+```
+APIFY_API_TOKEN=your_token_here
+```
+Get your token at [Apify Console](https://console.apify.com/) → Settings → Integrations.
+
+### Apollo
+No manual setup needed — the plugin automatically configures the Apollo MCP Server on install. Just authenticate with your Apollo account when prompted.
+
+### RTL Chat Fixer
+No config needed. Install and ask Claude to fix any RTL/LTR text mixing issues.
+
+### VM Disk Cleanup
+No config needed. Ask Claude to "clean up disk space" or "free up space in the VM" — works in both Cowork and Claude Code environments.
+
+### X Content Intelligence
+Requires the [Apify MCP connector](https://apify.com/) (free tier available). Uses the `apidojo/tweet-scraper` Actor for X scraping.
+
+### WordPress MCP
+Set these environment variables after installing:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `WP_MCP_URL` | Your site's MCP Adapter HTTP endpoint | `https://yoursite.com/wp-json/mcp/v1` |
+| `WP_MCP_AUTH` | Base64-encoded `username:application-password` | `bWljaGFsOnhX...` |
+
+Requires the [WordPress MCP Adapter](https://developer.wordpress.org/news/2026/02/from-abilities-to-ai-agents-introducing-the-wordpress-mcp-adapter/) plugin installed on your WordPress 6.9+ site.
+
+### Claude-in-Chrome Fixer
+No config needed. Best run as a scheduled task — it self-diagnoses broken Claude in Chrome connections and commits learnings back to the repo automatically.
+
+### Fix Chrome Connection
+No config needed. Run it when your Claude in Chrome extension stops responding (common after switching macOS users).
 
 ## Support
 
