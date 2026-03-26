@@ -1,0 +1,9 @@
+{
+  "name": "x-ai-first-posting",
+    "version": "0.1.0",
+      "description": "Write and publish posts to the AI First Engineering community on X for MSApps. Includes tone guide, posting workflow, scheduled task support, and community context.",
+        "author": {
+            "name": "MSApps"
+              },
+                "keywords": ["x", "twitter", "ai-first", "community", "posting", "social-media"]
+                }
