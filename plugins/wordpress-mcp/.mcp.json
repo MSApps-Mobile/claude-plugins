@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "wordpress": {
+      "type": "http",
+      "url": "${WP_MCP_URL}",
+      "headers": {
+        "Authorization": "Basic ${WP_MCP_AUTH}"
+      }
+    }
+  }
+}
