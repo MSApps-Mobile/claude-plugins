@@ -35,7 +35,9 @@ That's it. Your API token stays on your machine and is never shared.
 /plugin install toggl-time-tracker@msapps-plugins
 ```
 
-**Cowork:** Search for "toggl-time-tracker" in Settings → Plugins.
+**Cowork:**
+1. Settings → Plugins → Marketplaces → Add → `MSApps-Mobile/claude-plugins`
+2. Search "toggl-time-tracker" → Install
 
 ## Requirements
 

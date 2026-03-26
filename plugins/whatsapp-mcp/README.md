@@ -99,7 +99,15 @@ Add this to your `~/.zshrc` or `~/.bashrc` to persist it.
 
 ### 4. Install the plugin
 
-Install via the Claude plugin marketplace, or manually copy to your plugins directory.
+**Claude Code (CLI):**
+```bash
+/plugin marketplace add MSApps-Mobile/claude-plugins
+/plugin install whatsapp-mcp@msapps-plugins
+```
+
+**Cowork:**
+1. Settings → Plugins → Marketplaces → Add → `MSApps-Mobile/claude-plugins`
+2. Search "whatsapp-mcp" → Install
 ## Skills
 
 | Skill | Description |

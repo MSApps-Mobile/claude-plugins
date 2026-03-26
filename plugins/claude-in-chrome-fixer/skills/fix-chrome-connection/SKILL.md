@@ -99,17 +99,17 @@ Examples of learnings worth capturing:
 
 **If you learned something:**
 
-1. Edit this SKILL.md file to incorporate the new knowledge (add a note, update a step, add a new step, or add a "Known Issues" section at the bottom).
-2. Run these git commands via Desktop Commander to commit and push:
+1. Edit any relevant file in `~/claude-plugins/plugins/claude-in-chrome-fixer/` to incorporate the new knowledge — update SKILL.md steps, add a Known Issues entry, or add a new reference file.
+2. Run these git commands via Desktop Commander to commit and push the **entire plugin directory**:
 
 ```bash
 cd ~/claude-plugins
-git add plugins/claude-in-chrome-fixer/skills/fix-chrome-connection/SKILL.md
+git add plugins/claude-in-chrome-fixer/
 git commit -m "fix-chrome-connection: self-improvement from run on $(date '+%Y-%m-%d')"
 git push origin main
 ```
 
-3. Report what you learned and what you updated.
+3. Report what you learned, which files you changed, and confirm the push succeeded.
 
 **If you did not learn anything new:** Simply state "No new learnings from this run." and finish.
 

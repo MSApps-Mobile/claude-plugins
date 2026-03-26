@@ -33,27 +33,23 @@ That's it. The plugin is now active — just start talking to Claude and it will
 ### Cowork (Desktop App)
 
 **Step 1 — Add the MSApps marketplace (one-time):**
-Go to **Settings → Plugins → Marketplaces → Add**, and enter `MSApps-Mobile/claude-plugins`.
+Settings → Plugins → Marketplaces → Add → `MSApps-Mobile/claude-plugins`
 
 **Step 2 — Install a plugin:**
-Search for the plugin name (e.g. "mac-disk-cleaner") and click **Install**.
+Search for the plugin name (e.g. "mac-disk-cleaner") and click Install.
 
 ## Available Plugins
 
 | Plugin | Description | Install |
 |--------|-------------|---------|
-| **[google-drive-upload](plugins/google-drive-upload)** | Upload files to Google Drive — unlimited, free | `/plugin install google-drive-upload@msapps-plugins` |
-| **[toggl-time-tracker](plugins/toggl-time-tracker)** | Track time with Toggl — start/stop timers, reports | `/plugin install toggl-time-tracker@msapps-plugins` |
-| **[youtube-transcriber](plugins/youtube-transcriber)** | Transcribe YouTube videos & playlists — no API key needed | `/plugin install youtube-transcriber@msapps-plugins` |
-| **[session-backup](plugins/session-backup)** | Automated daily backups of sessions, skills & configs to Google Drive | `/plugin install session-backup@msapps-plugins` |
-| **[notion-memory](plugins/notion-memory)** | Long-term memory for Claude across sessions via Notion | `/plugin install notion-memory@msapps-plugins` |
-| **[mac-disk-cleaner](plugins/mac-disk-cleaner)** | Reclaim disk space on macOS — clean caches, find large files | `/plugin install mac-disk-cleaner@msapps-plugins` |
-| **[whatsapp-mcp](plugins/whatsapp-mcp)** | Connect Claude to WhatsApp — search, read, send messages & business outreach | `/plugin install whatsapp-mcp@msapps-plugins` |
-| **[linkedin-scraper](plugins/linkedin-scraper)** | Scrape LinkedIn profiles, companies & jobs — 5-10x cheaper than Chrome | `/plugin install linkedin-scraper@msapps-plugins` |
-| **[vm-disk-cleanup](plugins/vm-disk-cleanup)** | Prevent & recover from disk-full errors in Cowork VMs and Claude Code sandboxes | `/plugin install vm-disk-cleanup@msapps-plugins` |
-| **[digital-presence](plugins/digital-presence)** | Analyze & improve your online presence across all platforms — **private, contact for access** | [Contact us](mailto:michal@msapps.mobi) |
-| **[x-content-intelligence](plugins/x-content-intelligence)** | Scrape X (Twitter) for insights, analyze trends, and generate community-matched content | `/plugin install x-content-intelligence@msapps-plugins` |
-| **[fix-chrome-connection](plugins/fix-chrome-connection)** | Auto-diagnose and repair broken Claude in Chrome MCP connections (macOS) | `/plugin install fix-chrome-connection@msapps-plugins` |
+| **google-drive-upload** | Upload files to Google Drive — unlimited, free | `/plugin install google-drive-upload@msapps-plugins` |
+| **toggl-time-tracker** | Track time with Toggl — start/stop timers, reports | `/plugin install toggl-time-tracker@msapps-plugins` |
+| **youtube-transcriber** | Transcribe YouTube videos & playlists — no API key needed | `/plugin install youtube-transcriber@msapps-plugins` |
+| **session-backup** | Automated daily backups of sessions, skills & configs to Google Drive | `/plugin install session-backup@msapps-plugins` |
+| **notion-memory** | Long-term memory for Claude across sessions via Notion | `/plugin install notion-memory@msapps-plugins` |
+| **mac-disk-cleaner** | Reclaim disk space on macOS — clean caches, find large files | `/plugin install mac-disk-cleaner@msapps-plugins` |
+| **whatsapp-mcp** | Connect Claude to WhatsApp — search, read, send messages & business outreach | `/plugin install whatsapp-mcp@msapps-plugins` |
+| **digital-presence** | Analyze & improve your online presence across all platforms — **private, contact for access** | [Contact us](mailto:michal@msapps.mobi) |
 ## Setup
 
 ### Google Drive Upload
@@ -97,18 +93,8 @@ Requires the [WhatsApp MCP bridge](https://github.com/lharries/whatsapp-mcp) run
 3. Scan the QR code with WhatsApp on first run
 4. Set `WHATSAPP_MCP_PATH="$HOME/whatsapp-mcp"` in your shell profile
 
-### LinkedIn Scraper
-Requires Python 3.10+ with [uv](https://docs.astral.sh/uv/). Run once to authenticate:
-```bash
-uvx linkedin-scraper-mcp --login
-```
-Log in to LinkedIn in the browser window that opens. Session is saved automatically. Falls back to Chrome MCP if scraping fails.
-
 ### Digital Presence (Private)
 This plugin is currently private. Contact michal@msapps.mobi or [connect on LinkedIn](https://linkedin.com/in/michalmsapps) for access.
-
-### VM Disk Cleanup
-No configuration needed. Works out of the box on both platforms. Just say "clean VM" or "disk full" and the plugin kicks in. For automatic maintenance, pair with a scheduled task that runs every 2 hours.
 
 ## Support
 

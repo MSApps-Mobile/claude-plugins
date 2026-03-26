@@ -17,7 +17,9 @@ Transcribe YouTube videos and playlists directly from Claude using browser-based
 /plugin install youtube-transcriber@msapps-plugins
 ```
 
-**Cowork:** Search for "youtube-transcriber" in Settings → Plugins.
+**Cowork:**
+1. Settings → Plugins → Marketplaces → Add → `MSApps-Mobile/claude-plugins`
+2. Search "youtube-transcriber" → Install
 
 ## Requirements
 

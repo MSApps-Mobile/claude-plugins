@@ -17,7 +17,9 @@ Upload any file from Claude directly to your Google Drive. Free and unlimited.
 /plugin install google-drive-upload@msapps-plugins
 ```
 
-**Cowork:** Search for "google-drive-upload" in Settings → Plugins.
+**Cowork:**
+1. Settings → Plugins → Marketplaces → Add → `MSApps-Mobile/claude-plugins`
+2. Search "google-drive-upload" → Install
 
 ## Setup (one-time)
 

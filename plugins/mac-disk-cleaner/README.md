@@ -44,7 +44,9 @@ To run the cleanup automatically every week, ask Claude:
 /plugin install mac-disk-cleaner@msapps-plugins
 ```
 
-**Cowork:** Search for "mac-disk-cleaner" in Settings → Plugins.
+**Cowork:**
+1. Settings → Plugins → Marketplaces → Add → `MSApps-Mobile/claude-plugins`
+2. Search "mac-disk-cleaner" → Install
 
 ## Requirements
 
