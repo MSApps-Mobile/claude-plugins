@@ -1,167 +1,100 @@
----
-name: sosa-audit
-description: >
-  Run a SOSA™ compliance audit on all installed Claude plugins and skills.
-  Use this skill when the user says "SOSA audit", "SOSA check", "compliance check",
-  "check SOSA compliance", "run SOSA scan", "security compliance", "are my plugins SOSA compliant",
-  "plugin governance check", "audit my skills", or any request to evaluate plugin/skill compliance
-  against the SOSA methodology. Also trigger on "check my agents", "agent governance",
-  or "supervision audit".
-metadata:
-  version: "0.1.0"
-  author: "MSApps"
-  framework: "SOSA™ — Supervised Orchestrated Secured Agents"
----
+# SOSA Compliance Audit
 
-# SOSA™ Compliance Audit
+## Objective
+Conduct comprehensive SOSA (Supervised Orchestrated Secured Agents) compliance assessment across your AI operations infrastructure. This skill audits adherence to the four SOSA pillars and identifies remediation actions needed to achieve target compliance levels.
 
-Scan all installed plugins and skills against the four SOSA pillars and generate a compliance report with actionable fix suggestions.
+## Context
+SOSA compliance ensures production-grade autonomous AI operations through:
+- **Supervised**: Human oversight and governance frameworks
+- **Orchestrated**: Coordinated multi-agent workflows and task routing
+- **Secured**: Security controls, audit trails, and data protection
+- **Agents**: Autonomous decision-making within defined boundaries
 
-Read the full checklist from `references/sosa-checklist.md` before starting the audit.
+Compliance is assessed at three levels:
+- **Level 1**: Basic compliance with foundational controls
+- **Level 2**: Intermediate compliance with enhanced monitoring
+- **Level 3**: Advanced compliance with comprehensive automation
 
-## Audit Workflow
+## Plan Phase
 
-### Step 1: Discover all plugins and skills
+### Step 1: Define Scope
+- Identify target systems and scope boundaries
+- Document audit objectives and success criteria
+- Establish baseline compliance expectations
+- Determine impact level (low/medium/high)
 
-Scan these locations to find every installed plugin and skill:
+### Step 2: Checklist Selection
+- Review SOSA compliance checklist
+- Select controls relevant to your environment
+- Prioritize critical vs. nice-to-have controls
+- Map controls to SOSA pillars
 
-```
-# Installed plugins (marketplace + custom)
-~/.claude/plugins/marketplaces/*/plugins/*/
-~/.claude/plugins/custom/*/
+### Step 3: Assessment Approach
+- Plan data collection methods
+- Identify required access levels
+- Define timeline and resource allocation
+- Prepare stakeholder communication
 
-# Remote plugins (Cowork sessions)
-/sessions/*/mnt/.remote-plugins/plugin_*/
+## Act Phase
 
-# Local skills
-~/.claude/skills/*/
-~/Documents/Claude/skills/*/
+### Step 1: Supervised Controls Assessment
+- **Governance**: Review oversight frameworks and approval processes
+- **Monitoring**: Verify human-in-the-loop mechanisms
+- **Audit**: Check activity logging and review procedures
+- **Escalation**: Validate escalation paths and response procedures
 
-# Scheduled tasks
-~/.claude/scheduled-tasks/*/
-~/Documents/Claude/Scheduled/*/
-```
+### Step 2: Orchestrated Controls Assessment
+- **Coordination**: Evaluate multi-agent workflow orchestration
+- **Routing**: Check task distribution and load balancing
+- **Dependencies**: Verify inter-system dependencies and sequencing
+- **Recovery**: Test failover and recovery mechanisms
 
-For each discovered component, read:
-- `SKILL.md` (or `CLAUDE.md`) — the main skill definition
-- `.claude-plugin/plugin.json` — plugin manifest (if exists)
-- `.mcp.json` — MCP server config (if exists)
+### Step 3: Secured Controls Assessment
+- **Authentication**: Verify identity verification mechanisms
+- **Encryption**: Check data protection in transit and at rest
+- **Access**: Review authorization and least-privilege controls
+- **Audit Trail**: Validate logging completeness and immutability
 
-Build a registry of all components found with their paths.
+### Step 4: Agent Autonomy Assessment
+- **Boundaries**: Verify decision boundaries are enforced
+- **Training**: Check agent instruction quality and clarity
+- **Constraints**: Validate guardrails and safety controls
+- **Performance**: Measure agent effectiveness and error rates
 
-### Step 2: Run the four-pillar check
+### Step 5: Evidence Collection
+- Document control implementations and configurations
+- Collect logs, screenshots, and configuration files
+- Interview stakeholders about procedures
+- Perform testing and validation
 
-For EACH component, evaluate against all four SOSA pillars using the checklist in `references/sosa-checklist.md`. Score each pillar as:
+## Verify Phase
 
-- **PASS** — Fully compliant
-- **PARTIAL** — Some requirements met, gaps identified
-- **FAIL** — Critical requirements missing
-- **N/A** — Pillar not applicable (e.g., Orchestrated for a standalone formatter)
+### Step 1: Finding Analysis
+- Categorize findings by severity (critical/high/medium/low)
+- Map findings to SOSA pillars
+- Assess business impact of each finding
+- Prioritize remediation actions
 
-#### Pillar 1: Supervised
+### Step 2: Remediation Planning
+- Develop action plans for each finding
+- Estimate remediation effort and timeline
+- Identify resource requirements
+- Assign ownership and accountability
 
-Scan the SKILL.md for:
-- Presence of "do not ask", "don't ask", "no confirmation", "אין לשאול", "ללא אישור" patterns → **FLAG** as missing supervision gate
-- Impact classification: Does the skill send emails, messages, modify calendars, make API calls, or handle financial data? If yes, check for human-in-the-loop checkpoints
-- Trust gradient: Does the skill differentiate between first-time and repeat actions?
+### Step 3: Compliance Report
+- Summarize current compliance posture
+- Detail findings and risk assessments
+- Provide remediation roadmap
+- Calculate compliance level achievement
 
-**Score logic:**
-- PASS: Low-impact skill OR has explicit confirmation/approval gates for high-impact actions
-- PARTIAL: Medium-impact with some oversight but missing gates on certain actions
-- FAIL: High-impact actions with explicit "no confirmation" instructions
+### Step 4: Continuous Improvement
+- Schedule follow-up assessments
+- Monitor remediation progress
+- Update compliance baselines
+- Iterate based on lessons learned
 
-#### Pillar 2: Orchestrated
-
-Scan for:
-- Structured outputs (JSON, structured reports) vs free-text handoffs
-- Dependencies on other skills or external data declared
-- Plan → Act → Verify pattern in the workflow
-- Context sharing mechanism (Notion, shared files, structured registries)
-
-**Score logic:**
-- PASS: Follows Plan→Act→Verify, declares dependencies, uses structured context
-- PARTIAL: Has structured outputs but no explicit verification step
-- FAIL: Fire-and-forget execution with no verification or coordination
-
-#### Pillar 3: Secured
-
-Scan for:
-- Hardcoded credentials (API keys, tokens, passwords, URLs with keys)
-- Credential patterns: look for strings matching API key formats, base64 tokens, OAuth tokens
-- Use of environment variables or config files for secrets
-- Prompt injection scanning on external data inputs
-- Package version pinning (in .mcp.json: check if uvx/npx args include version pins)
-- Capability scoping (does the skill access only what it needs?)
-
-**Score logic:**
-- PASS: No hardcoded secrets, uses env vars/config files, has injection scanning, pinned versions
-- PARTIAL: No hardcoded secrets but missing injection scanning or version pinning
-- FAIL: Contains hardcoded credentials OR processes external data without injection scanning
-
-#### Pillar 4: Agents
-
-Scan for:
-- Role specification: Does SKILL.md clearly define domain boundaries and what the skill should NOT do?
-- Tool manifest: Does the plugin declare which tools/APIs it accesses?
-- Memory model: Is persistence mechanism defined?
-- Planning policy: Are steps defined with preconditions and postconditions?
-
-**Score logic:**
-- PASS: Clear R, T, M, P defined; domain boundaries explicit; tool access declared
-- PARTIAL: Has role spec and workflow but missing explicit boundaries or tool declarations
-- FAIL: No clear role boundaries; skill could be redirected to arbitrary domains
-
-### Step 3: Calculate compliance level
-
-Based on pillar scores, assign overall SOSA compliance level:
-
-- **Level 3 (Full)** — All four pillars PASS
-- **Level 2 (Standard)** — Secured PASS + at least 2 other pillars PASS, no FAIL
-- **Level 1 (Basic)** — Secured PASS or PARTIAL, no more than 1 FAIL
-- **Non-compliant** — Secured FAIL, or 2+ pillars FAIL
-
-### Step 4: Generate the report
-
-Produce a structured report with:
-
-#### Summary Table
-
-| Plugin/Skill | Supervised | Orchestrated | Secured | Agents | Level | Priority Fixes |
-|-------------|-----------|-------------|---------|--------|-------|---------------|
-
-Use these emoji indicators: ✅ PASS, ⚠️ PARTIAL, ❌ FAIL, ➖ N/A
-
-#### Per-Component Details
-
-For each component that is not fully Level 3, provide:
-
-1. **Current state** — What was found
-2. **Gap** — What SOSA requires
-3. **Fix** — Specific, actionable instruction to reach compliance
-4. **Priority** — Critical / High / Medium / Low
-5. **Effort** — Quick fix (< 5 min) / Moderate (< 30 min) / Significant (> 30 min)
-
-#### Fix priority matrix:
-- **Critical**: Hardcoded credentials, no injection scanning on external data
-- **High**: Missing supervision gates on high-impact actions, unpinned package versions
-- **Medium**: Missing verification steps, no structured outputs, weak role boundaries
-- **Low**: Missing metadata, informal context sharing, no trust gradient
-
-### Step 5: Offer to fix
-
-After presenting the report, offer to implement the fixes:
-
-1. **Quick wins** — Fixes that can be applied immediately (metadata updates, adding SOSA blocks to plugin.json)
-2. **Skill patches** — Adding prompt injection scanning blocks, supervision gates, verification steps to SKILL.md files
-3. **Architecture changes** — Adding structured context registries, implementing trust gradients (requires discussion)
-
-Ask which fixes to apply. For each approved fix, make the change and verify it.
-
-## Important Rules
-
-- This is a READ-ONLY audit. Never modify files without explicit user approval.
-- Scan ALL components, not just a sample. Completeness matters.
-- Be honest about compliance gaps — don't inflate scores.
-- When in doubt about impact level, classify higher (err on the side of caution).
-- Reference specific line numbers and patterns when reporting findings.
-- The audit itself should follow SOSA: Plan (discover) → Act (scan) → Verify (cross-check findings).
+## Success Criteria
+- All critical findings addressed
+- Compliance level improvement demonstrated
+- Stakeholder acceptance of remediation plan
+- Audit trail documenting assessment and findings

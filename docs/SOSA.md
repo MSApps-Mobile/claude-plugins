@@ -31,7 +31,7 @@ Every agent operates under a defined supervision policy. Supervision is graduate
 
 ### 2. Orchestrated
 
-Agents coordinate through structured registries and a DAG (directed acyclic graph) execution model, not ad-hoc message passing.
+Agents coordinate through structured registries and a DAG (directed acyclic graph) execution model, not ad-hoc message passing. **Orchestration demands efficiency** — an orchestrated system that wastes resources on redundant work, bloated context, or duplicate components is poorly orchestrated by definition.
 
 **How MSApps plugins implement this:**
 - Plugins declare their **dependencies** (which MCP servers, connectors, or other plugins they require)
@@ -39,6 +39,15 @@ Agents coordinate through structured registries and a DAG (directed acyclic grap
 - Context is shared through structured outputs (JSON, structured reports), not free-text handoffs
 - Scheduled tasks declare temporal dependencies and execution order
 - Plugin outputs feed into downstream workflows through well-defined interfaces
+- **Token efficiency** is enforced as a first-class orchestration concern:
+  - Skill descriptions are kept lean — every word costs tokens across every session
+  - Shared rules and changing data are externalized to structured stores (Notion, config files), not duplicated across skills
+  - Unused MCP connectors and duplicate plugins are eliminated — idle tools waste context budget
+  - Scheduled task frequency matches the actual cadence of change, not an arbitrary interval
+  - The [`token-efficiency-audit`](../plugins/token-efficiency-audit) plugin provides automated auditing and optimization of token usage across the entire system
+
+**Why efficiency is an orchestration concern:**
+A multi-agent system's context window is a shared finite resource. Every token consumed by a bloated skill description, a redundant MCP connector, or a duplicate plugin is a token unavailable for actual work. True orchestration means not just coordinating what agents do, but ensuring the infrastructure that supports them — system prompts, tool definitions, scheduled executions — operates at minimum viable cost. An agent system that wastes 30% of its context window on unused tool definitions is as poorly orchestrated as one with race conditions between concurrent tasks.
 
 ### 3. Secured
 
@@ -72,11 +81,11 @@ SOSA agents are goal-directed autonomous entities defined as a tuple **A = (R, T
 
 Every SOSA-compliant plugin follows a three-phase execution loop:
 
-1. **Plan** — Decompose the objective into a sequence of tool calls, subject to the capability set constraints. Filter out actions that would violate domain boundaries.
+1. **Plan** — Decompose the objective into a sequence of tool calls, subject to the capability set constraints. Filter out actions that would violate domain boundaries. **Assess resource cost** — if the plan would consume excessive tokens, context, or executions, optimize before proceeding.
 
 2. **Act** — Execute each planned step against real external systems, with every interaction logged. Actions that exceed the impact threshold are paused and escalated.
 
-3. **Verify** — Evaluate the outcome against declared success criteria. Produce a structured evaluation record that feeds into the trust gradient.
+3. **Verify** — Evaluate the outcome against declared success criteria. Produce a structured evaluation record that feeds into the trust gradient. **Measure efficiency** — compare actual token/resource consumption against expected cost.
 
 ---
 
@@ -85,8 +94,21 @@ Every SOSA-compliant plugin follows a three-phase execution loop:
 | Level | Requirements | Example Plugins |
 |-------|-------------|-----------------|
 | **Level 1 — Basic** | Role spec in SKILL.md, pinned dependencies, no hardcoded secrets | rtl-chat-fixer, vm-disk-cleanup, mac-disk-cleaner |
-| **Level 2 — Standard** | Level 1 + prompt injection scanning, audit logging, declared capability set | google-drive-upload, youtube-transcriber, session-backup |
-| **Level 3 — Full** | Level 2 + human approval gates for high-impact actions, structured Plan→Act→Verify loop, trust gradient | whatsapp-mcp, apollo, apify-scraper, linkedin-scraper |
+| **Level 2 — Standard** | Level 1 + prompt injection scanning, audit logging, declared capability set, token-efficient skill design | google-drive-upload, youtube-transcriber, session-backup |
+| **Level 3 — Full** | Level 2 + human approval gates for high-impact actions, structured Plan→Act→Verify loop, trust gradient, system-level efficiency auditing | whatsapp-mcp, apollo, apify-scraper, linkedin-scraper, token-efficiency-audit |
+
+---
+
+## SOSA Infrastructure Plugins
+
+These plugins enforce SOSA compliance across the system:
+
+| Plugin | Pillar Focus | Purpose |
+|--------|-------------|---------|
+| [`sosa-compliance-checker`](../plugins/sosa-compliance-checker) | All four pillars | Audits all installed plugins and skills against the SOSA checklist, generates compliance reports, and offers to fix gaps |
+| [`token-efficiency-audit`](../plugins/token-efficiency-audit) | Orchestrated (efficiency) | Audits and optimizes token usage across skills, scheduled tasks, plugins, and MCP connectors. Enforces the efficiency dimension of the Orchestrated pillar |
+
+The `sosa-compliance-checker` runs the `token-efficiency-audit` as part of its Orchestrated pillar assessment. Together, they ensure the system is both compliant and efficient.
 
 ---
 
