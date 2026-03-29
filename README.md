@@ -16,7 +16,7 @@ As AI agents move from demos to real business workflows, the gap between "it wor
 | Pillar | What it means | Why it matters |
 |--------|--------------|----------------|
 | **Supervised** | High-impact actions require human approval. Low-impact actions run autonomously. Trust is earned through consistent performance. | Prevents an outreach agent from sending 500 cold emails without your sign-off |
-| **Orchestrated** | Agents follow Plan → Act → Verify. Outputs are structured. Dependencies are declared. | Prevents cascading failures when one agent's output feeds another |
+| **Orchestrated** | Agents follow Plan → Act → Verify. Outputs are structured. Dependencies are declared. **Efficiency is enforced** — token budget is a shared resource, not an afterthought. | Prevents cascading failures and eliminates wasted context from bloated skills, unused tools, and redundant components |
 | **Secured** | No hardcoded credentials. External data is scanned for prompt injection. Package versions are pinned. | Prevents a LinkedIn bio with "ignore all instructions" from hijacking your CRM workflow |
 | **Agents** | Each agent has a formal role spec, declared tool access, defined memory model, and explicit planning policy | Prevents a financial agent from being tricked into sending emails — it simply can't |
 
@@ -36,6 +36,19 @@ We built the **[sosa-compliance-checker](./plugins/sosa-compliance-checker)** so
 **Run it:** Just say "SOSA audit" or "check my plugins for compliance" — it scans everything, scores each component per-pillar, and gives you prioritized fix suggestions with effort estimates.
 
 We recommend running this on all your installed plugins, especially if you have autonomous agents handling email, messaging, financial data, or outreach. The audit takes a few minutes and catches hardcoded API keys, missing confirmation gates on high-impact actions, unpinned package versions, and prompt injection vulnerabilities.
+
+### Optimize Token Efficiency
+
+The **[token-efficiency-audit](./plugins/token-efficiency-audit)** plugin enforces the efficiency dimension of the Orchestrated pillar. Every skill description, MCP tool definition, and scheduled task consumes tokens — a bloated system means slower responses, higher cost, and less room for actual work.
+
+**Install it:**
+```
+/plugin install token-efficiency-audit@msapps-plugins
+```
+
+**Run it:** Just say "run a token audit" or "optimize my tokens" — it scans your entire setup, identifies waste (bloated skill descriptions, unused MCP connectors, duplicate plugins, overly frequent tasks), and applies fixes with your approval. Typical savings: 20–50% reduction in per-session token overhead.
+
+The `sosa-compliance-checker` automatically invokes `token-efficiency-audit` during its Orchestrated pillar assessment (O6 checks), so both tools work together.
 
 ## What are Claude plugins?
 
@@ -89,6 +102,7 @@ Search for the plugin name (e.g. "mac-disk-cleaner") and click Install.
 | [**vm-disk-cleanup**](./plugins/vm-disk-cleanup) | Prevent and recover from disk-full errors in Cowork VMs & Claude Code sandboxes | `/plugin install vm-disk-cleanup@msapps-plugins` |
 | [**x-content-intelligence**](./plugins/x-content-intelligence) | Scrape X/Twitter for insights & generate community-matched content | `/plugin install x-content-intelligence@msapps-plugins` |
 | [**wordpress-mcp**](./plugins/wordpress-mcp) | Manage WordPress sites from Claude — posts, users, WooCommerce & more | `/plugin install wordpress-mcp@msapps-plugins` |
+| [**token-efficiency-audit**](./plugins/token-efficiency-audit) | Audit & optimize token usage across skills, tasks, plugins & MCPs — SOSA O6 enforcement | `/plugin install token-efficiency-audit@msapps-plugins` |
 | [**fix-chrome-connection**](./plugins/fix-chrome-connection) | Instantly fix stale Claude in Chrome connections caused by macOS user switching | `/plugin install fix-chrome-connection@msapps-plugins` |
 
 ## Setup
@@ -170,6 +184,13 @@ Set these environment variables after installing:
 | `WP_MCP_AUTH` | Base64-encoded `username:application-password` | `bWljaGFsOnhX...` |
 
 Requires the [WordPress MCP Adapter](https://developer.wordpress.org/news/2026/02/from-abilities-to-ai-agents-introducing-the-wordpress-mcp-adapter/) plugin installed on your WordPress 6.9+ site.
+
+### [Token Efficiency Audit](./plugins/token-efficiency-audit)
+Requires a Notion connector for storing audit reports and externalized data:
+- **Claude Code:** Add a Notion MCP server to your `.mcp.json` config
+- **Cowork:** Settings → Connectors → Notion
+
+Just say "run a token audit" — the plugin scans everything automatically.
 
 ### [Fix Chrome Connection](./plugins/fix-chrome-connection)
 No config needed. Run it when your Claude in Chrome extension stops responding (common after switching macOS users).
