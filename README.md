@@ -103,6 +103,8 @@ Search for the plugin name (e.g. "mac-disk-cleaner") and click Install.
 | [**x-content-intelligence**](./plugins/x-content-intelligence) | Scrape X/Twitter for insights & generate community-matched content | `/plugin install x-content-intelligence@msapps-plugins` |
 | [**wordpress-mcp**](./plugins/wordpress-mcp) | Manage WordPress sites from Claude — posts, users, WooCommerce & more | `/plugin install wordpress-mcp@msapps-plugins` |
 | [**token-efficiency-audit**](./plugins/token-efficiency-audit) | Audit & optimize token usage across skills, tasks, plugins & MCPs — SOSA O6 enforcement | `/plugin install token-efficiency-audit@msapps-plugins` |
+| [**cowork-session-fixer**](./plugins/cowork-session-fixer) | Fix stuck Cowork sessions — RPC "process already running" error, 5-tier automated recovery | `/plugin install cowork-session-fixer@msapps-plugins` |
+| [**sosa-compliance-checker**](./plugins/sosa-compliance-checker) | Audit your entire plugin ecosystem against the SOSA™ methodology — four-pillar compliance scoring | `/plugin install sosa-compliance-checker@msapps-plugins` |
 | [**fix-chrome-connection**](./plugins/fix-chrome-connection) | Instantly fix stale Claude in Chrome connections caused by macOS user switching | `/plugin install fix-chrome-connection@msapps-plugins` |
 
 ## Setup
@@ -194,6 +196,12 @@ Just say "run a token audit" — the plugin scans everything automatically.
 
 ### [Fix Chrome Connection](./plugins/fix-chrome-connection)
 No config needed. Run it when your Claude in Chrome extension stops responding (common after switching macOS users).
+
+### [Cowork Session Fixer](./plugins/cowork-session-fixer)
+No config needed. Install the plugin and tell Claude when you encounter an RPC error or stuck Cowork session. Claude walks you through a 5-tier recovery process, asking permission before any destructive actions.
+
+### [SOSA™ Compliance Checker](./plugins/sosa-compliance-checker)
+No setup required — read-only plugin. Just say "SOSA audit", "check my plugins for compliance", or "audit my plugins" — it scans your entire plugin ecosystem automatically.
 
 ## Support
 
