@@ -147,11 +147,13 @@ Requires the [WordPress MCP Adapter](https://developer.wordpress.org/news/2026/0
 ### Fix Chrome Connection
 No config needed. Run it when your Claude in Chrome extension stops responding (common after switching macOS users).
 
+| **sosa-compliance-checker** | Audit plugins against SOSA™ methodology — four-pillar compliance scoring & fix suggestions | L1 | `/plugin install sosa-compliance-checker@msapps-plugins` |
+
 ## SOSA™ Compliance Levels
 
 | Level | Description | Plugins |
 |:-----:|-------------|---------|
-| **L1** | Basic — role spec, pinned deps, no hardcoded secrets | youtube-transcriber, mac-disk-cleaner, vm-disk-cleanup, rtl-chat-fixer, fix-chrome-connection |
+| **L1** | Basic — role spec, pinned deps, no hardcoded secrets | youtube-transcriber, mac-disk-cleaner, vm-disk-cleanup, rtl-chat-fixer, fix-chrome-connection, sosa-compliance-checker |
 | **L2** | Standard — L1 + prompt injection scanning, audit logging, declared capabilities | google-drive-upload, toggl-time-tracker, session-backup, notion-memory, x-content-intelligence |
 | **L3** | Full — L2 + human approval gates, Plan→Act→Verify loop, trust gradient | whatsapp-mcp, apollo, apify-scraper, linkedin-scraper, wordpress-mcp |
 
