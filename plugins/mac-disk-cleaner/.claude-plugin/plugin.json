@@ -10,7 +10,8 @@
     "cleanup",
     "cache",
     "storage",
-    "space"
+    "space",
+    "sosa-agents"
   ],
   "homepage": "https://msapps.mobi/plugins",
   "platforms": [
@@ -25,9 +26,12 @@
     "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
     "pillars": {
       "supervised": "Only touches auto-regenerated caches, never personal files",
-      "orchestrated": "Scan → analyze → clean with size reporting",
+      "orchestrated": "Scan \u2192 analyze \u2192 clean with size reporting",
       "secured": "Local filesystem only, no network access, no deletions of user data",
       "agents": "R=disk-cleanup, T=local-filesystem+bash, M=none, P=scan-recommend-clean"
     }
-  }
+  },
+  "topics": [
+    "sosa-agents"
+  ]
 }

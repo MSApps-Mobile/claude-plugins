@@ -1,7 +1,7 @@
 {
   "name": "x-content-intelligence",
   "version": "0.1.0",
-  "description": "Scrape X (Twitter) for insights, analyze community trends and tone, and generate matching content — posts, replies, and content calendars. Powered by Apify.",
+  "description": "Scrape X (Twitter) for insights, analyze community trends and tone, and generate matching content \u2014 posts, replies, and content calendars. Powered by Apify.",
   "author": {
     "name": "MSApps"
   },
@@ -14,7 +14,8 @@
     "scraping",
     "insights",
     "social-media",
-    "apify"
+    "apify",
+    "sosa-agents"
   ],
   "sosa": {
     "compliant": true,
@@ -24,9 +25,12 @@
     "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
     "pillars": {
       "supervised": "Content review before posting",
-      "orchestrated": "Scrape → analyze → generate → post pipeline",
+      "orchestrated": "Scrape \u2192 analyze \u2192 generate \u2192 post pipeline",
       "secured": "Apify Actor for scraping, no direct X API credentials in plugin",
       "agents": "R=x-content-intelligence, T=Apify+X-API, M=content-analysis, P=scrape-analyze-generate-review"
     }
-  }
+  },
+  "topics": [
+    "sosa-agents"
+  ]
 }

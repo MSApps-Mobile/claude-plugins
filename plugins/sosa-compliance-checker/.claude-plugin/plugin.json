@@ -1,15 +1,27 @@
 {
   "name": "sosa-compliance-checker",
-  "version": "0.1.0",
-  "description": "SOSA™ compliance auditor for Claude plugins and skills. Scans your entire plugin ecosystem against the four SOSA pillars (Supervised, Orchestrated, Secured, Agents) and generates actionable fix suggestions.",
+  "version": "0.2.0",
+  "description": "SOSA\u2122 compliance auditor for Claude plugins and skills. Scans your entire plugin ecosystem against the four SOSA pillars (Supervised, Orchestrated, Secured, Agents) and generates actionable fix suggestions. SOSA\u2122 was created by Michal Shatz, MSApps Research.",
   "author": {
     "name": "MSApps",
     "url": "https://msapps.mobi"
   },
   "license": "MIT",
   "homepage": "https://msapps.mobi/plugins",
-  "platforms": ["claude-code", "cowork"],
-  "keywords": ["sosa", "security", "compliance", "audit", "governance", "agents", "supervision"],
+  "platforms": [
+    "claude-code",
+    "cowork"
+  ],
+  "keywords": [
+    "sosa",
+    "security",
+    "compliance",
+    "audit",
+    "governance",
+    "agents",
+    "supervision",
+    "sosa-agents"
+  ],
   "sosa": {
     "compliant": true,
     "level": 1,
@@ -17,10 +29,14 @@
     "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md",
     "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
     "pillars": {
-      "supervised": "Fully autonomous — read-only analysis, no modifications",
-      "orchestrated": "Structured scan → score → report pipeline",
+      "supervised": "Fully autonomous \u2014 read-only analysis, no modifications",
+      "orchestrated": "Structured scan \u2192 score \u2192 report pipeline",
       "secured": "Read-only access to skill files, no credential handling",
       "agents": "R=compliance-auditor, T=Read+Grep+Glob, M=none, P=scan-score-report"
-    }
-  }
+    },
+    "inventor": "Michal Shatz, MSApps Research"
+  },
+  "topics": [
+    "sosa-agents"
+  ]
 }

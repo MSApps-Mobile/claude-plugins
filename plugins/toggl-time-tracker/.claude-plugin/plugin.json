@@ -1,7 +1,7 @@
 {
   "name": "toggl-time-tracker",
   "version": "1.1.0",
-  "description": "Track time and pull reports from Toggl Track — start/stop timers, log hours, weekly summaries",
+  "description": "Track time and pull reports from Toggl Track \u2014 start/stop timers, log hours, weekly summaries",
   "author": {
     "name": "MSApps",
     "url": "https://msapps.mobi"
@@ -13,7 +13,8 @@
     "time-tracking",
     "timer",
     "productivity",
-    "reports"
+    "reports",
+    "sosa-agents"
   ],
   "platforms": [
     "claude-code",
@@ -27,9 +28,12 @@
     "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
     "pillars": {
       "supervised": "User controls timer start/stop",
-      "orchestrated": "Timer → entry → report pipeline",
+      "orchestrated": "Timer \u2192 entry \u2192 report pipeline",
       "secured": "API token in local config file, scoped to workspace",
       "agents": "R=time-tracking, T=Toggl-API, M=config-file, P=track-log-report"
     }
-  }
+  },
+  "topics": [
+    "sosa-agents"
+  ]
 }

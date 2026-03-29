@@ -14,7 +14,8 @@
     "google-drive",
     "automation",
     "scheduled",
-    "cowork"
+    "cowork",
+    "sosa-agents"
   ],
   "platforms": [
     "claude-code",
@@ -28,9 +29,12 @@
     "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
     "pillars": {
       "supervised": "User triggers or approves scheduled backups",
-      "orchestrated": "Collect → compress → upload pipeline with Google Drive",
+      "orchestrated": "Collect \u2192 compress \u2192 upload pipeline with Google Drive",
       "secured": "Uses google-drive-upload config, no additional credentials",
       "agents": "R=session-backup, T=Google-Drive+local-fs, M=backup-manifest, P=collect-compress-upload-verify"
     }
-  }
+  },
+  "topics": [
+    "sosa-agents"
+  ]
 }

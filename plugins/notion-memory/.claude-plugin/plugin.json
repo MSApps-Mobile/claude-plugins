@@ -1,6 +1,6 @@
 {
   "name": "notion-memory",
-  "description": "Long-term memory for Claude — remembers preferences, decisions, and project context across sessions using Notion",
+  "description": "Long-term memory for Claude \u2014 remembers preferences, decisions, and project context across sessions using Notion",
   "version": "1.1.0",
   "author": {
     "name": "MSApps",
@@ -12,7 +12,8 @@
     "memory",
     "context",
     "preferences",
-    "sessions"
+    "sessions",
+    "sosa-agents"
   ],
   "platforms": [
     "claude-code",
@@ -30,5 +31,8 @@
       "secured": "Notion OAuth connector, scoped page access",
       "agents": "R=long-term-memory, T=Notion-API, M=Notion-pages, P=store-retrieve-update"
     }
-  }
+  },
+  "topics": [
+    "sosa-agents"
+  ]
 }

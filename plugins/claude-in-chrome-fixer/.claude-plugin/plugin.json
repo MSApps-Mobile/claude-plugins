@@ -11,7 +11,8 @@
     "mcp",
     "connection",
     "automation",
-    "maintenance"
+    "maintenance",
+    "sosa-agents"
   ],
   "repository": "https://github.com/MSApps-Mobile/claude-plugins",
   "sosa": {
@@ -21,10 +22,13 @@
     "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md",
     "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
     "pillars": {
-      "supervised": "Fully autonomous — read-only diagnostic",
+      "supervised": "Fully autonomous \u2014 read-only diagnostic",
       "orchestrated": "Single-step fix, no dependencies",
       "secured": "Local-only, no external access",
       "agents": "R=chrome-diagnostics, T=local-process, M=none, P=detect-and-fix"
     }
-  }
+  },
+  "topics": [
+    "sosa-agents"
+  ]
 }

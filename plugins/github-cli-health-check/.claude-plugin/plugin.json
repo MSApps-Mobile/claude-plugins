@@ -1,9 +1,25 @@
 {
   "name": "github-cli-health-check",
   "version": "0.2.0",
-  "description": "GitHub CLI health check — verifies gh is installed, authenticated, can list repos, and has sufficient API rate limit. Produces a structured ✅/❌ report.",
+  "description": "GitHub CLI health check \u2014 verifies gh is installed, authenticated, can list repos, and has sufficient API rate limit. Produces a structured \u2705/\u274c report.",
   "author": {
     "name": "MSApps"
   },
-  "keywords": ["github", "gh", "cli", "health-check", "monitoring", "msapps"]
+  "keywords": [
+    "github",
+    "gh",
+    "cli",
+    "health-check",
+    "monitoring",
+    "msapps",
+    "sosa-agents"
+  ],
+  "topics": [
+    "sosa-agents"
+  ],
+  "sosa": {
+    "compliant": true,
+    "level": 2,
+    "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md"
+  }
 }

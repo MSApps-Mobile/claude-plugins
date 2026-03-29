@@ -10,7 +10,8 @@
     "mail",
     "health-check",
     "msapps",
-    "monitoring"
+    "monitoring",
+    "sosa-agents"
   ],
   "sosa": {
     "level": 2,
@@ -18,5 +19,8 @@
     "orchestrated": "R=zoho-mail-health-check. T=zohomail MCP tools + Python fallback. M=none. P=check-auth \u2192 list-messages \u2192 test-send \u2192 report.",
     "secured": "No hardcoded credentials. Uses env vars for OAuth tokens. Credential references use placeholders.",
     "agents": "R=mail-health-checker, T=zohomail_* MCP tools, M=none, P=sequential-health-check"
-  }
+  },
+  "topics": [
+    "sosa-agents"
+  ]
 }

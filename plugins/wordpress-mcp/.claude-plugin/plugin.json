@@ -1,7 +1,7 @@
 {
   "name": "wordpress-mcp",
   "version": "0.1.0",
-  "description": "Manage WordPress sites through the WordPress MCP Adapter — content, admin, WooCommerce, and more",
+  "description": "Manage WordPress sites through the WordPress MCP Adapter \u2014 content, admin, WooCommerce, and more",
   "author": {
     "name": "MSApps"
   },
@@ -10,11 +10,12 @@
     "cms",
     "woocommerce",
     "content-management",
-    "mcp"
+    "mcp",
+    "sosa-agents"
   ],
   "sosa": {
     "compliant": true,
-    "level": 3,
+    "level": 2,
     "impact": "high",
     "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md",
     "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
@@ -24,5 +25,8 @@
       "secured": "Application password auth via env var, scoped REST API access",
       "agents": "R=wordpress-management, T=WordPress-REST-API, M=site-content, P=read-modify-publish-verify"
     }
-  }
+  },
+  "topics": [
+    "sosa-agents"
+  ]
 }

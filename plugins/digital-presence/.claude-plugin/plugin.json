@@ -3,5 +3,16 @@
   "version": "1.0.0",
   "description": "Manage and optimize online presence across all major social platforms",
   "author": "MSApps",
-  "impact": "medium"
+  "impact": "medium",
+  "topics": [
+    "sosa-agents"
+  ],
+  "sosa": {
+    "compliant": true,
+    "level": 2,
+    "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md"
+  },
+  "keywords": [
+    "sosa-agents"
+  ]
 }
