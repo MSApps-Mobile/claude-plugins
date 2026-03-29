@@ -32,7 +32,7 @@ Body: each lead on its own numbered line:
 End with: "תגובה למייל הזה = הוראות לטיפול בלידים."
 
 ### 4. WhatsApp Reminder (after 5 minutes)
-Wait 5 minutes after sending the email, then send a **WhatsApp message** to Michal (972549400506) with a short summary: how many leads, key deadlines today, and a prompt to reply to the email with instructions.
+Wait 5 minutes after sending the email, then send a **WhatsApp message** to Michal (972544255549) with a short summary: how many leads, key deadlines today, and a prompt to reply to the email with instructions.
 
 ### 5. Check for Reply (once — do NOT loop)
 After sending the WhatsApp, check Gmail (`gmail_search_messages`) **once** for a reply to the lead review email. If no reply found — **move directly to Step 7**. Do NOT keep polling or waiting.
