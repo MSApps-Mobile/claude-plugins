@@ -2,7 +2,7 @@
   "mcpServers": {
     "linkedin-scraper": {
       "command": "uvx",
-      "args": ["linkedin-scraper-mcp"],
+      "args": ["linkedin-scraper-mcp==4.7.0"],
       "env": {}
     }
   }
