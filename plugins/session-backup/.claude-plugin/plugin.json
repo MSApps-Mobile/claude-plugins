@@ -7,6 +7,30 @@
     "url": "https://msapps.mobi"
   },
   "license": "MIT",
-  "keywords": ["backup", "session", "skills", "google-drive", "automation", "scheduled", "cowork"],
-  "platforms": ["claude-code", "cowork"]
+  "keywords": [
+    "backup",
+    "session",
+    "skills",
+    "google-drive",
+    "automation",
+    "scheduled",
+    "cowork"
+  ],
+  "platforms": [
+    "claude-code",
+    "cowork"
+  ],
+  "sosa": {
+    "compliant": true,
+    "level": 2,
+    "impact": "medium",
+    "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md",
+    "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
+    "pillars": {
+      "supervised": "User triggers or approves scheduled backups",
+      "orchestrated": "Collect → compress → upload pipeline with Google Drive",
+      "secured": "Uses google-drive-upload config, no additional credentials",
+      "agents": "R=session-backup, T=Google-Drive+local-fs, M=backup-manifest, P=collect-compress-upload-verify"
+    }
+  }
 }

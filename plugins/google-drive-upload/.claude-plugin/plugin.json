@@ -4,7 +4,28 @@
   "version": "1.2.0",
   "author": "MSApps (https://msapps.mobi)",
   "license": "MIT",
-  "keywords": ["google-drive", "upload", "files", "productivity"],
+  "keywords": [
+    "google-drive",
+    "upload",
+    "files",
+    "productivity"
+  ],
   "homepage": "https://msapps.mobi/plugins",
-  "platforms": ["claude-code", "cowork"]
+  "platforms": [
+    "claude-code",
+    "cowork"
+  ],
+  "sosa": {
+    "compliant": true,
+    "level": 2,
+    "impact": "medium",
+    "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md",
+    "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
+    "pillars": {
+      "supervised": "User confirms file before upload",
+      "orchestrated": "Config read → file identify → upload → report",
+      "secured": "Credentials in local config file, never in skill. Apps Script URL scoped to user account",
+      "agents": "R=file-upload, T=Google-Apps-Script-API, M=config-file, P=encode-upload-verify"
+    }
+  }
 }

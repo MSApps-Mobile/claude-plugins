@@ -4,6 +4,12 @@ Free plugins for Claude by [MSApps](https://msapps.mobi).
 
 All plugins work in both **Claude Code** (CLI) and **Cowork** (desktop app).
 
+### SOSA™ Compliant
+
+All MSApps plugins implement the [SOSA™ (Supervised Orchestrated Secured Agents)](docs/SOSA.md) methodology — a four-pillar framework for production-grade autonomous AI operations. Each plugin declares its SOSA compliance level, impact classification, and how it implements supervision, orchestration, security, and agent design principles.
+
+> **Read the whitepaper:** [SOSA™ — Supervised Orchestrated Secured Agents](docs/sosa-whitepaper.pdf) (Shatz, 2026)
+
 ## What are Claude plugins?
 
 Plugins add new skills to Claude — things like uploading files to Google Drive, tracking time, transcribing YouTube videos, and more. Once installed, you don't need to learn any commands — just ask Claude naturally (e.g. "upload this to Drive" or "start a timer for client meeting") and the plugin kicks in automatically.
@@ -40,23 +46,23 @@ Search for the plugin name (e.g. "mac-disk-cleaner") and click Install.
 
 ## Available Plugins
 
-| Plugin | Description | Install |
-|--------|-------------|---------|
-| **google-drive-upload** | Upload files to Google Drive — unlimited, free | `/plugin install google-drive-upload@msapps-plugins` |
-| **toggl-time-tracker** | Track time with Toggl — start/stop timers, reports | `/plugin install toggl-time-tracker@msapps-plugins` |
-| **youtube-transcriber** | Transcribe YouTube videos & playlists — no API key needed | `/plugin install youtube-transcriber@msapps-plugins` |
-| **session-backup** | Automated daily backups of sessions, skills & configs to Google Drive | `/plugin install session-backup@msapps-plugins` |
-| **notion-memory** | Long-term memory for Claude across sessions via Notion | `/plugin install notion-memory@msapps-plugins` |
-| **mac-disk-cleaner** | Reclaim disk space on macOS — clean caches, find large files | `/plugin install mac-disk-cleaner@msapps-plugins` |
-| **whatsapp-mcp** | Connect Claude to WhatsApp — search, read, send messages & business outreach | `/plugin install whatsapp-mcp@msapps-plugins` |
-| **linkedin-scraper** | Scrape LinkedIn profiles, companies & jobs — 5–10x cheaper than Chrome | `/plugin install linkedin-scraper@msapps-plugins` |
-| **apify-scraper** | Full Apify web scraping platform — run Actors, manage datasets & schedules | `/plugin install apify-scraper@msapps-plugins` |
-| **apollo** | Prospect leads, enrich contacts & load outreach sequences with Apollo.io | `/plugin install apollo@msapps-plugins` |
-| **rtl-chat-fixer** | Fix jumbled RTL/LTR text mixing (Hebrew, Arabic, Persian) in chat | `/plugin install rtl-chat-fixer@msapps-plugins` |
-| **vm-disk-cleanup** | Prevent and recover from disk-full errors in Cowork VMs & Claude Code sandboxes | `/plugin install vm-disk-cleanup@msapps-plugins` |
-| **x-content-intelligence** | Scrape X/Twitter for insights & generate community-matched content | `/plugin install x-content-intelligence@msapps-plugins` |
-| **wordpress-mcp** | Manage WordPress sites from Claude — posts, users, WooCommerce & more | `/plugin install wordpress-mcp@msapps-plugins` |
-| **fix-chrome-connection** | Instantly fix stale Claude in Chrome connections caused by macOS user switching | `/plugin install fix-chrome-connection@msapps-plugins` |
+| Plugin | Description | SOSA | Install |
+|--------|-------------|:----:|---------|
+| **google-drive-upload** | Upload files to Google Drive — unlimited, free | L2 | `/plugin install google-drive-upload@msapps-plugins` |
+| **toggl-time-tracker** | Track time with Toggl — start/stop timers, reports | L2 | `/plugin install toggl-time-tracker@msapps-plugins` |
+| **youtube-transcriber** | Transcribe YouTube videos & playlists — no API key needed | L1 | `/plugin install youtube-transcriber@msapps-plugins` |
+| **session-backup** | Automated daily backups of sessions, skills & configs to Google Drive | L2 | `/plugin install session-backup@msapps-plugins` |
+| **notion-memory** | Long-term memory for Claude across sessions via Notion | L2 | `/plugin install notion-memory@msapps-plugins` |
+| **mac-disk-cleaner** | Reclaim disk space on macOS — clean caches, find large files | L1 | `/plugin install mac-disk-cleaner@msapps-plugins` |
+| **whatsapp-mcp** | Connect Claude to WhatsApp — search, read, send messages & business outreach | L3 | `/plugin install whatsapp-mcp@msapps-plugins` |
+| **linkedin-scraper** | Scrape LinkedIn profiles, companies & jobs — 5–10x cheaper than Chrome | L3 | `/plugin install linkedin-scraper@msapps-plugins` |
+| **apify-scraper** | Full Apify web scraping platform — run Actors, manage datasets & schedules | L3 | `/plugin install apify-scraper@msapps-plugins` |
+| **apollo** | Prospect leads, enrich contacts & load outreach sequences with Apollo.io | L3 | `/plugin install apollo@msapps-plugins` |
+| **rtl-chat-fixer** | Fix jumbled RTL/LTR text mixing (Hebrew, Arabic, Persian) in chat | L1 | `/plugin install rtl-chat-fixer@msapps-plugins` |
+| **vm-disk-cleanup** | Prevent and recover from disk-full errors in Cowork VMs & Claude Code sandboxes | L1 | `/plugin install vm-disk-cleanup@msapps-plugins` |
+| **x-content-intelligence** | Scrape X/Twitter for insights & generate community-matched content | L2 | `/plugin install x-content-intelligence@msapps-plugins` |
+| **wordpress-mcp** | Manage WordPress sites from Claude — posts, users, WooCommerce & more | L3 | `/plugin install wordpress-mcp@msapps-plugins` |
+| **fix-chrome-connection** | Instantly fix stale Claude in Chrome connections caused by macOS user switching | L1 | `/plugin install fix-chrome-connection@msapps-plugins` |
 
 ## Setup
 
@@ -140,6 +146,16 @@ Requires the [WordPress MCP Adapter](https://developer.wordpress.org/news/2026/0
 
 ### Fix Chrome Connection
 No config needed. Run it when your Claude in Chrome extension stops responding (common after switching macOS users).
+
+## SOSA™ Compliance Levels
+
+| Level | Description | Plugins |
+|:-----:|-------------|---------|
+| **L1** | Basic — role spec, pinned deps, no hardcoded secrets | youtube-transcriber, mac-disk-cleaner, vm-disk-cleanup, rtl-chat-fixer, fix-chrome-connection |
+| **L2** | Standard — L1 + prompt injection scanning, audit logging, declared capabilities | google-drive-upload, toggl-time-tracker, session-backup, notion-memory, x-content-intelligence |
+| **L3** | Full — L2 + human approval gates, Plan→Act→Verify loop, trust gradient | whatsapp-mcp, apollo, apify-scraper, linkedin-scraper, wordpress-mcp |
+
+Learn more: [SOSA™ Methodology](docs/SOSA.md) · [Whitepaper (PDF)](docs/sosa-whitepaper.pdf)
 
 ## Support
 

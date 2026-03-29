@@ -4,7 +4,30 @@
   "version": "0.2.0",
   "author": "MSApps (https://msapps.mobi)",
   "license": "MIT",
-  "keywords": ["mac", "disk", "cleanup", "cache", "storage", "space"],
+  "keywords": [
+    "mac",
+    "disk",
+    "cleanup",
+    "cache",
+    "storage",
+    "space"
+  ],
   "homepage": "https://msapps.mobi/plugins",
-  "platforms": ["claude-code", "cowork"]
+  "platforms": [
+    "claude-code",
+    "cowork"
+  ],
+  "sosa": {
+    "compliant": true,
+    "level": 1,
+    "impact": "low",
+    "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md",
+    "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
+    "pillars": {
+      "supervised": "Only touches auto-regenerated caches, never personal files",
+      "orchestrated": "Scan → analyze → clean with size reporting",
+      "secured": "Local filesystem only, no network access, no deletions of user data",
+      "agents": "R=disk-cleanup, T=local-filesystem+bash, M=none, P=scan-recommend-clean"
+    }
+  }
 }

@@ -9,5 +9,26 @@
   "repository": "https://github.com/apolloio/apollo-mcp-plugin",
   "homepage": "https://www.apollo.io/",
   "license": "MIT",
-  "keywords": ["apollo", "sales", "prospecting", "icp", "enrichment", "sequences", "mcp"]
+  "keywords": [
+    "apollo",
+    "sales",
+    "prospecting",
+    "icp",
+    "enrichment",
+    "sequences",
+    "mcp"
+  ],
+  "sosa": {
+    "compliant": true,
+    "level": 3,
+    "impact": "high",
+    "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md",
+    "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
+    "pillars": {
+      "supervised": "Confirmation before sequence enrollment and bulk operations",
+      "orchestrated": "Enrichment→Create→Enroll pipeline with structured handoffs",
+      "secured": "OAuth authentication, scoped API access, contact deduplication",
+      "agents": "R=lead-enrichment+outreach, T=Apollo API, M=CRM contacts, P=ICP-matching pipeline"
+    }
+  }
 }

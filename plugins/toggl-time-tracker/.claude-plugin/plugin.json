@@ -8,6 +8,28 @@
   },
   "homepage": "https://msapps.mobi/plugins",
   "license": "MIT",
-  "keywords": ["toggl", "time-tracking", "timer", "productivity", "reports"],
-  "platforms": ["claude-code", "cowork"]
+  "keywords": [
+    "toggl",
+    "time-tracking",
+    "timer",
+    "productivity",
+    "reports"
+  ],
+  "platforms": [
+    "claude-code",
+    "cowork"
+  ],
+  "sosa": {
+    "compliant": true,
+    "level": 2,
+    "impact": "medium",
+    "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md",
+    "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
+    "pillars": {
+      "supervised": "User controls timer start/stop",
+      "orchestrated": "Timer → entry → report pipeline",
+      "secured": "API token in local config file, scoped to workspace",
+      "agents": "R=time-tracking, T=Toggl-API, M=config-file, P=track-log-report"
+    }
+  }
 }

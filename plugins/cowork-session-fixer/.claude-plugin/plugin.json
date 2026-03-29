@@ -16,5 +16,18 @@
     "orphaned process",
     "stuck session",
     "process already running"
-  ]
+  ],
+  "sosa": {
+    "compliant": true,
+    "level": 1,
+    "impact": "low",
+    "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md",
+    "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
+    "pillars": {
+      "supervised": "Fully autonomous — local diagnostic and repair",
+      "orchestrated": "Pattern-matched error detection with structured fix steps",
+      "secured": "Local filesystem only, no external access",
+      "agents": "R=session-recovery, T=local-files+bash, M=error-patterns, P=detect-diagnose-fix"
+    }
+  }
 }

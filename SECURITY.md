@@ -1,5 +1,9 @@
 # Security Guide for Claude Plugins
 
+> This security guide implements the **Secured** pillar of the [SOSA™ methodology](docs/SOSA.md). In SOSA, security is not a perimeter — it is a property of every layer. Each agent runs with scoped credentials, zero-trust network boundaries, and cryptographically verifiable audit trails.
+>
+> See the full framework: [SOSA™ — Supervised Orchestrated Secured Agents](docs/sosa-whitepaper.pdf)
+
 ## Prompt Injection Scanner
 
 Autonomous skills that process external data (emails, LinkedIn messages, calendar events, WhatsApp messages, web-scraped content) **must** scan incoming text for prompt injection patterns before acting on it.
@@ -79,6 +83,17 @@ All MCP servers using `uvx` or `npx` must pin exact versions to prevent supply c
 ### WhatsApp bridge
 
 The WhatsApp MCP bridge runs on `localhost:8080` with no authentication. This is acceptable for single-user machines but be aware that any local process can send messages through it.
+
+## SOSA Agent Security Model
+
+Each plugin is defined as a SOSA agent tuple **A = (R, T, M, P)**:
+
+- **R (Role Specification)** — Defined in SKILL.md. Constrains what the agent can do. A financial reconciliation agent cannot be prompt-injected into sending emails because email is not in its role spec.
+- **T (Tool Manifest)** — Defined in .mcp.json and connector requirements. The agent can only access tools explicitly declared in its manifest. No capability inheritance from other agents.
+- **M (Memory)** — Each agent's persistence is scoped to its declared stores (Notion pages, config files, calendar events). No shared mutable state between agents unless explicitly orchestrated.
+- **P (Planning Policy)** — The Plan→Act→Verify loop ensures every action is evaluated against the role spec before execution, and outcomes are verified against success criteria.
+
+Every plugin's `plugin.json` now includes a `sosa` field declaring its compliance level, impact classification, and pillar implementation details.
 
 ## Reporting Security Issues
 

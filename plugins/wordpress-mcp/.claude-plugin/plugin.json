@@ -5,5 +5,24 @@
   "author": {
     "name": "MSApps"
   },
-  "keywords": ["wordpress", "cms", "woocommerce", "content-management", "mcp"]
+  "keywords": [
+    "wordpress",
+    "cms",
+    "woocommerce",
+    "content-management",
+    "mcp"
+  ],
+  "sosa": {
+    "compliant": true,
+    "level": 3,
+    "impact": "high",
+    "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md",
+    "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
+    "pillars": {
+      "supervised": "Confirmation for publish and destructive operations",
+      "orchestrated": "Content CRUD with structured API responses",
+      "secured": "Application password auth via env var, scoped REST API access",
+      "agents": "R=wordpress-management, T=WordPress-REST-API, M=site-content, P=read-modify-publish-verify"
+    }
+  }
 }

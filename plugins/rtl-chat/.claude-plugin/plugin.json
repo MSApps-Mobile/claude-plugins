@@ -4,5 +4,18 @@
   "description": "---",
   "author": {
     "name": "MSApps"
+  },
+  "sosa": {
+    "compliant": true,
+    "level": 1,
+    "impact": "low",
+    "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md",
+    "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
+    "pillars": {
+      "supervised": "Fully autonomous — text formatting only",
+      "orchestrated": "Inline text processing, no external calls",
+      "secured": "No external access, pure text transformation",
+      "agents": "R=rtl-text-formatting, T=none, M=none, P=detect-and-format"
+    }
   }
 }

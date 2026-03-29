@@ -7,5 +7,26 @@
   },
   "repository": "https://github.com/MSApps-Mobile/claude-plugins",
   "license": "MIT",
-  "keywords": ["x", "twitter", "content", "scraping", "insights", "social-media", "apify"]
+  "keywords": [
+    "x",
+    "twitter",
+    "content",
+    "scraping",
+    "insights",
+    "social-media",
+    "apify"
+  ],
+  "sosa": {
+    "compliant": true,
+    "level": 2,
+    "impact": "medium",
+    "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md",
+    "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
+    "pillars": {
+      "supervised": "Content review before posting",
+      "orchestrated": "Scrape → analyze → generate → post pipeline",
+      "secured": "Apify Actor for scraping, no direct X API credentials in plugin",
+      "agents": "R=x-content-intelligence, T=Apify+X-API, M=content-analysis, P=scrape-analyze-generate-review"
+    }
+  }
 }
