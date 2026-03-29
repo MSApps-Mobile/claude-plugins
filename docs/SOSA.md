@@ -123,7 +123,7 @@ The `sosa-compliance-checker` runs the `token-efficiency-audit` as part of its O
 
 ## Reference Implementation
 
-[OpsAgent](https://opsagent.ai) by MSApps is the first commercial implementation of the SOSA framework, operating in production across 18+ department types since early 2025.
+[OpsAgent](https://opsagent.netlify.app) by MSApps is the first commercial implementation of the SOSA framework, operating in production across 18+ department types since early 2025.
 
 ---
 
