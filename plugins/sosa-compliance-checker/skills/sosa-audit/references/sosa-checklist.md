@@ -53,6 +53,15 @@
 - [ ] Backward compatibility maintained
 - [ ] Breaking changes documented
 
+### Platform Compliance (Claude Code + Cowork)
+- [ ] Plugin declares supported platforms in plugin.json ("platforms": ["claude-code", "cowork"])
+- [ ] Skill works correctly in headless mode (Claude Code CLI) without GUI-only dependencies
+- [ ] Skill works correctly in interactive mode (Cowork desktop) using available UI tools
+- [ ] File paths are platform-aware (sandbox paths in Cowork vs local paths in Claude Code)
+- [ ] MCP tools used by the skill are available on both platforms, or skill gracefully degrades
+- [ ] Platform-specific features (computer use, Chrome extension) declared as optional with fallback
+- [ ] Skill does not assume a specific runtime environment — checks and adapts
+
 ### Resilience & Recovery
 - [ ] Failover mechanisms implemented
 - [ ] Recovery time objectives (RTO) defined

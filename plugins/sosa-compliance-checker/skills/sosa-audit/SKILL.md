@@ -48,6 +48,7 @@ Compliance is assessed at three levels:
 - **Routing**: Check task distribution and load balancing
 - **Dependencies**: Verify inter-system dependencies and sequencing
 - **Recovery**: Test failover and recovery mechanisms
+- **Platform Compliance**: Verify plugin works on both Claude Code (CLI) and Cowork (desktop) — declares platforms, handles path differences, degrades gracefully when platform-specific tools are unavailable
 
 ### Step 3: Secured Controls Assessment
 - **Authentication**: Verify identity verification mechanisms

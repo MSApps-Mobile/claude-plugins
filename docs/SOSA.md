@@ -45,6 +45,15 @@ Agents coordinate through structured registries and a DAG (directed acyclic grap
   - Unused MCP connectors and duplicate plugins are eliminated — idle tools waste context budget
   - Scheduled task frequency matches the actual cadence of change, not an arbitrary interval
   - The [`token-efficiency-audit`](../plugins/token-efficiency-audit) plugin provides automated auditing and optimization of token usage across the entire system
+- **Platform compliance** is enforced — every plugin must work correctly in both Claude Code (CLI) and Cowork (desktop) environments, declaring supported platforms and handling platform-specific differences gracefully
+
+**Platform compliance is an orchestration requirement:**
+An orchestrated plugin must be compliant with the platforms it runs on. For the SOSA ecosystem, this means every plugin and skill must be **Claude Code compliant** and **Cowork compliant**. A plugin that only works in one environment but fails or degrades in the other is not properly orchestrated — it breaks the coordination contract. Specifically:
+- Plugins must declare their supported platforms in `plugin.json` (`"platforms": ["claude-code", "cowork"]`)
+- Skills must work correctly in both headless (Claude Code CLI) and interactive (Cowork desktop) modes
+- File paths, tool availability, and user interaction patterns differ between platforms — skills must handle both gracefully
+- MCP tools used by the skill must be available or gracefully degradable on both platforms
+- Skills that require platform-specific features (e.g., computer use, Chrome extension) must declare this and provide fallback behavior for the other platform
 
 **Why efficiency is an orchestration concern:**
 A multi-agent system's context window is a shared finite resource. Every token consumed by a bloated skill description, a redundant MCP connector, or a duplicate plugin is a token unavailable for actual work. True orchestration means not just coordinating what agents do, but ensuring the infrastructure that supports them — system prompts, tool definitions, scheduled executions — operates at minimum viable cost. An agent system that wastes 30% of its context window on unused tool definitions is as poorly orchestrated as one with race conditions between concurrent tasks.
