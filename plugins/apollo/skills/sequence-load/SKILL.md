@@ -56,7 +56,7 @@ If no match or multiple matches:
 Use `mcp__claude_ai_Apollo_MCP__apollo_email_accounts_index` to list linked email accounts.
 
 - If one account → use automatically
-- If multiple → show them and ask which to send from (MSApps primary: michal@msapps.mobi)
+- If multiple → show them and ask which to send from (use your primary email account)
 
 ## Step 4 — Find Matching People
 
