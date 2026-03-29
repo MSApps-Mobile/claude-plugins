@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "zoho-mail": {
+      "command": "node",
+      "args": ["/Users/michalshatz/Documents/Claude/mcps biz/zoho-mail-mcp-server/dist/index.js"],
+      "env": {
+        "ZOHO_CLIENT_ID": "1000.9O2BOWZ45ICOS4AKYY66IX2DQNXJTR",
+        "ZOHO_CLIENT_SECRET": "6866eac4c4d005e80c0f95a65fb04b4ffb04cc9c43",
+        "ZOHO_ACCOUNTS": "[{\"email\":\"michal@msapps.mobi\",\"refreshToken\":\"1000.02c3b4cdcb6684627dd5ecc514fd94e8.b64c1480a334f294819a9f7352f1cd2b\",\"clientId\":\"1000.9O2BOWZ45ICOS4AKYY66IX2DQNXJTR\",\"clientSecret\":\"6866eac4c4d005e80c0f95a65fb04b4ffb04cc9c43\"},{\"email\":\"jobs@msapps.mobi\",\"refreshToken\":\"1000.96db7db43050e087ea17c232fbf44a8f.1b4c24666a2523a6672c4da0fedc81b5\",\"clientId\":\"1000.F1VIVIU9Q7XZYQLJNUJJJVF6SJK3EJ\",\"clientSecret\":\"609778af70efce1aa284516ee604f94a7871b672dc\"}]"
+      }
+    }
+  }
+}

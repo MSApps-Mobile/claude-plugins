@@ -1,0 +1,9 @@
+{
+  "name": "zoho-mail-health",
+  "version": "0.1.0",
+  "description": "Daily Zoho Mail health check — verifies both MSApps accounts are reachable, reads recent inbox messages, sends test emails, and produces a status report.",
+  "author": {
+    "name": "MSApps"
+  },
+  "keywords": ["zoho", "mail", "health-check", "msapps", "monitoring"]
+}
