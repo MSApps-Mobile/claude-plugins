@@ -1,0 +1,20 @@
+{
+  "name": "cowork-session-fixer",
+  "version": "1.0.0",
+  "description": "Fixes the 'RPC error: process with name already running' bug in Claude Cowork by detecting and clearing orphaned session processes. Works on Windows and macOS.",
+  "author": {
+    "name": "MSApps",
+    "url": "https://msapps.mobi"
+  },
+  "homepage": "https://msapps.mobi/plugins",
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "keywords": [
+    "cowork",
+    "fix",
+    "session",
+    "RPC error",
+    "orphaned process",
+    "stuck session",
+    "process already running"
+  ]
+}
