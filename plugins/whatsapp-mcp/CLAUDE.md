@@ -12,23 +12,7 @@ Connect Claude directly to WhatsApp for searching, reading, sending messages, an
 
 - **whatsapp-messages**: Search and read message history, retrieve contact conversations
 - **whatsapp-send**: Send messages and media files (images, documents, audio)
-- **whatsapp-outreach**: Business outreach templates and campaign management
-- **conversation-memory**: Access persistent per-contact memory and learning database
 
-## Memory System
-
-Each contact has a learnable profile that improves over time:
-
-- **Preferred language**: Auto-detected from interactions
-- **Tone & style**: Business, casual, technical, creative
-- **Relationship level**: Friend, client, colleague, prospect
-- **Responds well to**: Communication patterns that get engagement
-- **Avoid**: Topics or approaches that don't work
-- **Conversation log**: Full history for context
-- **Key learnings**: Important facts about the contact
-- **Success score**: Engagement metrics
-
-**Learning Curve**: 1st interaction (baseline) → 2-3 interactions (patterns emerge) → 5+ interactions (deep understanding)
 
 ## Configuration
 
@@ -48,16 +32,8 @@ Each contact has a learnable profile that improves over time:
 
 - **Analyze community before outreach**: Search similar contacts' conversations
 - **Send personalized messages**: Leverage memory system for tailored tone
-- **Business outreach campaigns**: Use templates, track engagement
-- **Lead followup**: Conversation memory tracks communication history
 - **Multi-language support**: Hebrew, English, and any language WhatsApp supports
 
 ## Best Practices
 
-- Use conversation memory to personalize messages and improve response rates
-- Review success scores to identify which approaches work best per contact
 - Start with business-neutral tone until relationship is established
-- Log key learnings after important conversations
-- Store lead/contact docs in Google Drive for team collaboration
-- Link calendar availability for scheduling follow-ups
-- Supports any language, but Hebrew and English have templated outreach flows

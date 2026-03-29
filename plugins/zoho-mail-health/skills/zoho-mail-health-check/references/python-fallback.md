@@ -2,28 +2,38 @@
 
 Use this when `zohomail_*` MCP tools are unavailable in the session (e.g. MCP server failed to start).
 
-Run the script below via `Bash` tool using `python3`. It directly calls the Zoho OAuth and Mail APIs.
+## Setup
+
+Before using the fallback script, configure your credentials as environment variables:
+
+```bash
+export ZOHO_ACCOUNT1_EMAIL="your-email@example.com"
+export ZOHO_ACCOUNT1_CLIENT_ID="your-client-id"
+export ZOHO_ACCOUNT1_CLIENT_SECRET="your-client-secret"
+export ZOHO_ACCOUNT1_REFRESH_TOKEN="your-refresh-token"
+export ZOHO_ACCOUNT1_INBOX_FOLDER_ID="your-folder-id"
+```
+
+## Script
 
 ```python
-import requests, json
+import requests, json, os
 from datetime import datetime
 
-ACCOUNTS = [
-    {
-        "email": "michal@msapps.mobi",
-        "client_id": "1000.9O2BOWZ45ICOS4AKYY66IX2DQNXJTR",
-        "client_secret": "6866eac4c4d005e80c0f95a65fb04b4ffb04cc9c43",
-        "refresh_token": "1000.02c3b4cdcb6684627dd5ecc514fd94e8.b64c1480a334f294819a9f7352f1cd2b",
-        "inbox_folder_id": "4226009000000008013"
-    },
-    {
-        "email": "jobs@msapps.mobi",
-        "client_id": "1000.F1VIVIU9Q7XZYQLJNUJJJVF6SJK3EJ",
-        "client_secret": "609778af70efce1aa284516ee604f94a7871b672dc",
-        "refresh_token": "1000.96db7db43050e087ea17c232fbf44a8f.1b4c24666a2523a6672c4da0fedc81b5",
-        "inbox_folder_id": "8368231000000008014"
-    }
-]
+def get_account_config():
+    """Load account config from environment variables."""
+    accounts = []
+    i = 1
+    while os.getenv(f"ZOHO_ACCOUNT{i}_EMAIL"):
+        accounts.append({
+            "email": os.getenv(f"ZOHO_ACCOUNT{i}_EMAIL"),
+            "client_id": os.getenv(f"ZOHO_ACCOUNT{i}_CLIENT_ID"),
+            "client_secret": os.getenv(f"ZOHO_ACCOUNT{i}_CLIENT_SECRET"),
+            "refresh_token": os.getenv(f"ZOHO_ACCOUNT{i}_REFRESH_TOKEN"),
+            "inbox_folder_id": os.getenv(f"ZOHO_ACCOUNT{i}_INBOX_FOLDER_ID"),
+        })
+        i += 1
+    return accounts
 
 def get_access_token(acct):
     r = requests.post("https://accounts.zoho.com/oauth/v2/token", data={
@@ -48,19 +58,12 @@ def list_messages(token, account_id, folder_id, limit=5):
         params={"folderId": folder_id, "limit": limit, "sortorder": "false"}, timeout=15)
     return r.json()
 
-def send_message(token, account_id, from_email, to_email, subject, body):
-    r = requests.post(f"https://mail.zoho.com/api/accounts/{account_id}/messages",
-        headers={"Authorization": f"Zoho-oauthtoken {token}", "Content-Type": "application/json"},
-        json={"fromAddress": from_email, "toAddress": to_email, "subject": subject,
-              "content": body, "mailFormat": "plaintext"}, timeout=15)
-    return r.json()
-
 now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 results = {}
 
-for acct in ACCOUNTS:
+for acct in get_account_config():
     email = acct["email"]
-    result = {"token": "❌", "messages": "❌", "send": "❌", "subjects": []}
+    result = {"token": "❌", "messages": "❌", "subjects": []}
     token = get_access_token(acct)
     if not token:
         results[email] = result
@@ -75,10 +78,6 @@ for acct in ACCOUNTS:
         result["messages"] = "✅"
         for m in msgs.get("data", []):
             result["subjects"].append(f"{m.get('subject','(no subject)')} — {m.get('fromAddress','?')}")
-    send = send_message(token, account_id, email, "michal@msapps.mobi",
-                        f"[Health Check] {now}", f"Automated health check from {email} at {now}.")
-    if send.get("status", {}).get("code") == 200:
-        result["send"] = "✅"
     results[email] = result
 
 print(json.dumps(results))
