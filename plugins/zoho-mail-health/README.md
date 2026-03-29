@@ -43,3 +43,9 @@ A report saved to the workspace as `zoho-health-check-YYYY-MM-DD.md` with:
 ## Fallback
 
 If the Zoho MCP server is unavailable, the skill automatically falls back to direct Python API calls using the credentials in `skills/zoho-mail-health-check/references/python-fallback.md`.
+
+## Execution Model
+**Impact Level:** Low (read-only health check)
+**Plan:** Identify Zoho Mail accounts to verify (michal@msapps.mobi, jobs@msapps.mobi).
+**Act:** Test authentication, send test email, verify delivery.
+**Verify:** Report pass/fail status per account with latency metrics.

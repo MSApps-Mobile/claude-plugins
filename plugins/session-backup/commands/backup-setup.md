@@ -13,7 +13,7 @@ Guide the user through setting up the backup:
      ```json
      {
        "url": "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec",
-       "apiKey": "your-api-key"
+       "apiKey": "<REDACTED — stored in ~/.cowork-gdrive-config.json>"
      }
      ```
 3. **Test the connection**: Upload a small test file to verify it works

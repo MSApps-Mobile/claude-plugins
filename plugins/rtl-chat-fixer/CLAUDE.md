@@ -26,3 +26,11 @@ None required. Activates automatically when RTL text is detected in the conversa
 - Use fenced code blocks to isolate longer LTR content
 - If a response is mostly English with a few RTL words, standard LTR formatting is fine
 - Test each line reads naturally in its dominant direction
+
+## Execution Model
+**Plan:** Detect Hebrew/RTL content in user messages.
+**Act:** Apply BiDi formatting rules to response text.
+**Verify:** Ensure rendered output is readable with minimal LTR/RTL mixing per line.
+
+**Impact Level:** Low (formatting only, no external actions)
+**Approval Gates:** None required — read-only text formatting.

@@ -47,3 +47,7 @@ Prevent and recover from disk-full errors in Cowork VMs and Claude Code sandboxe
 - Use scheduled cleanup in long-running sessions with frequent builds
 - Phase 3 cleanup will require reinstalling dependencies; use cautiously in production
 - Allows other operations to continue uninterrupted when auto-activated
+
+**Role:** Safely clean up disk space in Cowork VM environments by identifying and removing cache files, build artifacts, and temporary data.
+**Impact Level:** Medium (deletes files)
+**Approval Gates:** Confirm with user before deleting files larger than 100MB.

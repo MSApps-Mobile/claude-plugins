@@ -1,0 +1,8 @@
+{
+  "name": "lead-pipeline-daily",
+  "version": "1.0.0",
+  "description": "Daily lead pipeline review — scan calendar, prioritize leads, email report, execute updates",
+  "author": "MSApps",
+  "impact": "medium",
+  "dependencies": ["gcal", "zoho-mail", "gmail", "whatsapp"]
+}

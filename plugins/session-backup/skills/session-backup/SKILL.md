@@ -142,7 +142,7 @@ Write this Python script to `{staging}/do_upload.py` (substitute real url and ap
 import base64, json, subprocess, os
 
 url = 'URL_FROM_STEP1'
-api_key = 'APIKEY_FROM_STEP1'
+api_key = cfg["apiKey"]  # loaded from ~/.cowork-gdrive-config.json
 
 staging = os.path.expanduser('~/Documents/Claude/.backup-tmp')
 

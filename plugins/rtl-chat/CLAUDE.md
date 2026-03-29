@@ -26,3 +26,11 @@ None required. This skill activates automatically when RTL text is detected.
 - Test readability by checking if each line reads naturally in its dominant direction
 - For code blocks, use fenced code blocks (triple backticks) to isolate LTR content
 - If a response is mostly English with a few RTL words, standard LTR formatting is fine
+
+## Execution Model
+**Plan:** Detect Hebrew/RTL content in user messages.
+**Act:** Apply BiDi formatting rules to response text.
+**Verify:** Ensure rendered output is readable with minimal LTR/RTL mixing per line.
+
+**Impact Level:** Low (formatting only, no external actions)
+**Approval Gates:** None required — read-only text formatting.

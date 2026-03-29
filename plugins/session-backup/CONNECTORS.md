@@ -11,7 +11,7 @@ This plugin requires a Google Apps Script web app that receives file uploads via
   "fileName": "cowork-skills-backup.zip",
   "content": "<base64-encoded file>",
   "mimeType": "application/zip",
-  "apiKey": "your-api-key",
+  "apiKey": "<REDACTED — stored in ~/.cowork-gdrive-config.json>",
   "folderPath": "Cowork-Backups",
   "replaceExisting": true
 }
@@ -46,6 +46,6 @@ If unavailable, backup proceeds with new content only (no merge).
 // ~/.cowork-gdrive-config.json
 {
   "url": "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec",
-  "apiKey": "your-api-key"
+  "apiKey": "<REDACTED — stored in ~/.cowork-gdrive-config.json>"
 }
 ```

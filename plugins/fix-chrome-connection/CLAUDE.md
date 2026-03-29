@@ -1,5 +1,8 @@
 # Fix Chrome Connection
 
+**Impact Level:** Low (diagnostic, read-only operations)
+**Role:** Detect and repair broken Chrome extension connections for Claude-in-Chrome MCP.
+
 Diagnose and repair broken Claude in Chrome MCP connections. Resolves issues when Claude extension loses communication with Claude Code server.
 
 ## Available Tools/Skills
