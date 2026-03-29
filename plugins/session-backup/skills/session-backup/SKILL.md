@@ -83,7 +83,6 @@ cd '{SESSION_MNT}' && zip -r /tmp/cowork-backup/claude-docs-backup.zip Claude/ \
 ```
 
 **If the zip is over 30MB**, delete it and split instead:
-- Part 1: `Claude/opsAgent/` → claude-docs-opsagent.zip
 - Part 2: `Claude/gcal-mcp/` → claude-docs-gcalmcp.zip
 - Part 3: everything else in Claude/ → claude-docs-rest.zip
 

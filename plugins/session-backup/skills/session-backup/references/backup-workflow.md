@@ -6,7 +6,6 @@
 Mac (host machine)
   ├── Skills directory      → zip → skills-backup.zip (~3 MB)
   ├── ~/Documents/Claude/   → split into 3 zips (excl. node_modules, images, .git)
-  │     ├── opsAgent/       → claude-docs-opsagent.zip (~6 MB)
   │     ├── gcal-mcp/       → claude-docs-gcalmcp.zip (~6 MB)
   │     └── everything else → claude-docs-rest.zip (~2 MB)
   ├── Plugins directory     → zip → plugins-backup.zip (~2 MB)
@@ -19,7 +18,6 @@ Mac (host machine)
                           Google Drive: Cowork-Backups/
                             ├── skills-backup.zip
                             ├── plugins-backup.zip
-                            ├── claude-docs-opsagent.zip
                             ├── claude-docs-gcalmcp.zip
                             ├── claude-docs-rest.zip
                             └── configs-backup.zip
@@ -37,7 +35,6 @@ By splitting into 6 component files, each upload stays well under the limit.
 |-----------|----------|------------------|----------------|
 | Skills | ~10 MB | ~3.3 MB | ~4.5 MB |
 | Plugins | ~4 MB | ~1.9 MB | ~2.6 MB |
-| Docs: opsAgent | ~567 MB | ~6 MB | ~8.5 MB |
 | Docs: gcal-mcp | ~159 MB | ~5.5 MB | ~7.7 MB |
 | Docs: rest | ~5 MB | ~2 MB | ~2.8 MB |
 | Configs | < 10 KB | < 2 KB | < 2 KB |

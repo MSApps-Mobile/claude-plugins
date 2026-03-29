@@ -2,8 +2,8 @@
 name: zoho-mail-health-check
 description: >
   This skill should be used when the user asks to "run a Zoho Mail health check",
-  "check if Zoho Mail is working", "test the mail accounts", "verify michal@msapps.mobi
-  and jobs@msapps.mobi", "run the mail health check", or any request to verify that
+  "check if Zoho Mail is working", "test the mail accounts", "verify ${ACCOUNT1_EMAIL}
+  and ${ACCOUNT2_EMAIL}", "run the mail health check", or any request to verify that
   the MSApps Zoho Mail accounts are operational. Also triggered automatically by the
   scheduled task named "zoho-mail-health-check".
 metadata:
@@ -19,12 +19,12 @@ Run a full health check on both MSApps Zoho Mail accounts and save a structured 
 
 | Account | Inbox Folder ID |
 |---------|----------------|
-| michal@msapps.mobi | `4226009000000008013` |
-| jobs@msapps.mobi | `8368231000000008014` |
+| ${ACCOUNT1_EMAIL} | `${ACCOUNT1_INBOX_FOLDER_ID}` |
+| ${ACCOUNT2_EMAIL} | `${ACCOUNT2_INBOX_FOLDER_ID}` |
 
 ### Step 1 — List accounts
 
-Call `zohomail_list_accounts`. Confirm both `michal@msapps.mobi` and `jobs@msapps.mobi` appear. If either is missing, mark it ❌ and skip remaining steps for that account.
+Call `zohomail_list_accounts`. Confirm both `${ACCOUNT1_EMAIL}` and `${ACCOUNT2_EMAIL}` appear. If either is missing, mark it ❌ and skip remaining steps for that account.
 
 ### Step 2 — Read 5 latest inbox messages (both accounts in parallel)
 
@@ -39,7 +39,7 @@ Record each message's subject and sender. If the call fails, mark that account's
 
 For each account call `zohomail_send_message` with:
 - `account_email`: the sending account
-- `to`: `michal@msapps.mobi`
+- `to`: `${ACCOUNT1_EMAIL}`
 - `subject`: `[Health Check] YYYY-MM-DD HH:MM` (current date/time in Israel time)
 - `body`: `Automated health check from {account} at {datetime}. Zoho Mail MCP is operational.`
 
@@ -61,14 +61,14 @@ Report structure:
 
 | Account | Connect | Read | Send |
 |---------|:---:|:---:|:---:|
-| michal@msapps.mobi | ✅/❌ | ✅/❌ | ✅/❌ |
-| jobs@msapps.mobi | ✅/❌ | ✅/❌ | ✅/❌ |
+| ${ACCOUNT1_EMAIL} | ✅/❌ | ✅/❌ | ✅/❌ |
+| ${ACCOUNT2_EMAIL} | ✅/❌ | ✅/❌ | ✅/❌ |
 
-## 📬 michal@msapps.mobi — Last 5 Messages
+## 📬 ${ACCOUNT1_EMAIL} — Last 5 Messages
 1. **Subject** — from sender (date)
 ...
 
-## 📬 jobs@msapps.mobi — Last 5 Messages
+## 📬 ${ACCOUNT2_EMAIL} — Last 5 Messages
 1. **Subject** — from sender (date)
 ...
 
