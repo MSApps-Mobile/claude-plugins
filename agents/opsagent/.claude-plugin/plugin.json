@@ -1,8 +1,0 @@
-{
-  "name": "opsagent",
-  "version": "2.0.0",
-  "description": "AI-first operations platform for SMBs — autonomous agents for lead management, outreach, invoicing, recruiting, and more",
-  "author": "MSApps",
-  "impact": "high",
-  "dependencies": ["gcal", "zoho-mail", "whatsapp", "apollo", "notion", "linkedin-scraper", "apify"]
-}
