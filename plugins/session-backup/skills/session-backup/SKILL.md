@@ -41,13 +41,17 @@ If STATUS is NOT_FOUND, stop and report:
 ## Step 2: Flush debug screenshots
 
 Delete temporary debug screenshots from the Claude docs folder (top level only).
-Use the `SESSION_MNT` discovered in Step 1:
 
-```bash
-find '{SESSION_MNT}/Claude' -maxdepth 1 -type f \( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' -o -name '*.gif' \) -delete && echo 'Screenshots flushed'
+> **Why Desktop Commander?** The VM filesystem mount is read-only for deletes — use Desktop Commander to run the delete natively on the Mac.
+
+Use `mcp__Desktop_Commander__start_process` with:
+
+```
+command: find ~/Documents/Claude -maxdepth 1 -type f \( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' -o -name '*.gif' \) -delete && echo 'Screenshots flushed'
+timeout_ms: 15000
 ```
 
-(Failure due to file permissions is non-fatal — continue anyway.)
+(Failure is non-fatal — continue anyway.)
 
 ---
 
@@ -85,7 +89,17 @@ cd '{SESSION_MNT}' && zip -r /tmp/cowork-backup/claude-docs-backup.zip Claude/ \
 
 Each part uses the same exclusion flags.
 
-### 3c: Config files
+### 3c: Plugins folder
+
+The `.remote-plugins` folder is mounted read-only at `{SESSION_MNT}/.remote-plugins` — zip it directly from the VM:
+
+```bash
+cd '{SESSION_MNT}' && zip -r /tmp/cowork-backup/plugins-backup.zip .remote-plugins/ \
+  -x '*.png' -x '*.jpg' -x '*.jpeg' -x '*.gif' \
+  2>&1 | tail -1 && ls -lh /tmp/cowork-backup/plugins-backup.zip
+```
+
+### 3d: Config files
 
 ```bash
 mkdir -p /tmp/cowork-backup/configs
@@ -101,6 +115,8 @@ cd /tmp/cowork-backup && zip -r /tmp/cowork-backup/configs-backup.zip configs/ &
 > 1. Copying zip files to the mounted Claude folder (which is the Mac's `~/Documents/Claude/`)
 > 2. Writing a Python upload script there
 > 3. Using Desktop Commander's `start_process` to run it natively on the Mac
+
+> **Why the two-step POST→GET?** Google Apps Script returns a 302 redirect to `script.googleusercontent.com`. curl's `-L` flag converts POST→GET for 302s, but the redirect endpoint still returns HTML. The fix: POST without following redirect, capture `Location` header, then GET that URL directly.
 
 ### 4a: Stage files to mounted folder
 
@@ -135,7 +151,8 @@ for fname in sorted(os.listdir(staging)):
     if not fname.endswith('.zip'):
         continue
     fpath = os.path.join(staging, fname)
-    print(f'Uploading {fname} ({os.path.getsize(fpath) // 1024}KB)...')
+    size_kb = os.path.getsize(fpath) // 1024
+    print(f'Uploading {fname} ({size_kb}KB)...')
     with open(fpath, 'rb') as f:
         b64 = base64.b64encode(f.read()).decode()
     payload = {
@@ -149,27 +166,57 @@ for fname in sorted(os.listdir(staging)):
     payload_path = '/tmp/upload_payload.json'
     with open(payload_path, 'w') as f:
         json.dump(payload, f)
-    result = subprocess.run(
-        ['curl', '-s', '-X', 'POST', url,
+
+    # Step 1: POST without following redirect — capture Location header
+    r1 = subprocess.run(
+        ['curl', '-s', '-D', '-', '--max-redirs', '0',
+         '-X', 'POST', url,
          '-H', 'Content-Type: application/json',
          '--data', f'@{payload_path}',
-         '--max-time', '180'],
+         '--max-time', '120'],
         capture_output=True, text=True
     )
-    print(f'{fname}: {result.stdout[:300]}')
-    if payload_path and os.path.exists(payload_path):
+    if os.path.exists(payload_path):
         os.remove(payload_path)
+
+    # Extract Location header from response headers
+    location = None
+    for line in r1.stdout.splitlines():
+        if line.lower().startswith('location:'):
+            location = line.split(':', 1)[1].strip()
+            break
+
+    if not location:
+        print(f'ERROR: No redirect location for {fname}')
+        print(r1.stdout[:300])
+        continue
+
+    # Step 2: GET the redirect URL to retrieve the JSON response
+    r2 = subprocess.run(
+        ['curl', '-s', location, '--max-time', '30'],
+        capture_output=True, text=True
+    )
+    print(f'{fname}: {r2.stdout[:300]}')
+
+print('Upload complete.')
 ```
 
 ### 4c: Execute via Desktop Commander
 
-Use the `mcp__Desktop_Commander__start_process` tool to run on the Mac:
+Start the process (output will be slow — capture to file for reliability):
 
 ```
-command: python3 ~/Documents/Claude/.backup-tmp/do_upload.py
+command: python3 ~/Documents/Claude/.backup-tmp/do_upload.py > ~/Documents/Claude/.backup-tmp/upload_result.txt 2>&1; echo "EXIT:$?" >> ~/Documents/Claude/.backup-tmp/upload_result.txt
+timeout_ms: 15000
 ```
 
-Then use `mcp__Desktop_Commander__read_process_output` to read the results.
+Then poll `read_process_output` until `✅ Process completed` appears (may take 60–180s for large files).
+
+Finally, read the result:
+```
+command: cat ~/Documents/Claude/.backup-tmp/upload_result.txt
+timeout_ms: 10000
+```
 
 **If any upload fails with 413**: split that zip into smaller parts and retry.
 
@@ -181,9 +228,10 @@ Then use `mcp__Desktop_Commander__read_process_output` to read the results.
 rm -rf /tmp/cowork-backup /tmp/upload_payload.json
 ```
 
-Also remove the staging area from the mounted folder:
-```bash
-rm -rf '{SESSION_MNT}/Claude/.backup-tmp'
+Also remove the staging area from the mounted folder via Desktop Commander:
+```
+command: rm -rf ~/Documents/Claude/.backup-tmp && echo 'Mac staging cleaned'
+timeout_ms: 10000
 ```
 
 ---
@@ -201,5 +249,7 @@ List all uploaded files with their Drive links (from the JSON responses). Note w
 - Always use `replaceExisting: true` so each run overwrites the previous backup
 - `folderPath` must be `Cowork-Backups`
 - ALWAYS exclude: `*/node_modules/*`, `*/.git/*`, `*/.next/*`, `*.pyc`, `*.png`, `*.jpg`, `*.jpeg`, `*.gif`, `*/package-lock.json`
-- Plugins folder (`~/Library/Application Support/Claude/.../cowork_plugins/`) is NOT mounted in the VM — skip silently and note in the report
+- **Plugins ARE mounted** at `{SESSION_MNT}/.remote-plugins` (read-only) — include in backup as `plugins-backup.zip`
+- **Screenshot flush must use Desktop Commander** (Mac-side) — VM filesystem mount blocks deletes
+- **Upload must use two-step POST→GET** — Apps Script redirects with 302; curl `-L` alone lands on wrong page
 - Upload must go via **Desktop Commander** (Mac-side) — the VM proxy blocks `script.google.com`
