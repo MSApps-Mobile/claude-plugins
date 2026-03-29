@@ -60,7 +60,7 @@ Search for the plugin name (e.g. "mac-disk-cleaner") and click Install.
 
 ## Setup
 
-### Google Drive Upload
+### [Google Drive Upload](./plugins/google-drive-upload)
 One-time Google Apps Script deployment. After installing, save your config to `~/.cowork-gdrive-config.json`:
 ```json
 {
@@ -69,7 +69,7 @@ One-time Google Apps Script deployment. After installing, save your config to `~
 }
 ```
 
-### Toggl Time Tracker
+### [Toggl Time Tracker](./plugins/toggl-time-tracker)
 Save your Toggl API token to `~/.toggl-config.json`:
 ```json
 {
@@ -79,56 +79,56 @@ Save your Toggl API token to `~/.toggl-config.json`:
 ```
 Find your API token at https://track.toggl.com/profile. Find your workspace ID in the Toggl URL: `https://track.toggl.com/{workspaceId}/timer`.
 
-### YouTube Transcriber
+### [YouTube Transcriber](./plugins/youtube-transcriber)
 No config needed — just requires the **Claude in Chrome** extension (works in both Claude Code and Cowork). Paste any YouTube video or playlist URL and ask Claude to transcribe it.
 
-### Session Backup
+### [Session Backup](./plugins/session-backup)
 Requires the Google Drive Upload connector (see above). Backs up your skills, plugins, session data, and configs to a `Cowork-Backups` folder on Google Drive. Run `/backup-now` for an immediate backup, or set up a daily schedule.
 
-### Mac Disk Cleaner
+### [Mac Disk Cleaner](./plugins/mac-disk-cleaner)
 Requires macOS Ventura or later. No config needed — just ask Claude to "clean up my Mac" or "check disk space". Works with Claude Code's native Bash tool or Cowork's Desktop Commander. Only touches auto-regenerated caches — never deletes personal files.
 
-### Notion Memory
+### [Notion Memory](./plugins/notion-memory)
 Requires a Notion connector:
 - **Claude Code:** Add a Notion MCP server to your `.mcp.json` config
 - **Cowork:** Settings → Connectors → Notion
 
 On first use, Claude creates a "Claude Memory" page in your Notion workspace to store preferences, decisions, project context, and session summaries.
 
-### WhatsApp MCP
+### [WhatsApp MCP](./plugins/whatsapp-mcp)
 Requires the [WhatsApp MCP bridge](https://github.com/lharries/whatsapp-mcp) running locally:
 1. Install Go, UV, and optionally FFmpeg (`brew install go uv ffmpeg`)
 2. Clone and build the bridge: `git clone https://github.com/lharries/whatsapp-mcp.git ~/whatsapp-mcp && cd ~/whatsapp-mcp/whatsapp-bridge && go build -o whatsapp-bridge && ./whatsapp-bridge`
 3. Scan the QR code with WhatsApp on first run
 4. Set `WHATSAPP_MCP_PATH="$HOME/whatsapp-mcp"` in your shell profile
 
-### LinkedIn Scraper
+### [LinkedIn Scraper](./plugins/linkedin-scraper)
 Requires Python 3.10+ with [uv](https://docs.astral.sh/uv/) installed. Run this once to authenticate:
 ```bash
 uvx linkedin-scraper-mcp --login
 ```
 A browser window opens — log in to LinkedIn, then close it. Your session is saved automatically.
 
-### Apify Scraper
+### [Apify Scraper](./plugins/apify-scraper)
 Set your Apify API token when installing the plugin:
 ```
 APIFY_API_TOKEN=your_token_here
 ```
 Get your token at [Apify Console](https://console.apify.com/) → Settings → Integrations.
 
-### Apollo
+### [Apollo](./plugins/apollo)
 No manual setup needed — the plugin automatically configures the Apollo MCP Server on install. Just authenticate with your Apollo account when prompted.
 
-### RTL Chat Fixer
+### [RTL Chat Fixer](./plugins/rtl-chat-fixer)
 No config needed. Install and ask Claude to fix any RTL/LTR text mixing issues.
 
-### VM Disk Cleanup
+### [VM Disk Cleanup](./plugins/vm-disk-cleanup)
 No config needed. Ask Claude to "clean up disk space" or "free up space in the VM" — works in both Cowork and Claude Code environments.
 
-### X Content Intelligence
+### [X Content Intelligence](./plugins/x-content-intelligence)
 Requires the [Apify MCP connector](https://apify.com/) (free tier available). Uses the `apidojo/tweet-scraper` Actor for X scraping.
 
-### WordPress MCP
+### [WordPress MCP](./plugins/wordpress-mcp)
 Set these environment variables after installing:
 
 | Variable | Description | Example |
@@ -138,7 +138,7 @@ Set these environment variables after installing:
 
 Requires the [WordPress MCP Adapter](https://developer.wordpress.org/news/2026/02/from-abilities-to-ai-agents-introducing-the-wordpress-mcp-adapter/) plugin installed on your WordPress 6.9+ site.
 
-### Fix Chrome Connection
+### [Fix Chrome Connection](./plugins/fix-chrome-connection)
 No config needed. Run it when your Claude in Chrome extension stops responding (common after switching macOS users).
 
 ## Support
