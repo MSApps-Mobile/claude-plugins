@@ -1,6 +1,6 @@
 {
   "name": "cowork-session-fixer",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Fixes the 'RPC error: process with name already running' bug in Claude Cowork by detecting and clearing orphaned session processes. Works on Windows and macOS.",
   "author": {
     "name": "MSApps",
@@ -19,15 +19,15 @@
   ],
   "sosa": {
     "compliant": true,
-    "level": 1,
-    "impact": "low",
+    "level": 3,
+    "impact": "medium",
     "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md",
     "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
     "pillars": {
-      "supervised": "Fully autonomous — local diagnostic and repair",
-      "orchestrated": "Pattern-matched error detection with structured fix steps",
-      "secured": "Local filesystem only, no external access",
-      "agents": "R=session-recovery, T=local-files+bash, M=error-patterns, P=detect-diagnose-fix"
+      "supervised": "User confirmation required before archiving sessions or killing processes",
+      "orchestrated": "Plan > Act > Verify pattern with structured output report",
+      "secured": "Local filesystem only, no credentials, no external access",
+      "agents": "R=session-recovery, T=local-files+bash, M=error-patterns, P=detect-diagnose-confirm-fix-verify"
     }
   }
 }

@@ -10,164 +10,154 @@ description: >
   Also trigger when the user pastes an error containing "RPC error" or
   "process with name" or "already running".
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   author: "MSApps"
   supported_os: "Windows, macOS, Linux"
+  sosa:
+    level: 3
+    supervised: "User confirmation required before any destructive action"
+    orchestrated: "Plan > Act > Verify with structured report"
+    secured: "Local filesystem only, no credentials"
+    agents: "Scoped to session diagnostics — no file deletion, no config changes"
 ---
 
 # Fix Stuck Cowork Session
 
-This skill resolves the common "RPC error: process with name already running" bug that blocks
-Cowork sessions. It uses a tiered approach — trying the most elegant fix first, then escalating
-to more aggressive methods only if needed.
+Resolve the common "RPC error: process with name already running" bug that blocks Cowork sessions.
+Uses a tiered approach — trying the most elegant fix first, then escalating only if needed.
+## SOSA Supervised Gate
+
+**CRITICAL**: Before ANY fix action (archiving, killing processes, clearing cache), present
+findings to the user and ask for explicit confirmation. Example:
+
+```
+| Session Name | Title | Status | Error | Proposed Action |
+|-------------|-------|--------|-------|-----------------|
+| busy-wizardly-mccarthy | WhatsApp reminder | idle | RPC error: already running | Archive |
+```
+
+"I found [N] stuck session(s). Should I proceed with the fix?"
+
+**Do NOT proceed without explicit user confirmation.** This applies to ALL tiers below.
 
 ## Understanding the Problem
 
 Two root causes produce this error:
 
-1. **Orphaned Process** — A previous Cowork session crashed or lost its VM connection, but the
-   process entry was never cleaned up. The system thinks it's still running and blocks new work.
-2. **Missing Session Directory** — The session user was initialized but its home directory
-   (\`/sessions/<session-name>\`) was deleted or never created. The VM can't recover.
+1. **Orphaned State File** — The session JSON at `~/Library/Application Support/Claude/
+   local-agent-mode-sessions/<org-id>/<user-id>/local_<uuid>.json` retains
+   `isArchived: false` and holds a `vmProcessName`, blocking new sessions.
+2. **Orphaned Process** — A previous session crashed but its process entry was never cleaned up.
 
-Both manifest as the same blocking error that prevents any follow-up messages or session resumption.
-
+Both manifest as the same blocking error that prevents follow-up messages or session resumption.
 ## Diagnostic & Fix Procedure
 
 Work through these tiers in order. Stop as soon as the issue is resolved.
 
 ### Tier 1: Identify the Stuck Session
 
-Parse the error message to extract:
-- The **session name** (e.g., \`optimistic-stoic-knuth\`)
-- The **process ID** if present (e.g., \`7e090cc5-e7be-48f8-9d10-9c2ba4c167af\`)
+Parse the error message to extract the **session name** and **process ID** if present.
 
-Use \`list_sessions\` (if available via session_info MCP or Desktop Commander) to check if the
-session appears as active/running. Report findings to the user clearly:
+Use `mcp__session_info__list_sessions` to cross-reference which sessions are idle but holding
+a process name. Report findings to the user in a table (see Supervised Gate above).
 
-\`\`\`
-Found the problem: Session "optimistic-stoic-knuth" has an orphaned process
-that wasn't cleaned up after a crash. Let me fix this.
-\`\`\`
+### Tier 2: Archive Session State File (Fastest Fix)
 
-### Tier 2: Graceful Session Cleanup (Preferred)
+**macOS** — Find and archive the stuck session JSON:
 
-Try the gentlest approach first:
+```bash
+mdfind -onlyin ~/Library/Application\ Support/Claude "RPC error"
+```
 
-1. **List active terminal sessions** using Desktop Commander's \`list_sessions\` tool
-2. If the stuck session appears, attempt to **read its output** to confirm it's truly orphaned
-   (blocked indefinitely, no recent activity)
-3. Use \`force_terminate\` or \`kill_process\` to end it cleanly
-4. Ask the user to **close the stuck Cowork tab** in Claude Desktop and reopen it
+Then set `isArchived: true`:
 
-Tell the user:
-\`\`\`
-I've cleared the orphaned process. Close the stuck session tab in Claude Desktop,
-then reopen it — it should work now.
-\`\`\`
+```python
+python3 -c "
+import json
+path = '<session-file-path>'
+with open(path) as f:
+    data = json.load(f)
+data['isArchived'] = True
+with open(path, 'w') as f:
+    json.dump(data, f, indent=2)
+print('Archived: ' + data.get('processName', 'unknown'))
+"
+```
 
-### Tier 3: Process-Level Kill (Windows & macOS)
+This usually works immediately without restarting Claude Desktop.
+### Tier 3: Graceful Process Cleanup
 
-If Tier 2 doesn't work (Desktop Commander can't see the process, or kill doesn't help):
+If Tier 2 doesn't resolve it, try killing the orphaned process:
 
-**On macOS/Linux:**
-\`\`\`bash
-# Find orphaned cowork/claude processes
-ps aux | grep -i "claude\\|cowork" | grep -v grep
+1. List active sessions using Desktop Commander's `list_sessions`
+2. Confirm the session is truly orphaned (no recent activity)
+3. Use `force_terminate` or `kill_process` to end it
+4. Ask user to close the stuck tab and reopen
 
-# Kill specific orphaned processes
-pkill -f "claude cowork"
-# Or target by PID if found
+### Tier 4: Process-Level Kill
+
+**macOS/Linux:**
+```bash
+ps aux | grep -i "claude\|cowork" | grep -v grep
 kill -9 <PID>
-\`\`\`
+```
 
-**On Windows (if user has terminal access):**
-\`\`\`powershell
-# List Claude-related processes
-Get-Process | Where-Object { $_.ProcessName -like "*claude*" -or $_.ProcessName -like "*cowork*" }
-
-# Kill orphaned processes
+**Windows:**
+```powershell
+Get-Process | Where-Object { $_.ProcessName -like "*claude*" }
 Stop-Process -Name "claude*" -Force
-# Or use taskkill
-taskkill /F /IM "claude.exe" /T
-\`\`\`
+```
 
-Provide these commands to the user with clear instructions. Explain what each command does
-before they run it.
+### Tier 5: Cache & State Cleanup
 
-### Tier 4: Cache & State Cleanup
+**WARNING**: Ask user confirmation — this clears ALL active Cowork sessions.
 
-If process killing alone doesn't resolve it, stale state files may be the culprit.
+**macOS:** `rm -rf ~/Library/Application\ Support/Claude/cowork/`
+**Windows:** `Remove-Item -Recurse -Force "$env:APPDATA\Claude\cowork\"`
 
-**On macOS:**
-\`\`\`bash
-# Remove VM state (forces clean VM boot on next launch)
-rm -rf ~/Library/Application\\ Support/Claude/cowork/
-rm -rf ~/Library/Caches/Claude/
+### Tier 6: Full Reset (Nuclear Option)
 
-# Check for leftover session lock files
-ls -la ~/Library/Application\\ Support/Claude/ | grep -i session
-\`\`\`
+1. Quit Claude Desktop completely
+2. Delete VM state (macOS: `~/Library/Application Support/Claude/vm_bundles/`)
+3. Reboot computer
+4. Relaunch Claude Desktop — fresh VM image downloads on first use
+## Verify (Post-Fix)
 
-**On Windows:**
-\`\`\`powershell
-# Remove VM state
-Remove-Item -Recurse -Force "$env:APPDATA\\Claude\\cowork\\"
-Remove-Item -Recurse -Force "$env:LOCALAPPDATA\\Claude\\Cache\\"
-\`\`\`
+After any fix:
 
-**IMPORTANT:** Warn the user that this will clear all active Cowork sessions. Any unsaved
-in-progress work in OTHER sessions will also be lost. Ask for confirmation before proceeding.
+1. Call `mcp__session_info__list_sessions` to confirm the session is cleared
+2. Ask user to create a new Cowork task to verify it works
+3. Produce a structured report:
 
-### Tier 5: Full Reset (Nuclear Option)
+```
+## Session Fix Report
+- Sessions scanned: [N]
+- Stuck sessions found: [N]
+- Sessions fixed: [N]
+- Fix tier used: [1-6]
+- Status: [SUCCESS / PARTIAL / NEEDS_RESTART]
+```
 
-If nothing else works:
+## Error Variants Handled
 
-1. **Quit Claude Desktop completely** (not just close — fully quit from system tray/menu bar)
-2. **Wait 10 seconds** for all background processes to terminate
-3. **Delete all VM state:**
-   - macOS: \`rm -rf ~/Library/Application\\ Support/Claude/vm_bundles/\`
-   - Windows: \`Remove-Item -Recurse -Force "$env:APPDATA\\Claude\\vm_bundles\\"\`
-4. **Reboot the computer** (clears any kernel-level process locks)
-5. **Relaunch Claude Desktop** — it will download a fresh VM image on first Cowork use
+- `RPC error: process with name "X" already running (id: Y)`
+- `RPC error -1: process with name "X" already running`
+- `RPC error: ensure user: user X should already exist but does not`
+- `failed to write stdin: Error: failed to write data: An established connection was aborted`
+- `kill failed with error: Error: sdk-daemon not connected`
+- `This task didn't load properly`
+- `Failed to run onQuitCleanup(cowork-vm-shutdown): Error: Request timed out`
 
-Tell the user:
-\`\`\`
-This is the nuclear option — it forces Claude Desktop to start completely fresh.
-You won't lose your conversation history, but all active Cowork sessions will reset.
-After reboot, the first Cowork task may take a minute longer while it sets up.
-\`\`\`
+## Domain Boundaries
 
-## After Fixing
-
-Once the fix succeeds:
-
-1. **Confirm with the user** that they can create a new Cowork task or resume their session
-2. **Explain the root cause** briefly: "This happens when a Cowork session crashes without
-   cleaning up its background process. It's a known bug — Anthropic is tracking it."
-3. **Share prevention tips:**
-   - Avoid opening the same Cowork session in multiple tabs simultaneously
-   - If Claude Desktop freezes, quit it fully (don't force-close) to allow cleanup
-   - If you see "connection aborted" errors, close and reopen the session tab before
-     it becomes fully orphaned
-
-## Error Variants This Skill Handles
-
-All of these are the same underlying issue:
-
-- \`RPC error: process with name "X" already running (id: Y)\`
-- \`RPC error -1: process with name "X" already running\`
-- \`RPC error: ensure user: user X should already exist but does not\`
-- \`failed to write stdin: Error: failed to write data: An established connection was aborted\`
-- \`kill failed with error: Error: sdk-daemon not connected\`
-- \`This task didn't load properly\`
-- \`Failed to run onQuitCleanup(cowork-vm-shutdown): Error: Request timed out\`
+This skill ONLY handles session diagnostics and recovery. It does NOT:
+- Delete user files or data
+- Modify Claude Desktop configuration
+- Access anything outside session state files and processes
 
 ## Reference Issues
 
-This skill addresses bugs tracked in:
 - [#30655](https://github.com/anthropics/claude-code/issues/30655) — Orphaned VM process blocks resume
-- [#24483](https://github.com/anthropics/claude-code/issues/24483) — RPC error persists after cleanup
 - [#28094](https://github.com/anthropics/claude-code/issues/28094) — Connection errors after crash
+- [#37810](https://github.com/anthropics/claude-code/issues/37810) — Exits with code 1
 - [#25707](https://github.com/anthropics/claude-code/issues/25707) — Task didn't load properly
-- [#24190](https://github.com/anthropics/claude-code/issues/24190) — Error on opening session
