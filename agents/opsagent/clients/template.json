@@ -1,0 +1,61 @@
+{
+  "id": "client_id",
+  "name": "Client Company Name",
+  "contact_email": "ops@client.com",
+  "timezone": "Asia/Jerusalem",
+  "industry": "service business",
+  "company_size": "20-50 employees",
+  "agents": {
+    "lead-pipeline": {
+      "enabled": false,
+      "schedule": "0 8 * * 1-5",
+      "context": {
+        "crm_tool": "notion",
+        "report_email": "michal@msapps.co.il",
+        "pipeline_notes": "Describe what the pipeline looks like for this client"
+      }
+    },
+    "linkedin-outreach": {
+      "enabled": false,
+      "schedule": "0 9 * * 1-5",
+      "context": {
+        "target_segment": "Describe the ICP",
+        "daily_message_limit": "10",
+        "linkedin_profile": "URL"
+      }
+    },
+    "social-posts": {
+      "enabled": false,
+      "schedule": "0 7 * * *",
+      "context": {
+        "platforms": "linkedin, instagram",
+        "brand_voice": "professional, tech-forward",
+        "content_themes": "AI, operations, business growth"
+      }
+    },
+    "receipts": {
+      "enabled": false,
+      "schedule": "0 8 * * 1",
+      "context": {
+        "accounting_tool": "iCount",
+        "email_to_scan": "finance@client.com"
+      }
+    },
+    "invoicing": {
+      "enabled": false,
+      "schedule": "0 9 1 * *",
+      "context": {
+        "billing_tool": "iCount",
+        "billing_email": "billing@client.com"
+      }
+    },
+    "recruiter": {
+      "enabled": false,
+      "schedule": "0 10 * * 1",
+      "context": {
+        "open_roles": "List open positions here",
+        "job_boards": "AllJobs, LinkedIn, Goozali"
+      }
+    }
+  }
+}

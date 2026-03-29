@@ -1,0 +1,7 @@
+{
+  "_comment": "Add MCP server configs here. This file is gitignored (contains auth tokens). Format matches Claude Code MCP config.",
+  "_example": {
+    "google-calendar": { "command": "npx", "args": ["-y", "@anthropic-ai/gcal-mcp@latest"] },
+    "notion": { "command": "npx", "args": ["-y", "@anthropic-ai/notion-mcp@latest"] }
+  }
+}

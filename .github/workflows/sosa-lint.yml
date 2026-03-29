@@ -1,0 +1,109 @@
+name: SOSA Compliance Check
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  sosa-lint:
+    name: SOSA™ Four-Pillar Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run SOSA compliance linter
+        run: |
+          chmod +x scripts/sosa-lint.sh
+          bash scripts/sosa-lint.sh .
+
+      - name: Check for hardcoded secrets
+        run: |
+          echo "Scanning for potential secrets..."
+          FOUND=0
+          # Check for API keys, tokens, passwords
+          if grep -rn "api_key\s*=\s*['\"].\+['\"]" --include="*.md" --include="*.json" --include="*.ts" --include="*.js" --include="*.py" . 2>/dev/null | grep -v node_modules | grep -v ".git/"; then
+            echo "::error::Hardcoded API keys found"
+            FOUND=1
+          fi
+          if grep -rn "password\s*=\s*['\"].\+['\"]" --include="*.md" --include="*.json" --include="*.ts" --include="*.js" --include="*.py" . 2>/dev/null | grep -v node_modules | grep -v ".git/"; then
+            echo "::error::Hardcoded passwords found"
+            FOUND=1
+          fi
+          # Check for .env files
+          if find . -name ".env" -not -path "./.git/*" | grep -q .; then
+            echo "::error::.env files should not be committed"
+            FOUND=1
+          fi
+          if [ "$FOUND" -eq 1 ]; then
+            exit 1
+          fi
+          echo "✓ No secrets detected"
+
+      - name: Verify SKILL.md presence
+        run: |
+          echo "Checking all plugins have SKILL.md..."
+          MISSING=0
+          for dir in plugins/*/; do
+            if [ -d "$dir" ] && [[ ! "$dir" == *.plugin ]]; then
+              if ! find "$dir" -name "SKILL.md" | grep -q .; then
+                echo "::error::Plugin $(basename $dir) is missing SKILL.md"
+                MISSING=1
+              fi
+            fi
+          done
+          for dir in skills/*/; do
+            if [ -d "$dir" ] && [ "$(basename "$dir")" != "standalone" ]; then
+              if [ ! -f "$dir/SKILL.md" ]; then
+                echo "::error::Skill $(basename $dir) is missing SKILL.md"
+                MISSING=1
+              fi
+            fi
+          done
+          if [ "$MISSING" -eq 1 ]; then
+            exit 1
+          fi
+          echo "✓ All plugins and skills have SKILL.md"
+
+      - name: Token efficiency check
+        run: |
+          echo "Checking SKILL.md token efficiency..."
+          BLOATED=0
+          while IFS= read -r f; do
+            WC=$(wc -w < "$f" | tr -d ' ')
+            if [ "$WC" -gt 3000 ]; then
+              echo "::warning::$(echo $f | sed 's|^\./||') is $WC words — consider trimming"
+              BLOATED=1
+            fi
+          done < <(find . -name "SKILL.md" -not -path "./.git/*")
+          if [ "$BLOATED" -eq 1 ]; then
+            echo "⚠ Some skills exceed recommended word count"
+          else
+            echo "✓ All skills within token budget"
+          fi
+
+  sosa-eval:
+    name: SOSA™ Evaluation Scores
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run SOSA evaluation
+        run: |
+          chmod +x scripts/sosa-eval.sh
+          bash scripts/sosa-eval.sh .
+
+      - name: Generate JSON report artifact
+        run: |
+          bash scripts/sosa-eval.sh . --json > sosa-report.json
+
+      - name: Upload SOSA report
+        uses: actions/upload-artifact@v4
+        with:
+          name: sosa-evaluation-report
+          path: sosa-report.json
+
+      - name: CI gate — all items must be Level 1+
+        run: |
+          bash scripts/sosa-eval.sh . --ci
