@@ -4,6 +4,39 @@ Free plugins for Claude by [MSApps](https://msapps.mobi).
 
 All plugins work in both **Claude Code** (CLI) and **Cowork** (desktop app).
 
+
+### SOSA™ Compliant
+
+All MSApps plugins are built on [**SOSA™ — Supervised Orchestrated Secured Agents**](docs/SOSA.md), a four-pillar methodology for production-grade autonomous AI operations developed by [MSApps Research](https://msapps.mobi).
+
+As AI agents move from demos to real business workflows, the gap between "it works" and "it's safe to run unsupervised" becomes critical. SOSA provides a formal framework for closing that gap — ensuring every plugin has proper supervision gates, structured coordination, security hardening, and well-defined agent boundaries.
+
+**The four pillars:**
+
+| Pillar | What it means | Why it matters |
+|--------|--------------|----------------|
+| **Supervised** | High-impact actions require human approval. Low-impact actions run autonomously. Trust is earned through consistent performance. | Prevents an outreach agent from sending 500 cold emails without your sign-off |
+| **Orchestrated** | Agents follow Plan → Act → Verify. Outputs are structured. Dependencies are declared. | Prevents cascading failures when one agent's output feeds another |
+| **Secured** | No hardcoded credentials. External data is scanned for prompt injection. Package versions are pinned. | Prevents a LinkedIn bio with "ignore all instructions" from hijacking your CRM workflow |
+| **Agents** | Each agent has a formal role spec, declared tool access, defined memory model, and explicit planning policy | Prevents a financial agent from being tricked into sending emails — it simply can't |
+
+Every MSApps plugin declares its SOSA compliance level (L1–L3), impact classification, and pillar-by-pillar implementation in its `plugin.json`.
+
+> **Read the whitepaper:** [SOSA™ — Supervised Orchestrated Secured Agents](docs/sosa-whitepaper.pdf) (Shatz, 2026)
+
+### Audit Your Own Plugins
+
+We built the **[sosa-compliance-checker](./plugins/sosa-compliance-checker)** so you can run a SOSA audit on your entire plugin ecosystem — not just MSApps plugins, but everything you have installed. It scans all your plugins, local skills, and scheduled tasks against the four pillars and tells you exactly what's compliant and what needs fixing.
+
+**Install it:**
+```
+/plugin install sosa-compliance-checker@msapps-plugins
+```
+
+**Run it:** Just say "SOSA audit" or "check my plugins for compliance" — it scans everything, scores each component per-pillar, and gives you prioritized fix suggestions with effort estimates.
+
+We recommend running this on all your installed plugins, especially if you have autonomous agents handling email, messaging, financial data, or outreach. The audit takes a few minutes and catches hardcoded API keys, missing confirmation gates on high-impact actions, unpinned package versions, and prompt injection vulnerabilities.
+
 ## What are Claude plugins?
 
 Plugins add new skills to Claude — things like uploading files to Google Drive, tracking time, transcribing YouTube videos, and more. Once installed, you don't need to learn any commands — just ask Claude naturally (e.g. "upload this to Drive" or "start a timer for client meeting") and the plugin kicks in automatically.
