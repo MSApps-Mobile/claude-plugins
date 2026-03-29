@@ -37,35 +37,34 @@ Copy to the workspace folder and read the image to understand the current deskto
 
 ---
 
-## Step 3: Open/focus Chrome
+## Step 3: Open Chrome and go straight to the pairing page
 
 Run via Desktop Commander:
 ```
-open -a "Google Chrome"
+open -a "Google Chrome" "chrome-extension://fcoeoabgfenejglbffodgkkbkcdhcgfn/pairing.html"
 ```
 Wait 3 seconds, then retry `tabs_context_mcp` with `createIfEmpty: false`.
 
 - If it works → report success and jump to Self-Reflection.
-- If not → continue.
+- If not → the pairing page is now open. Tell the user: **"Chrome is open with a pairing page. Click the orange Connect button once."** Then wait and retry.
 
 ---
 
-## Step 4: Quit and relaunch Chrome (most effective fix)
+## Step 4: Quit and relaunch Chrome, then reopen pairing page
 
-> **Note:** Avoid trying to click UI elements in chrome://extensions — the Claude desktop app steals focus and clicks land in the wrong window. A full quit+relaunch is more reliable.
+> **Note:** Only do this if Step 3 failed and the pairing page did NOT appear.
 
 Run these commands in sequence via Desktop Commander:
 ```
 osascript -e 'tell application "Google Chrome" to quit'
 sleep 5
-open -a "Google Chrome"
-sleep 8
+open -a "Google Chrome" "chrome-extension://fcoeoabgfenejglbffodgkkbkcdhcgfn/pairing.html"
+sleep 5
 ```
 
-Then retry `tabs_context_mcp` with `createIfEmpty: false`.
+Then tell the user: **"Click the orange Connect button in Chrome."**
 
-- If it works → report success and jump to Self-Reflection.
-- If not → continue.
+> **Why we can't click it automatically:** Chrome is tier "read" in computer-use — all clicks and keystrokes are blocked by the system, even via AppleScript. The Chrome debug port (CDP) also cannot be enabled on macOS after Chrome launches normally. This one click is a security boundary we cannot bypass programmatically.
 
 ---
 
@@ -132,6 +131,36 @@ After each run, always output a brief summary:
 - Which steps were attempted
 - What the outcome was
 - What (if anything) was learned and updated
+
+---
+
+## Known Issue: Pairing Page — The One Unavoidable Click
+
+**What was learned:** When the extension loses auth (e.g. after account switch), the extension shows a pairing page at:
+`chrome-extension://fcoeoabgfenejglbffodgkkbkcdhcgfn/pairing.html`
+
+This page can be opened directly via:
+```bash
+open -a "Google Chrome" "chrome-extension://fcoeoabgfenejglbffodgkkbkcdhcgfn/pairing.html"
+```
+
+**The pairing protocol (from reverse-engineering the JS):**
+- Clicking Connect sends: `chrome.runtime.sendMessage({type:"pairing_confirmed", request_id, name})`
+- Clicking Ignore sends: `chrome.runtime.sendMessage({type:"pairing_dismissed", request_id})`
+- `request_id` comes from the URL parameter `?request_id=xxx` (opened by the service worker)
+
+**Why we can't auto-click it:**
+- Chrome is tier "read" in computer-use — no clicks or keystrokes allowed, even via AppleScript
+- Chrome DevTools Protocol (debug port `--remote-debugging-port=9222`) doesn't work on macOS when Chrome was launched normally (macOS ignores the flag if Chrome process is already running, or the port isn't exposed)
+- Clearing extension local storage (LevelDB files) resets auth but still requires the user to click Connect
+- Chrome MCP tools require the extension to be connected first (chicken-and-egg)
+
+**Best automated approach:**
+1. Open the pairing page: `open -a "Google Chrome" "chrome-extension://fcoeoabgfenejglbffodgkkbkcdhcgfn/pairing.html"`
+2. Tell the user: "The pairing page is open in Chrome. Click the orange **Connect** button once."
+3. After they click, test connection with `tabs_context_mcp`
+
+**The ONE click is unavoidable** — it's a security boundary by design.
 
 ---
 
