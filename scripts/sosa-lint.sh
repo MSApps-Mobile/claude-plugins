@@ -15,13 +15,13 @@ WARNINGS=0
 CHECKED=0
 
 log_pass() { echo -e "  ${GREEN}✓${NC} $1"; }
-log_fail() { echo -e "  ${RED}✗${NC} $1"; ((ERRORS++)); }
-log_warn() { echo -e "  ${YELLOW}⚠${NC} $1"; ((WARNINGS++)); }
+log_fail() { echo -e "  ${RED}✗${NC} $1"; ((++ERRORS)); }
+log_warn() { echo -e "  ${YELLOW}⚠${NC} $1"; ((++WARNINGS)); }
 
 check_plugin() {
   local dir="$1"
   local name=$(basename "$dir")
-  ((CHECKED++))
+  ((++CHECKED))
   echo ""
   echo "━━━ Plugin: $name ━━━"
 
@@ -95,7 +95,7 @@ check_plugin() {
 check_skill() {
   local dir="$1"
   local name=$(basename "$dir")
-  ((CHECKED++))
+  ((++CHECKED))
   echo ""
   echo "━━━ Skill: $name ━━━"
 
@@ -131,7 +131,7 @@ check_skill() {
 check_scheduled_task() {
   local dir="$1"
   local name=$(basename "$dir")
-  ((CHECKED++))
+  ((++CHECKED))
   echo ""
   echo "━━━ Task: $name ━━━"
 

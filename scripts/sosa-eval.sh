@@ -190,7 +190,7 @@ eval_item() {
   elif [ "$pct" -ge 70 ]; then level="Level 1"
   else
     level="Below L1"
-    ((BELOW_LEVEL1++))
+    ((++BELOW_LEVEL1))
   fi
 
   RESULTS_NAME+=("$name")
@@ -220,7 +220,7 @@ done
 count=0
 for d in "$REPO_ROOT"/scheduled-tasks/*/; do
   [ -d "$d" ] && eval_item "$d" "$(basename "$d")" "task"
-  ((count++))
+  ((++count))
   [ "$count" -ge 53 ] && break
 done
 
@@ -272,10 +272,10 @@ else
   local_l3=0 local_l2=0 local_l1=0 local_below=0
   for ((i=0; i<N; i++)); do
     case "${RESULTS_LEVEL[$i]}" in
-      "Level 3") ((local_l3++)) ;;
-      "Level 2") ((local_l2++)) ;;
-      "Level 1") ((local_l1++)) ;;
-      *) ((local_below++)) ;;
+      "Level 3") ((++local_l3)) ;;
+      "Level 2") ((++local_l2)) ;;
+      "Level 1") ((++local_l1)) ;;
+      *) ((++local_below)) ;;
     esac
   done
 
