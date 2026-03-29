@@ -73,8 +73,14 @@ Then retry `tabs_context_mcp` with `createIfEmpty: false`.
 
 If all automated steps failed, report everything that was tried and ask the user:
 
-1. Are you logged into the correct Chrome profile? After a macOS user switch, Chrome may open under a different profile where the extension is not installed.
-2. Ask them to click the profile icon (top-right in Chrome) and switch to the right profile, then retry.
+1. **Did you recently switch Claude Desktop accounts?** If yes, the extension is still signed into the old account — Chrome restart will NOT fix this. The user must:
+   - Click the Claude in Chrome extension icon in the Chrome toolbar (puzzle piece → Claude in Chrome)
+   - Sign out from the extension popup
+   - Sign in with the new/correct Claude account
+   - The connection should restore automatically after signing in
+
+2. Are you logged into the correct Chrome profile? After a macOS user switch, Chrome may open under a different profile where the extension is not installed.
+3. Ask them to click the profile icon (top-right in Chrome) and switch to the right profile, then retry.
 
 ---
 
@@ -121,6 +127,24 @@ After each run, always output a brief summary:
 - Which steps were attempted
 - What the outcome was
 - What (if anything) was learned and updated
+
+---
+
+## Known Issue: Account Switch — Chrome Restart Does NOT Fix It
+
+**Problem:** After switching Claude Desktop accounts, the Claude in Chrome extension stays authenticated with the old account. Chrome restart (Steps 3–4) does not resolve this — the extension holds its own auth state independently of Chrome's process lifecycle.
+
+**Symptoms:** All automated steps (open Chrome, quit+relaunch) fail. `tabs_context_mcp` keeps returning "not connected" even after Chrome is running normally.
+
+**Root cause:** The extension stores its Claude session/token separately. Restarting Chrome does not clear or refresh the extension's auth state.
+
+**Solution — user must re-authenticate the extension manually:**
+1. In Chrome toolbar → click extension icon (puzzle piece) → Claude in Chrome
+2. Sign out from the extension popup
+3. Sign in with the correct Claude account
+4. Connection restores automatically — no need to restart Chrome or Claude Desktop
+
+**Diagnostic hint:** If the user mentions "I just switched accounts on Claude Desktop", skip directly to Step 5 and give them the re-authentication instructions. Steps 3–4 are unnecessary in this case and waste time.
 
 ---
 
