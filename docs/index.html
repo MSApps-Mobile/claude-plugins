@@ -67,6 +67,19 @@
         footer a { color: var(--accent2); text-decoration: none; }
         footer a:hover { text-decoration: underline; }
         @media (max-width: 600px) { .hero h1 { font-size: 2rem; } .hero-stats { gap: 24px; } .stat-num { font-size: 1.5rem; } }
+    
+        .sosa { padding: 64px 0; background: linear-gradient(135deg, rgba(108,99,255,0.07) 0%, rgba(167,139,250,0.04) 100%); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+        .sosa-badge-wrap { text-align: center; margin-bottom: 16px; }
+        .sosa-badge { display: inline-block; background: rgba(108,99,255,0.15); color: var(--accent2); padding: 6px 18px; border-radius: 20px; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; border: 1px solid rgba(108,99,255,0.3); }
+        .pillars { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 20px; margin-top: 40px; }
+        .pillar { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 28px 24px; text-align: center; transition: border-color 0.2s; }
+        .pillar:hover { border-color: var(--accent); }
+        .pillar-icon { font-size: 2rem; margin-bottom: 14px; }
+        .pillar h4 { font-size: 1rem; font-weight: 700; margin-bottom: 10px; color: var(--accent2); }
+        .pillar p { color: var(--text-muted); font-size: 0.875rem; line-height: 1.55; }
+        .sosa-links { text-align: center; margin-top: 36px; font-size: 0.95rem; }
+        .sosa-links a { color: var(--accent2); text-decoration: none; }
+        .sosa-links a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -215,6 +228,40 @@
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">Token savings</span><span class="tag">SOSA O6</span></div>
                 <span class="card-cta">View docs &amp; setup</span>
             </a>
+        </div>
+    </div>
+</section>
+<section class="sosa">
+    <div class="container">
+        <div class="sosa-badge-wrap"><span class="sosa-badge">SOSA™ Compliant</span></div>
+        <h2 class="section-title">Built on SOSA™ Methodology</h2>
+        <p class="section-subtitle">Every MSApps plugin is built on <strong>SOSA™ — Supervised Orchestrated Secured Agents</strong>, a four-pillar framework for safe, production-grade autonomous AI. <a href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf" style="color:var(--accent2);text-decoration:none;">Read the whitepaper (Shatz, 2026) →</a></p>
+        <div class="pillars">
+            <div class="pillar">
+                <div class="pillar-icon">👁️</div>
+                <h4>Supervised</h4>
+                <p>High-impact actions require human approval. Low-impact actions run autonomously. Trust is earned through consistent performance.</p>
+            </div>
+            <div class="pillar">
+                <div class="pillar-icon">🔄</div>
+                <h4>Orchestrated</h4>
+                <p>Agents follow Plan → Act → Verify. Outputs are structured. Token efficiency is enforced — context is a shared resource, not an afterthought.</p>
+            </div>
+            <div class="pillar">
+                <div class="pillar-icon">🔒</div>
+                <h4>Secured</h4>
+                <p>No hardcoded credentials. External data is scanned for prompt injection. Package versions are pinned for reproducibility.</p>
+            </div>
+            <div class="pillar">
+                <div class="pillar-icon">🤖</div>
+                <h4>Agents</h4>
+                <p>Each agent has a formal role spec, declared tool access, defined memory model, and an explicit planning policy.</p>
+            </div>
+        </div>
+        <div class="sosa-links">
+            <a href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf">📄 Read the SOSA™ Whitepaper</a>
+            &nbsp;&nbsp;·&nbsp;&nbsp;
+            <a href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/sosa-compliance-checker/README.md">🛡️ Audit your plugins with SOSA™ Compliance Checker</a>
         </div>
     </div>
 </section>
