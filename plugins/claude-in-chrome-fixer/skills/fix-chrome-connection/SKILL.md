@@ -73,11 +73,16 @@ Then retry `tabs_context_mcp` with `createIfEmpty: false`.
 
 If all automated steps failed, report everything that was tried and ask the user:
 
-1. **Did you recently switch Claude Desktop accounts?** If yes, the extension is still signed into the old account — Chrome restart will NOT fix this. The user must:
-   - Click the Claude in Chrome extension icon in the Chrome toolbar (puzzle piece → Claude in Chrome)
-   - Sign out from the extension popup
-   - Sign in with the new/correct Claude account
-   - The connection should restore automatically after signing in
+1. **Did you recently switch Claude Desktop accounts?** If yes, the extension is still signed into the old account — Chrome restart will NOT fix this.
+
+   **Fastest fix — keyboard shortcut:** Ask the user to:
+   - Click anywhere on the Chrome window to focus it
+   - Press **Cmd+E** — this opens the Claude side panel directly (no need to find the extension icon)
+   - Sign out and sign in with the correct account from the side panel
+
+   **Alternative — helper script:** If the user wants hands-free, they can double-click `~/fix-chrome-auth.command` in Finder. This script activates Chrome and sends Cmd+E automatically.
+
+   > Note: Claude cannot click inside Chrome (browser is tier "read" in computer-use — no clicks or keystrokes, even via AppleScript). This is a hard system restriction. The Cmd+E approach is the fastest manual workaround.
 
 2. Are you logged into the correct Chrome profile? After a macOS user switch, Chrome may open under a different profile where the extension is not installed.
 3. Ask them to click the profile icon (top-right in Chrome) and switch to the right profile, then retry.
