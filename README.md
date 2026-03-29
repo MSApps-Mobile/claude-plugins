@@ -42,21 +42,21 @@ Search for the plugin name (e.g. "mac-disk-cleaner") and click Install.
 
 | Plugin | Description | Install |
 |--------|-------------|---------|
-| [**google-drive-upload**](#google-drive-upload) | Upload files to Google Drive — unlimited, free | `/plugin install google-drive-upload@msapps-plugins` |
-| [**toggl-time-tracker**](#toggl-time-tracker) | Track time with Toggl — start/stop timers, reports | `/plugin install toggl-time-tracker@msapps-plugins` |
-| [**youtube-transcriber**](#youtube-transcriber) | Transcribe YouTube videos & playlists — no API key needed | `/plugin install youtube-transcriber@msapps-plugins` |
-| [**session-backup**](#session-backup) | Automated daily backups of sessions, skills & configs to Google Drive | `/plugin install session-backup@msapps-plugins` |
-| [**notion-memory**](#notion-memory) | Long-term memory for Claude across sessions via Notion | `/plugin install notion-memory@msapps-plugins` |
-| [**mac-disk-cleaner**](#mac-disk-cleaner) | Reclaim disk space on macOS — clean caches, find large files | `/plugin install mac-disk-cleaner@msapps-plugins` |
-| [**whatsapp-mcp**](#whatsapp-mcp) | Connect Claude to WhatsApp — search, read, send messages & business outreach | `/plugin install whatsapp-mcp@msapps-plugins` |
-| [**linkedin-scraper**](#linkedin-scraper) | Scrape LinkedIn profiles, companies & jobs — 5–10x cheaper than Chrome | `/plugin install linkedin-scraper@msapps-plugins` |
-| [**apify-scraper**](#apify-scraper) | Full Apify web scraping platform — run Actors, manage datasets & schedules | `/plugin install apify-scraper@msapps-plugins` |
-| [**apollo**](#apollo) | Prospect leads, enrich contacts & load outreach sequences with Apollo.io | `/plugin install apollo@msapps-plugins` |
-| [**rtl-chat-fixer**](#rtl-chat-fixer) | Fix jumbled RTL/LTR text mixing (Hebrew, Arabic, Persian) in chat | `/plugin install rtl-chat-fixer@msapps-plugins` |
-| [**vm-disk-cleanup**](#vm-disk-cleanup) | Prevent and recover from disk-full errors in Cowork VMs & Claude Code sandboxes | `/plugin install vm-disk-cleanup@msapps-plugins` |
-| [**x-content-intelligence**](#x-content-intelligence) | Scrape X/Twitter for insights & generate community-matched content | `/plugin install x-content-intelligence@msapps-plugins` |
-| [**wordpress-mcp**](#wordpress-mcp) | Manage WordPress sites from Claude — posts, users, WooCommerce & more | `/plugin install wordpress-mcp@msapps-plugins` |
-| [**fix-chrome-connection**](#fix-chrome-connection) | Instantly fix stale Claude in Chrome connections caused by macOS user switching | `/plugin install fix-chrome-connection@msapps-plugins` |
+| [**google-drive-upload**](./plugins/google-drive-upload) | Upload files to Google Drive — unlimited, free | `/plugin install google-drive-upload@msapps-plugins` |
+| [**toggl-time-tracker**](./plugins/toggl-time-tracker) | Track time with Toggl — start/stop timers, reports | `/plugin install toggl-time-tracker@msapps-plugins` |
+| [**youtube-transcriber**](./plugins/youtube-transcriber) | Transcribe YouTube videos & playlists — no API key needed | `/plugin install youtube-transcriber@msapps-plugins` |
+| [**session-backup**](./plugins/session-backup) | Automated daily backups of sessions, skills & configs to Google Drive | `/plugin install session-backup@msapps-plugins` |
+| [**notion-memory**](./plugins/notion-memory) | Long-term memory for Claude across sessions via Notion | `/plugin install notion-memory@msapps-plugins` |
+| [**mac-disk-cleaner**](./plugins/mac-disk-cleaner) | Reclaim disk space on macOS — clean caches, find large files | `/plugin install mac-disk-cleaner@msapps-plugins` |
+| [**whatsapp-mcp**](./plugins/whatsapp-mcp) | Connect Claude to WhatsApp — search, read, send messages & business outreach | `/plugin install whatsapp-mcp@msapps-plugins` |
+| [**linkedin-scraper**](./plugins/linkedin-scraper) | Scrape LinkedIn profiles, companies & jobs — 5–10x cheaper than Chrome | `/plugin install linkedin-scraper@msapps-plugins` |
+| [**apify-scraper**](./plugins/apify-scraper) | Full Apify web scraping platform — run Actors, manage datasets & schedules | `/plugin install apify-scraper@msapps-plugins` |
+| [**apollo**](./plugins/apollo) | Prospect leads, enrich contacts & load outreach sequences with Apollo.io | `/plugin install apollo@msapps-plugins` |
+| [**rtl-chat-fixer**](./plugins/rtl-chat-fixer) | Fix jumbled RTL/LTR text mixing (Hebrew, Arabic, Persian) in chat | `/plugin install rtl-chat-fixer@msapps-plugins` |
+| [**vm-disk-cleanup**](./plugins/vm-disk-cleanup) | Prevent and recover from disk-full errors in Cowork VMs & Claude Code sandboxes | `/plugin install vm-disk-cleanup@msapps-plugins` |
+| [**x-content-intelligence**](./plugins/x-content-intelligence) | Scrape X/Twitter for insights & generate community-matched content | `/plugin install x-content-intelligence@msapps-plugins` |
+| [**wordpress-mcp**](./plugins/wordpress-mcp) | Manage WordPress sites from Claude — posts, users, WooCommerce & more | `/plugin install wordpress-mcp@msapps-plugins` |
+| [**fix-chrome-connection**](./plugins/fix-chrome-connection) | Instantly fix stale Claude in Chrome connections caused by macOS user switching | `/plugin install fix-chrome-connection@msapps-plugins` |
 
 ## Setup
 
