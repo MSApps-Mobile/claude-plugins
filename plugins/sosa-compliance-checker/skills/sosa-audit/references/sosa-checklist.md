@@ -1,114 +1,151 @@
 # SOSA Compliance Checklist
 
-Detailed check items for each pillar.
+## Supervised Controls
 
-## Pillar 1: Supervised
+### Governance Framework
+- [ ] Written AI governance policies documented
+- [ ] Executive oversight committee established
+- [ ] Approval workflows for AI operations defined
+- [ ] Decision authority clearly assigned
+- [ ] Policy review schedule established
 
-### S1 — Impact Classification
-- Skill declares impact level (low/medium/high)
-- Low: Read-only, local-only, formatting, diagnostics
-- Medium: Writes to external services, sends messages, modifies user data
-- High: Financial transactions, bulk outreach, public posting, credential management
+### Human Oversight
+- [ ] Human-in-the-loop mechanisms implemented
+- [ ] Escalation procedures defined for high-impact decisions
+- [ ] Override capabilities available to supervisors
+- [ ] Real-time notification of significant agent actions
+- [ ] Manual review requirements documented
 
-### S2 — Human-in-the-Loop Gates
-- Low-impact: May operate fully autonomously
-- Medium-impact: Log actions OR confirm first-time actions
-- High-impact: Require explicit human approval
-- RED FLAG: "do not ask", "no confirmation", "אין לשאול", "ללא אישור"
+### Activity Monitoring
+- [ ] Centralized logging system operational
+- [ ] Agent actions tracked and timestamped
+- [ ] Audit trail immutable and tamper-evident
+- [ ] Log retention policy (minimum 1 year) defined
+- [ ] Access to logs restricted to authorized users
 
-### S3 — Trust Gradient
-- Differentiates first-time vs repeat actions
-- Failure patterns escalate to tighter supervision
+### Incident Response
+- [ ] Incident response team identified
+- [ ] Response procedures documented
+- [ ] Escalation contact list maintained
+- [ ] Post-incident reviews conducted
+- [ ] Root cause analysis documented
 
-### S4 — Audit Trail
-- Actions logged (summary email, Notion, structured report)
-- Log includes: action type, timestamp, target, outcome
+## Orchestrated Controls
 
-### Scoring
-- PASS: S1 + S2 + S4 all met
-- PARTIAL: Some actions gated, others not
-- FAIL: S2 missing for high-impact skill
+### Workflow Coordination
+- [ ] Multi-agent workflows documented
+- [ ] Task dependencies mapped
+- [ ] Sequencing rules enforced
+- [ ] Handoff procedures defined
+- [ ] State management implemented
 
-## Pillar 2: Orchestrated
+### Task Routing
+- [ ] Agent capabilities documented
+- [ ] Task assignment logic documented
+- [ ] Load balancing implemented
+- [ ] Priority queue management
+- [ ] Task tracking system operational
 
-### O1 — Execution Model
-- Follows Plan → Act → Verify pattern
-- Error handling at each step
+### Dependency Management
+- [ ] Inter-system dependencies mapped
+- [ ] API contracts defined and validated
+- [ ] Version compatibility verified
+- [ ] Backward compatibility maintained
+- [ ] Breaking changes documented
 
-### O2 — Structured Outputs
-- JSON, typed reports, defined schemas
-- Not just free-text
+### Resilience & Recovery
+- [ ] Failover mechanisms implemented
+- [ ] Recovery time objectives (RTO) defined
+- [ ] Recovery point objectives (RPO) defined
+- [ ] Backup and restore procedures tested
+- [ ] Disaster recovery plan documented
 
-### O3 — Dependency Declaration
-- Required MCP servers, connectors listed
-- Missing deps produce clear errors
+## Secured Controls
 
-### O4 — Context Sharing
-- Uses structured registry (Notion, JSON, Calendar)
-- Decoupled — failure of one skill doesn't corrupt shared context
+### Authentication & Authorization
+- [ ] Multi-factor authentication required
+- [ ] Service account credentials managed securely
+- [ ] API key rotation implemented
+- [ ] Least privilege principle applied
+- [ ] Role-based access control (RBAC) enforced
 
-### Scoring
-- PASS: O1 + O2 + O3 all met
-- PARTIAL: Structured workflow but no verification
-- FAIL: Fire-and-forget, no error handling
+### Data Protection
+- [ ] Data encryption in transit (TLS 1.2+)
+- [ ] Data encryption at rest (AES-256 minimum)
+- [ ] Key management procedures documented
+- [ ] Sensitive data masking in logs
+- [ ] Data retention policies enforced
 
-## Pillar 3: Secured
+### Network Security
+- [ ] Network segmentation implemented
+- [ ] Firewalls configured with least privilege rules
+- [ ] VPN/private network used for sensitive connections
+- [ ] DDoS protection measures in place
+- [ ] Intrusion detection system operational
 
-### C1 — Credential Management
-- No hardcoded API keys, tokens, passwords
-- Credentials in config files or env vars
-- Regex patterns to scan:
-  - UUID keys: [a-f0-9]{8}-[a-f0-9]{4}-...-[a-f0-9]{12}
-  - OpenAI keys: sk-[a-zA-Z0-9]{20,}
-  - GitHub PAT: ghp_[a-zA-Z0-9]{36}
-  - AWS keys: AKIA[0-9A-Z]{16}
-  - Google API: AIza[0-9A-Za-z-_]{35}
+### Compliance & Audit
+- [ ] Regular security assessments conducted
+- [ ] Penetration testing performed (annually)
+- [ ] Vulnerability scanning automated
+- [ ] Security patch management process
+- [ ] Compliance certifications obtained
 
-### C2 — Prompt Injection Defense
-- If skill processes external data: has injection scanning
-- Covers: direct injection, action hijacking, exfiltration, encoding, context manipulation
+## Agent Autonomy Controls
 
-### C3 — Supply Chain
-- uvx/npx packages pinned to exact versions
-- No wildcard or "latest"
+### Boundary Definition
+- [ ] Decision boundaries clearly defined
+- [ ] Autonomy levels documented
+- [ ] Exception handling procedures
+- [ ] Constraint enforcement validated
+- [ ] Boundary testing completed
 
-### C4 — Capability Scoping
-- Only accesses necessary tools/APIs
-- Tool manifest declared
+### Training & Instruction
+- [ ] Agent instructions comprehensive and clear
+- [ ] Instruction version control implemented
+- [ ] Instruction testing procedures
+- [ ] Knowledge base accuracy verified
+- [ ] Context window optimization applied
 
-### Scoring
-- PASS: C1 + C2 (if applicable) + C3 + C4 all met
-- PARTIAL: No hardcoded secrets but missing scanning or pinning
-- FAIL: Hardcoded credentials OR external data without injection defense
+### Guardrails & Safety
+- [ ] Input validation implemented
+- [ ] Output validation implemented
+- [ ] Instruction injection protection
+- [ ] Rate limiting configured
+- [ ] Safety threshold monitoring
 
-## Pillar 4: Agents
+### Performance & Monitoring
+- [ ] Agent performance metrics defined
+- [ ] Success rate monitoring active
+- [ ] Error rate tracking implemented
+- [ ] Latency monitoring configured
+- [ ] Cost per operation tracked
 
-### A1 — Role Specification (R)
-- Clear domain boundaries in SKILL.md
-- Exclusions defined (what NOT to do)
-- Success criteria defined
+## Compliance Levels
 
-### A2 — Tool Manifest (T)
-- Required tools listed
-- .mcp.json present for integrations
+### Level 1: Basic Compliance
+**Minimum 70% of checklist items completed**
+- Core oversight mechanisms
+- Basic logging and monitoring
+- Essential security controls
+- Documented procedures
 
-### A3 — Memory Model (M)
-- Persistence mechanism declared
-- Stateless skills marked as stateless
+### Level 2: Intermediate Compliance
+**Minimum 85% of checklist items completed**
+- Enhanced monitoring and alerting
+- Automated security controls
+- Regular compliance reviews
+- Incident response testing
 
-### A4 — Planning Policy (P)
-- Workflow steps with clear sequence
-- Preconditions and postconditions
-- Error handling and recovery
+### Level 3: Advanced Compliance
+**100% of checklist items completed**
+- Continuous compliance monitoring
+- Automated policy enforcement
+- Comprehensive audit automation
+- Proactive threat detection
 
-### Scoring
-- PASS: A1 + A2 + A4 all met
-- PARTIAL: Has role spec but missing boundaries or manifest
-- FAIL: No role boundaries, generic instruction
-
-## Overall Level Calculation
-
-- Level 3: ALL four pillars PASS
-- Level 2: Secured PASS + 2 others PASS + no FAIL
-- Level 1: Secured PASS/PARTIAL + max 1 FAIL
-- Non-compliant: Secured FAIL or 2+ FAIL
+## Assessment Notes
+- Review date: [FILL IN]
+- Assessment scope: [FILL IN]
+- Compliance level target: [FILL IN]
+- Findings summary: [FILL IN]
+- Remediation timeline: [FILL IN]
