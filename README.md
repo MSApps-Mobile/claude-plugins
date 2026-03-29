@@ -95,7 +95,6 @@ Search for the plugin name (e.g. "mac-disk-cleaner") and click Install.
 | [**notion-memory**](./plugins/notion-memory) | Long-term memory for Claude across sessions via Notion | `/plugin install notion-memory@msapps-plugins` |
 | [**mac-disk-cleaner**](./plugins/mac-disk-cleaner) | Reclaim disk space on macOS — clean caches, find large files | `/plugin install mac-disk-cleaner@msapps-plugins` |
 | [**whatsapp-mcp**](./plugins/whatsapp-mcp) | Connect Claude to WhatsApp — search, read, send messages & business outreach | `/plugin install whatsapp-mcp@msapps-plugins` |
-| [**linkedin-scraper**](./plugins/linkedin-scraper) | Scrape LinkedIn profiles, companies & jobs — 5–10x cheaper than Chrome | `/plugin install linkedin-scraper@msapps-plugins` |
 | [**apify-scraper**](./plugins/apify-scraper) | Full Apify web scraping platform — run Actors, manage datasets & schedules | `/plugin install apify-scraper@msapps-plugins` |
 | [**apollo**](./plugins/apollo) | Prospect leads, enrich contacts & load outreach sequences with Apollo.io | `/plugin install apollo@msapps-plugins` |
 | [**rtl-chat-fixer**](./plugins/rtl-chat-fixer) | Fix jumbled RTL/LTR text mixing (Hebrew, Arabic, Persian) in chat | `/plugin install rtl-chat-fixer@msapps-plugins` |
@@ -106,6 +105,8 @@ Search for the plugin name (e.g. "mac-disk-cleaner") and click Install.
 | [**cowork-session-fixer**](./plugins/cowork-session-fixer) | Fix stuck Cowork sessions — RPC "process already running" error, 5-tier automated recovery | `/plugin install cowork-session-fixer@msapps-plugins` |
 | [**sosa-compliance-checker**](./plugins/sosa-compliance-checker) | Audit your entire plugin ecosystem against the SOSA™ methodology — four-pillar compliance scoring | `/plugin install sosa-compliance-checker@msapps-plugins` |
 | [**fix-chrome-connection**](./plugins/fix-chrome-connection) | Instantly fix stale Claude in Chrome connections caused by macOS user switching | `/plugin install fix-chrome-connection@msapps-plugins` |
+| [**github-cli-health-check**](./plugins/github-cli-health-check) | Scheduled health check for the GitHub CLI — verifies auth, repo access, and API rate limit | `/plugin install github-cli-health-check@msapps-plugins` |
+| [**zoho-mail-health**](./plugins/zoho-mail-health) | Daily health check for Zoho Mail accounts — verifies inboxes, reads messages, sends test email | `/plugin install zoho-mail-health@msapps-plugins` |
 
 ## Setup
 
@@ -151,12 +152,21 @@ Requires the [WhatsApp MCP bridge](https://github.com/lharries/whatsapp-mcp) run
 3. Scan the QR code with WhatsApp on first run
 4. Set `WHATSAPP_MCP_PATH="$HOME/whatsapp-mcp"` in your shell profile
 
-### [LinkedIn Scraper](./plugins/linkedin-scraper)
-Requires Python 3.10+ with [uv](https://docs.astral.sh/uv/) installed. Run this once to authenticate:
+### [GitHub CLI Health Check](./plugins/github-cli-health-check)
+Requires `gh` CLI installed on the host Mac:
 ```bash
-uvx linkedin-scraper-mcp --login
+brew install gh
+gh auth login
 ```
-A browser window opens — log in to LinkedIn, then close it. Your session is saved automatically.
+No additional MCPs or environment variables required. All `gh` commands run via Desktop Commander on the host Mac.
+
+### [Zoho Mail Health](./plugins/zoho-mail-health)
+Requires the Zoho Mail MCP server installed. Build it once:
+```bash
+cd "/Users/michalshatz/Documents/Claude/mcps biz/zoho-mail-mcp-server"
+npm install && npm run build
+```
+No additional environment variables required — credentials are pre-configured.
 
 ### [Apify Scraper](./plugins/apify-scraper)
 Set your Apify API token when installing the plugin:
