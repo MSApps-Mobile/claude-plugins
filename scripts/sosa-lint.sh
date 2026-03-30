@@ -14,16 +14,16 @@ ERRORS=0
 WARNINGS=0
 CHECKED=0
 
-log_pass() { echo -e "  ${GREEN}â${NC} $1"; }
-log_fail() { echo -e "  ${RED}â${NC} $1"; ((++ERRORS)); }
-log_warn() { echo -e "  ${YELLOW}â ${NC} $1"; ((++WARNINGS)); }
+log_pass() { echo -e "  ${GREEN}✓${NC} $1"; }
+log_fail() { echo -e "  ${RED}✗${NC} $1"; ((++ERRORS)); }
+log_warn() { echo -e "  ${YELLOW}⚠${NC} $1"; ((++WARNINGS)); }
 
 check_plugin() {
   local dir="$1"
   local name=$(basename "$dir")
   ((++CHECKED))
   echo ""
-  echo "âââ Plugin: $name âââ"
+  echo "━━━ Plugin: $name ━━━"
 
   # === PILLAR 1: SUPERVISED ===
   # Check for SKILL.md with role spec
@@ -39,7 +39,7 @@ check_plugin() {
   done < <(find "$dir" -name "SKILL.md" 2>/dev/null)
 
   if [ "$has_skill" = false ]; then
-    log_fail "Supervised: No SKILL.md found â every plugin must define its role"
+    log_fail "Supervised: No SKILL.md found — every plugin must define its role"
   fi
 
   # === PILLAR 2: ORCHESTRATED ===
@@ -56,7 +56,7 @@ check_plugin() {
   while IFS= read -r skill_file; do
     local wc=$(wc -w < "$skill_file" | tr -d ' ')
     if [ "$wc" -gt 2000 ]; then
-      log_warn "Orchestrated: $(basename $(dirname "$skill_file"))/SKILL.md is $wc words â consider trimming for token efficiency (target <2000)"
+      log_warn "Orchestrated: $(basename $(dirname "$skill_file"))/SKILL.md is $wc words — consider trimming for token efficiency (target <2000)"
     else
       log_pass "Orchestrated: SKILL.md is lean ($wc words)"
     fi
@@ -78,7 +78,7 @@ check_plugin() {
 
   # Check for .env files committed
   if find "$dir" -name ".env" -o -name ".env.*" 2>/dev/null | grep -q .; then
-    log_fail "Secured: .env file found in plugin â credentials must not be committed"
+    log_fail "Secured: .env file found in plugin — credentials must not be committed"
   else
     log_pass "Secured: No .env files committed"
   fi
@@ -88,7 +88,7 @@ check_plugin() {
   if [ -f "$dir/CLAUDE.md" ] || [ -f "$dir/README.md" ]; then
     log_pass "Agents: Plugin documentation (CLAUDE.md/README.md) exists"
   else
-    log_warn "Agents: No CLAUDE.md or README.md â consider adding plugin documentation"
+    log_warn "Agents: No CLAUDE.md or README.md — consider adding plugin documentation"
   fi
 }
 
@@ -97,7 +97,7 @@ check_skill() {
   local name=$(basename "$dir")
   ((++CHECKED))
   echo ""
-  echo "âââ Skill: $name âââ"
+  echo "━━━ Skill: $name ━━━"
 
   if [ -f "$dir/SKILL.md" ]; then
     log_pass "Has SKILL.md"
@@ -133,24 +133,24 @@ check_scheduled_task() {
   local name=$(basename "$dir")
   ((++CHECKED))
   echo ""
-  echo "âââ Task: $name âââ"
+  echo "━━━ Task: $name ━━━"
 
   if [ -f "$dir/SKILL.md" ]; then
     log_pass "Has SKILL.md"
   else
-    log_fail "Missing SKILL.md â all scheduled tasks need a skill definition"
+    log_fail "Missing SKILL.md — all scheduled tasks need a skill definition"
   fi
 }
 
-echo "ââââââââââââââââââââââââââââââââââââââââââââ"
-echo "â   SOSAâ¢ Compliance Lint â MSApps Repo    â"
-echo "ââââââââââââââââââââââââââââââââââââââââââââ"
+echo "╔══════════════════════════════════════════╗"
+echo "║   SOSA™ Compliance Lint — MSApps Repo    ║"
+echo "╚══════════════════════════════════════════╝"
 
 REPO_ROOT="${1:-.}"
 
 # Check plugins
 echo ""
-echo "ð PLUGINS"
+echo "🔌 PLUGINS"
 echo "=========="
 for plugin_dir in "$REPO_ROOT"/plugins/*/; do
   [ -d "$plugin_dir" ] && check_plugin "$plugin_dir"
@@ -158,7 +158,7 @@ done
 
 # Check skills
 echo ""
-echo "ð§  SKILLS"
+echo "🧠 SKILLS"
 echo "========="
 for skill_dir in "$REPO_ROOT"/skills/*/; do
   [ -d "$skill_dir" ] && [ "$(basename "$skill_dir")" != "standalone" ] && check_skill "$skill_dir"
@@ -166,7 +166,7 @@ done
 
 # Check scheduled tasks
 echo ""
-echo "â° SCHEDULED TASKS"
+echo "⏰ SCHEDULED TASKS"
 echo "=================="
 for task_dir in "$REPO_ROOT"/scheduled-tasks/*/; do
   [ -d "$task_dir" ] && check_scheduled_task "$task_dir"
@@ -174,15 +174,15 @@ done
 
 # Summary
 echo ""
-echo "ââââââââââââââââââââââââââââââââââââââââââ"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo -e "Checked: $CHECKED items"
 echo -e "Passed:  ${GREEN}$((CHECKED * 4 - ERRORS - WARNINGS))${NC}"
 echo -e "Errors:  ${RED}$ERRORS${NC}"
 echo -e "Warnings: ${YELLOW}$WARNINGS${NC}"
-echo "ââââââââââââââââââââââââââââââââââââââââââ"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 if [ "$ERRORS" -gt 0 ]; then
-  echo -e "${RED}SOSA lint FAILED â fix errors before merging${NC}"
+  echo -e "${RED}SOSA lint FAILED — fix errors before merging${NC}"
   exit 1
 else
   echo -e "${GREEN}SOSA lint PASSED${NC}"
