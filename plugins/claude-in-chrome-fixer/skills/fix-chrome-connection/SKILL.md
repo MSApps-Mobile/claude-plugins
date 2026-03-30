@@ -7,7 +7,7 @@ description: >
   It diagnoses and repairs broken Claude-in-Chrome MCP connections step by step,
   then self-reflects on any new learnings to improve future runs.
 metadata:
-  version: "0.2.0"
+  version: "0.3.0"
   author: "MSApps"
 ---
 
@@ -50,10 +50,43 @@ Key log messages and their meaning:
 - `"No Chrome extension connected after discovery"` → Extension not authenticated with current account (account switch issue)
 - `"Chrome extension connected to bridge"` → Bridge connected successfully
 - `"Selected Chrome extension: ..."` → Fully working
+- `connected=true, authenticated=true, wsState=1` WITH `Tool call error: ... after ~70ms` → **Stale socket symlink** — bridge thinks it's connected but `0.sock` points to a dead socket from a previous Chrome session. Fix: see Step 2b below.
 
 **Ask yourself (or check logs):** Did the user recently switch Claude Desktop accounts?
 - If **yes** → skip to **Step 4 (Account Switch Fix)**. Steps 3 is unnecessary.
+- If logs show `connected=true, authenticated=true` but tool calls fail in ~70ms → go to **Step 2b (Stale Socket Fix)**.
 - If **no** → continue to Step 3.
+
+---
+
+## Step 2b: Stale Socket Symlink Fix
+
+**Symptom:** Logs show `connected=true, authenticated=true, wsState=1` but every tool call fails in ~70ms with "Selected Chrome extension disconnected."
+
+**Root cause:** Chrome restart creates a new `.sock` file (named after the new Chrome PID) in `/tmp/claude-mcp-browser-bridge-{username}/`. The `0.sock` symlink still points to the old (now-dead) socket from a previous Chrome session. Claude Desktop looks for `0.sock` and can't talk to Chrome.
+
+**Fix:**
+```bash
+# List the socket directory
+ls -la /tmp/claude-mcp-browser-bridge-$(whoami)/
+
+# Update 0.sock to point to the current socket (replace XXXXX with current Chrome PID socket)
+ln -sf /tmp/claude-mcp-browser-bridge-$(whoami)/XXXXX.sock /tmp/claude-mcp-browser-bridge-$(whoami)/0.sock
+```
+
+**Automated fix (finds newest .sock automatically):**
+```bash
+DIR="/tmp/claude-mcp-browser-bridge-$(whoami)"
+NEW_SOCK=$(ls -t "$DIR"/*.sock 2>/dev/null | grep -v '0.sock' | head -1)
+if [ -n "$NEW_SOCK" ]; then
+  ln -sf "$NEW_SOCK" "$DIR/0.sock"
+  echo "Updated 0.sock → $NEW_SOCK"
+else
+  echo "No active socket found"
+fi
+```
+
+After running, retry `tabs_context_mcp` with `createIfEmpty: false`. If it works → jump to Self-Reflection.
 
 ---
 
