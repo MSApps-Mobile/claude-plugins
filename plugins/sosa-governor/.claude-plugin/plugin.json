@@ -1,0 +1,13 @@
+{
+  "name": "sosa-governor",
+  "version": "0.1.0",
+  "description": "SOSA (Supervised, Orchestrated, Secured, Agents) governance for Claude Code — classifies MCP tool calls by impact level, enforces approval gates for high-impact actions, tracks token budgets, and maintains audit logs.",
+  "author": {
+    "name": "MSApps Research",
+    "url": "https://msapps.mobi"
+  },
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "license": "MIT",
+  "keywords": ["sosa", "governance", "security", "audit", "token-budget", "agent-oversight"],
+  "hooks": "./hooks/hooks.json"
+}
