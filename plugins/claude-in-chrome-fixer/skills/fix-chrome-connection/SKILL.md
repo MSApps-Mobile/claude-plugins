@@ -7,7 +7,7 @@ description: >
   It diagnoses and repairs broken Claude-in-Chrome MCP connections step by step,
   then self-reflects on any new learnings to improve future runs.
 metadata:
-  version: "0.3.0"
+  version: "0.5.0"
   author: "MSApps"
 ---
 
@@ -52,8 +52,15 @@ Key log messages and their meaning:
 - `"Selected Chrome extension: ..."` → Fully working
 - `connected=true, authenticated=true, wsState=1` WITH `Tool call error: ... after ~70ms` → **Stale socket symlink** — bridge thinks it's connected but `0.sock` points to a dead socket from a previous Chrome session. Fix: see Step 2b below.
 
+**Quick LevelDB diagnostic (extension bridge status):**
+```bash
+strings ~/Library/Application\ Support/Google/Chrome/Default/Local\ Extension\ Settings/fcoeoabgfenejglbffodgkkbkcdhcgfn/*.ldb 2>/dev/null | grep -E "mcpConnected|Connected:"
+```
+- `Connected: false` with no `mcpConnected: true` → bridge WebSocket was never successfully established → account switch issue, skip to Step 4.
+- `mcpConnected: true` present → bridge did connect at some point; failure may be transient or stale socket.
+
 **Ask yourself (or check logs):** Did the user recently switch Claude Desktop accounts?
-- If **yes** → skip to **Step 4 (Account Switch Fix)**. Steps 3 is unnecessary.
+- If **yes** → skip directly to **Step 5 (Manual Re-auth)**. The automated CDP approach (Step 4) cannot fix an account switch because the debug Chrome profile has no session cookies — the OAuth page will just show a login screen. Don't waste time on Steps 3, 3b, or 4. Go straight to Step 5 and tell the user clearly.
 - If logs show `connected=true, authenticated=true` but tool calls fail in ~70ms → go to **Step 2b (Stale Socket Fix)**.
 - If **no** → continue to Step 3.
 
@@ -105,9 +112,32 @@ Wait 3 seconds, then retry `tabs_context_mcp` with `createIfEmpty: false`.
 
 ---
 
-## Step 4: Account Switch Fix (PROGRAMMATIC — no user clicks needed)
+## Step 3b: Reconnect URL (quick trigger before full CDP)
 
-When the extension is authenticated with the wrong Claude account, the programmatic fix uses Chrome's DevTools Protocol (CDP) to click the Authorize and Connect buttons automatically.
+Before going to the full CDP flow in Step 4, try navigating a Chrome tab to the reconnect URL. The extension service worker listens for this via `chrome.webNavigation.onBeforeNavigate` and calls its reconnect handler (native host reconnect + bridge init) when it sees this URL.
+
+Use the Chrome MCP navigate tool:
+```
+Navigate to: https://clau.de/chrome/reconnect
+```
+
+Wait 5 seconds, then check logs:
+```bash
+tail -10 ~/Library/Logs/Claude/main.log | grep -i chrome
+```
+
+- If you see `"Chrome extension connected to bridge"` → success! Test with `tabs_context_mcp` and jump to Self-Reflection.
+- If logs still show `"No Chrome extension connected after discovery"` → continue to Step 4.
+
+> **Note:** This step only works if Chrome MCP is connected enough to navigate a tab. If `tabs_context_mcp` returns a hard connection error (not just "no group"), skip this step.
+
+---
+
+## Step 4: Re-auth Fix via CDP (only works when session cookies exist — NOT for account switches)
+
+> ⚠️ **Do NOT use this step for account switches.** If `"No Chrome extension connected after discovery"` appeared after a Claude Desktop account switch, go to **Step 5** instead. This step only helps when the extension lost auth but the user's Chrome profile still has an active Claude.ai session (e.g. extension token expired, not a full account switch).
+
+When the extension lost auth but Chrome still has a valid Claude.ai session, the programmatic fix uses Chrome's DevTools Protocol (CDP) to click the Authorize and Connect buttons automatically.
 
 **This procedure requires opening a temporary Chrome instance with a debug port.**
 
@@ -138,17 +168,23 @@ ls ~/Library/Application\ Support/Chromium/NativeMessagingHosts/ 2>/dev/null
 
 ### 4b: Launch debug Chrome
 
+> ⚠️ **Session cookie limitation:** The debug profile symlinks the extension's LevelDB storage (so the extension is installed and has its OAuth token) but does **NOT** transfer session cookies. This means Claude.ai tabs in debug Chrome will show the login page if the user hasn't previously authenticated in that profile. The CDP Step 4c OAuth flow requires the user to already have an active Claude.ai session. If the OAuth page just shows a login form, fall back to Step 5 (manual re-auth by the user).
+
 ```bash
 # Quit regular Chrome first if running
 osascript -e 'tell application "Google Chrome" to quit' 2>/dev/null; sleep 3
 
-# Launch Chrome with debug port on temp profile
-open -a "Google Chrome" --args \
+# ⚠️ IMPORTANT: `open -a "Google Chrome" --args` does NOT pass arguments to the app binary.
+# You MUST launch Chrome directly via the full binary path to pass flags:
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
   --remote-debugging-port=9222 \
   --user-data-dir=/tmp/chrome-debug-profile \
   --no-first-run \
-  --no-default-browser-check
-sleep 4
+  --no-default-browser-check &
+sleep 5
+
+# Verify CDP is listening (this file appears when debug port is active)
+cat /tmp/chrome-debug-profile/DevToolsActivePort 2>/dev/null || echo "⚠️ DevToolsActivePort missing — CDP not listening"
 ```
 
 ### 4c: Authorize the extension with the correct account via CDP
@@ -380,6 +416,21 @@ input.dispatchEvent(new Event('change', { bubbles: true }));
 **Complete working fix:** CDP approach in Step 4 — authorize the extension with the new account via the OAuth page, then pair via the pairing page. Fully automated.
 
 **Diagnostic hint:** Check `~/Library/Logs/Claude/main.log` for `"No Chrome extension connected after discovery"`. If present, skip directly to Step 4.
+
+---
+
+## Known Issue: Debug Chrome Profile — Session Cookies Not Transferred
+
+**Problem:** The symlink approach in Step 4a copies the extension's LevelDB storage (allowing the extension to load with its OAuth token) but does NOT transfer Chrome session cookies. These are stored separately in `Cookies` (SQLite) and `Network/Cookies` files which are NOT symlinked.
+
+**Result:** When debug Chrome opens the OAuth authorize page (`https://claude.ai/oauth/...`), it redirects to the Claude login page instead of showing the "Authorize" button — because the debug profile has no active session.
+
+**Workaround options:**
+1. Copy the real `Cookies` file (but this risks profile corruption if both Chrome instances open simultaneously)
+2. Ask the user to log in manually (Step 5) — most reliable
+3. Close ALL Chrome instances first, then launch debug Chrome with `--user-data-dir` pointing to the REAL profile directory (risky but avoids the cookie issue entirely). Use with caution.
+
+**Quick diagnosis:** If CDP navigation to `https://claude.ai/oauth/authorize?...` returns a page with a login form instead of an Authorize button → session cookies are missing from the debug profile. Fall back to Step 5.
 
 ---
 
