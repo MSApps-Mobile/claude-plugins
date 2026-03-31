@@ -13,7 +13,7 @@ metadata:
 
 ## Purpose
 
-Diagnose and repair a broken Claude-in-Chrome MCP connection. This typically happens after switching Claude Desktop accounts or after Chrome restarts. Work through the steps below in order, stopping as soon as the connection works.
+Diagnose and repair a broken Claude-in-Chrome MCP connection. This typically happens after switching Claude Desktop accounts or after Chrome restarts.
 
 ---
 
@@ -21,354 +21,127 @@ Diagnose and repair a broken Claude-in-Chrome MCP connection. This typically hap
 
 Call `tabs_context_mcp` with `createIfEmpty: false`.
 
-- If it responds (even with "no tab group exists") → **Chrome is already connected.** Proceed to Step 1b (verify tab group creation works).
-- If it throws a connection error or times out → note the error and continue to Step 2.
+- Responds (even "no tab group exists") → **Connected.** Proceed to Step 1b.
+- Connection error/timeout → continue to Step 2.
 
 ### Step 1b: Verify tab group creation
 
 Call `tabs_context_mcp` with `createIfEmpty: true`.
 
-- If it succeeds → report success and jump to the Self-Reflection step.
-- If it returns **"Tabs can only be moved to and from normal windows"** → See Known Issue: tabs_context_mcp "normal windows" error below. Fix: open a new Chrome window via AppleScript:
-  ```bash
-  osascript -e 'tell application "Google Chrome" to make new window'
-  ```
-  Then retry `createIfEmpty: true`.
+- Succeeds → report success, jump to Self-Reflection.
+- Returns **"Tabs can only be moved to and from normal windows"** → fix by opening a new window: `osascript -e 'tell application "Google Chrome" to make new window'`, then retry.
 
 ---
 
 ## Step 2: Diagnose the failure mode
 
-Before trying anything, determine WHY it's broken:
-
-**Check logs for clues:**
 ```bash
 tail -50 ~/Library/Logs/Claude/main.log | grep -i chrome
 ```
 
-Key log messages and their meaning:
-- `"No Chrome extension connected after discovery"` → Extension not authenticated with current account (account switch issue)
-- `"Chrome extension connected to bridge"` → Bridge connected successfully
-- `"Selected Chrome extension: ..."` → Fully working
-
-**Ask yourself (or check logs):** Did the user recently switch Claude Desktop accounts?
-- If **yes** → skip to **Step 4 (Account Switch Fix)**. Steps 3 is unnecessary.
-- If **no** → continue to Step 3.
+- `"No Chrome extension connected after discovery"` → Account switch issue → skip to **Step 4**
+- `"Chrome extension connected to bridge"` → Bridge OK, try Step 3
+- Did user recently switch accounts? If **yes** → skip to **Step 4**.
 
 ---
 
 ## Step 3: Simple reconnect (no account switch)
 
-Run via Desktop Commander:
 ```bash
 open -a "Google Chrome" "chrome-extension://fcoeoabgfenejglbffodgkkbkcdhcgfn/pairing.html"
 ```
-Wait 3 seconds, then retry `tabs_context_mcp` with `createIfEmpty: false`.
 
-- If it works → report success and jump to Self-Reflection.
-- If not → tell the user: **"Chrome is open with a pairing page. Click the orange Connect button once."**
-
-> **Note on pairing page:** The Connect button is DISABLED until you type a name in the input field. This is a React controlled input — see Known Issue: Pairing Page below.
+Wait 3s, retry `tabs_context_mcp`. If it fails, tell user: **"Click the orange Connect button."** (Button is disabled until a name is typed in the input field.)
 
 ---
 
-## Step 4: Account Switch Fix (PROGRAMMATIC — no user clicks needed)
+## Step 4: Account Switch Fix (CDP — no user clicks needed)
 
-When the extension is authenticated with the wrong Claude account, the programmatic fix uses Chrome's DevTools Protocol (CDP) to click the Authorize and Connect buttons automatically.
+When the extension is authenticated with the wrong account, use Chrome DevTools Protocol.
 
-**This procedure requires opening a temporary Chrome instance with a debug port.**
-
-### 4a: Create a debug Chrome profile (symlinked to real profile)
+### 4a: Setup debug profile
 
 ```bash
-# Create temp profile dir that mirrors real Chrome profile
 mkdir -p /tmp/chrome-debug-profile/NativeMessagingHosts
-
-# Symlink profile contents so extension stays installed
 ln -sf "$HOME/Library/Application Support/Google/Chrome/Default" /tmp/chrome-debug-profile/Default
-ln -sf "$HOME/Library/Application Support/Google/Chrome/Local State" /tmp/chrome-debug-profile/Local State"
-
-# Copy native messaging manifest (needed for extension ↔ Claude Desktop communication)
+ln -sf "$HOME/Library/Application Support/Google/Chrome/Local State" "/tmp/chrome-debug-profile/Local State"
 cp ~/Library/Application\ Support/Google/Chrome/NativeMessagingHosts/com.anthropic.claude_browser_extension.json \
    /tmp/chrome-debug-profile/NativeMessagingHosts/ 2>/dev/null || true
-
-# Also check Chromium path as fallback source
-ls ~/Library/Application\ Support/Chromium/NativeMessagingHosts/ 2>/dev/null
 ```
-
-> **If native messaging manifest doesn't exist in Chrome path yet:**
-> ```bash
-> mkdir -p ~/Library/Application\ Support/Google/Chrome/NativeMessagingHosts/
-> cp ~/Library/Application\ Support/Chromium/NativeMessagingHosts/com.anthropic.claude_browser_extension.json \
->    ~/Library/Application\ Support/Google/Chrome/NativeMessagingHosts/
-> ```
 
 ### 4b: Launch debug Chrome
 
 ```bash
-# Quit regular Chrome first if running
 osascript -e 'tell application "Google Chrome" to quit' 2>/dev/null; sleep 3
-
-# Launch Chrome with debug port on temp profile
-open -a "Google Chrome" --args \
-  --remote-debugging-port=9222 \
-  --user-data-dir=/tmp/chrome-debug-profile \
-  --no-first-run \
-  --no-default-browser-check
+open -a "Google Chrome" --args --remote-debugging-port=9222 --user-data-dir=/tmp/chrome-debug-profile --no-first-run --no-default-browser-check
 sleep 4
 ```
 
-### 4c: Authorize the extension with the correct account via CDP
+### 4c: Authorize via CDP
 
-Use Python to connect to CDP and click the OAuth Authorize button:
-
-```python
-import asyncio, json, urllib.request, websockets
-
-async def cdp_click_authorize():
-    # Get list of debuggable tabs
-    tabs = json.loads(urllib.request.urlopen("http://localhost:9222/json").read())
-    ws_url = tabs[0]["webSocketDebuggerUrl"]
-    
-    async with websockets.connect(ws_url) as ws:
-        msg_id = 1
-        
-        async def send(method, params={}):
-            nonlocal msg_id
-            await ws.send(json.dumps({"id": msg_id, "method": method, "params": params}))
-            msg_id += 1
-            while True:
-                r = json.loads(await ws.recv())
-                if r.get("id") == msg_id - 1:
-                    return r
-        
-        # Navigate to OAuth page
-        await send("Page.navigate", {"url": "https://claude.ai/oauth/authorize?response_type=code&client_id=chrome_extension&redirect_uri=chrome-extension://fcoeoabgfenejglbffodgkkbkcdhcgfn/oauth_callback.html&scope=openid+profile+email"})
-        await asyncio.sleep(3)
-        
-        # Click the Authorize button
-        await send("Runtime.evaluate", {"expression": """
-            (function() {
-                // Find button with text "Authorize" or "Allow"
-                let btns = Array.from(document.querySelectorAll('button'));
-                let btn = btns.find(b => /authorize|allow|continue/i.test(b.textContent));
-                if (btn) { btn.click(); return 'clicked: ' + btn.textContent.trim(); }
-                return 'button not found. Buttons: ' + btns.map(b=>b.textContent.trim()).join(', ');
-            })()
-        """})
-        await asyncio.sleep(4)
-        
-        # Navigate to pairing page
-        await send("Page.navigate", {"url": "chrome-extension://fcoeoabgfenejglbffodgkkbkcdhcgfn/pairing.html"})
-        await asyncio.sleep(3)
-        
-        # Type a name in the input field (React controlled input — need native setter)
-        await send("Runtime.evaluate", {"expression": """
-            (function() {
-                let input = document.querySelector('input[type="text"], input[placeholder]');
-                if (!input) return 'no input found';
-                let nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
-                nativeInputValueSetter.call(input, 'Claude Desktop');
-                input.dispatchEvent(new Event('input', { bubbles: true }));
-                input.dispatchEvent(new Event('change', { bubbles: true }));
-                return 'typed name: ' + input.value;
-            })()
-        """})
-        await asyncio.sleep(1)
-        
-        # Click Connect button
-        result = await send("Runtime.evaluate", {"expression": """
-            (function() {
-                let btns = Array.from(document.querySelectorAll('button'));
-                let btn = btns.find(b => /connect/i.test(b.textContent) && !b.disabled);
-                if (btn) { btn.click(); return 'clicked Connect'; }
-                let allBtns = btns.map(b => b.textContent.trim() + '(disabled=' + b.disabled + ')').join(', ');
-                return 'Connect not found. Buttons: ' + allBtns;
-            })()
-        """})
-        return result
-
-asyncio.run(cdp_click_authorize())
+Use Python with `websockets` to connect to `http://localhost:9222/json`, navigate to the OAuth authorize URL, click the Authorize button, then navigate to the pairing page. For the pairing input (React controlled), use the native setter:
+```javascript
+let setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+setter.call(input, 'Claude Desktop');
+input.dispatchEvent(new Event('input', { bubbles: true }));
 ```
+Then click Connect.
 
-Run this via Desktop Commander's Python process.
-
-### 4d: Check logs for successful bridge connection
+### 4d: Verify and switch back
 
 ```bash
-sleep 5
-tail -20 ~/Library/Logs/Claude/main.log | grep -i chrome
-```
-
-Look for:
-- `"Chrome extension connected to bridge"` ✅
-- `"Selected Chrome extension: ..."` ✅
-
-### 4e: Switch back to regular Chrome
-
-```bash
-# Quit the debug Chrome instance
+sleep 5 && tail -20 ~/Library/Logs/Claude/main.log | grep -i chrome
+# Look for "Chrome extension connected to bridge" ✅
 osascript -e 'tell application "Google Chrome" to quit'; sleep 3
-
-# Launch regular Chrome
 open -a "Google Chrome"; sleep 4
-
-# The extension service worker will auto-reconnect to the bridge
-```
-
-### 4f: Open a new window to ensure tabs_context_mcp works
-
-```bash
 osascript -e 'tell application "Google Chrome" to make new window'
 ```
 
-Then test `tabs_context_mcp` with `createIfEmpty: true`. It should succeed now.
+Test `tabs_context_mcp` with `createIfEmpty: true`.
 
 ---
 
-## Step 5: If CDP approach failed — Ask user to re-authenticate manually
+## Step 5: Manual re-auth fallback
 
 Tell the user:
-
-> **"The Chrome extension is signed into the wrong Claude account. Please re-authenticate it manually:"**
-> 1. In Chrome toolbar → click the puzzle piece icon → find "Claude in Chrome"
-> 2. OR press **Cmd+E** to open the Claude side panel directly  
-> 3. Sign out from the extension
-> 4. Sign in with the correct account (`msmobileapps@gmail.com`)
-> 5. Connection restores automatically
+1. Chrome toolbar → puzzle icon → "Claude in Chrome" → sign out
+2. Sign in with correct account
+3. Connection restores automatically
 
 ---
 
 ## Step 6: Last resort
 
-Tell the user to open `chrome://extensions`, remove the Claude in Chrome extension, then reinstall it from the Chrome Web Store.
+Remove extension at `chrome://extensions`, reinstall from Chrome Web Store.
 
 ---
 
-## Self-Reflection Step (run after EVERY execution)
+## Self-Reflection Step
 
-After completing any of the steps above, pause and ask yourself:
+After every run, ask: "Did I learn anything that would improve future runs?"
 
-> "Did I learn anything during this run that would make future runs faster, more reliable, or better at diagnosing problems?"
-
-Examples of learnings worth capturing:
-- A step that consistently fails or succeeds
-- A new failure mode encountered
-- A faster diagnostic shortcut discovered
-- An edge case or timing issue worth noting
-- A step ordering improvement
-
-**If you learned something:**
-
-1. Edit any relevant file in `~/claude-plugins/plugins/claude-in-chrome-fixer/` to incorporate the new knowledge.
-2. Run via Desktop Commander:
-
+If yes, edit files in `~/claude-plugins/plugins/claude-in-chrome-fixer/` and commit:
 ```bash
-cd ~/claude-plugins
-git add plugins/claude-in-chrome-fixer/
-git commit -m "fix-chrome-connection: self-improvement from run on $(date '+%Y-%m-%d')"
-git push origin main
+cd ~/claude-plugins && git add plugins/claude-in-chrome-fixer/ && git commit -m "fix-chrome-connection: self-improvement from run on $(date '+%Y-%m-%d')" && git push origin main
 ```
 
-3. Report what you learned, which files you changed, and confirm the push succeeded.
-
-**Only commit and push AFTER the fix is confirmed working.** Never push when the connection is still broken.
-
-**If you did not learn anything new:** Simply state "No new learnings from this run." and finish.
+Only push after fix is confirmed working.
 
 ---
 
-## Reporting
+## Known Issues
 
-After each run, always output a brief summary:
-- Which steps were attempted
-- What the outcome was
-- What (if anything) was learned and updated
+**"Tabs can only be moved to and from normal windows"**: Chrome has popup windows open (OAuth/login). Fix: `osascript -e 'tell application "Google Chrome" to make new window'`
 
----
+**Pairing page input**: React controlled — must use native HTMLInputElement setter, not direct `input.value` assignment.
 
-## Known Issue: tabs_context_mcp "Tabs can only be moved to and from normal windows"
+**Account switch — restart doesn't help**: Claude Desktop uses `wss://bridge.claudeusercontent.com/chrome/{userId}`. After account switch, userId changes. Extension must re-auth to join the new bridge channel. Use Step 4 CDP approach.
 
-**Symptom:** `tabs_context_mcp` with `createIfEmpty: true` returns:
-> `"Failed to query tabs: Tabs can only be moved to and from normal windows"`
+**Focus grabbing**: Claude app steals focus from Chrome. Use MCP tools and AppleScript instead of coordinate clicks.
 
-**Root cause:** Chrome has one or more non-normal windows open — typically OAuth/login popup windows (e.g., "Zoho Accounts", "Adobe ID" login popups). These appear as "normal" to AppleScript but Chrome's internal API sees them as type "popup". When the extension tries to create a tab group, Chrome refuses because it can't move tabs from popup windows.
+## Architecture
 
-**Note:** This error does NOT mean the MCP connection is broken. `tabs_context_mcp` with `createIfEmpty: false` will succeed and confirm the extension is connected.
-
-**Fix:**
-```bash
-osascript -e 'tell application "Google Chrome" to make new window'
-```
-Then retry `tabs_context_mcp` with `createIfEmpty: true`. The new window gives the extension a clean normal window to create the tab group in.
-
-**Diagnostic:** Check window titles to identify popup windows:
-```bash
-osascript -e 'tell application "Google Chrome" to return name of windows'
-```
-If you see auth/login titles ("Zoho Accounts", "Adobe ID", "Google Sign In", etc.), those are likely the popup windows causing the issue.
-
----
-
-## Known Issue: Pairing Page — The One Unavoidable Click (now automatable via CDP!)
-
-**What was learned:** When the extension loses auth (e.g. after account switch), the extension shows a pairing page at:
-`chrome-extension://fcoeoabgfenejglbffodgkkbkcdhcgfn/pairing.html`
-
-**The pairing protocol (from reverse-engineering the JS):**
-- Clicking Connect sends: `chrome.runtime.sendMessage({type:"pairing_confirmed", request_id, name})`
-- Clicking Ignore sends: `chrome.runtime.sendMessage({type:"pairing_dismissed", request_id})`
-- `request_id` comes from the URL parameter `?request_id=xxx` (opened by the service worker)
-
-**Critical: The Connect button is DISABLED until a name is typed.** The input is a React controlled component — you CANNOT just set `input.value = "text"` and expect React to see it. You must use the React native input setter:
-```javascript
-let nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
-nativeInputValueSetter.call(input, 'Claude Desktop');
-input.dispatchEvent(new Event('input', { bubbles: true }));
-input.dispatchEvent(new Event('change', { bubbles: true }));
-```
-
-**Automation approach (via CDP):** See Step 4 above. CDP on a debug Chrome instance allows programmatic clicking of both the OAuth Authorize button AND the pairing page Connect button. This is fully automated — no user clicks required.
-
-**When CDP is not available (fallback):**
-1. Open the pairing page: `open -a "Google Chrome" "chrome-extension://fcoeoabgfenejglbffodgkkbkcdhcgfn/pairing.html"`
-2. Tell the user: "The pairing page is open in Chrome. Type any name in the input field, then click the orange **Connect** button."
-
----
-
-## Known Issue: Account Switch — Chrome Restart Does NOT Fix It
-
-**Problem:** After switching Claude Desktop accounts, the Claude in Chrome extension stays authenticated with the old account. Chrome restart does not resolve this.
-
-**Symptoms:** All simple steps fail. Main log shows: `"No Chrome extension connected after discovery"` persisting even after Chrome restart.
-
-**Root cause:** Claude Desktop connects via WebSocket bridge at `wss://bridge.claudeusercontent.com/chrome/{userId}`. After account switch, it uses the NEW user's bridge channel. But the Chrome extension is still authenticated with the OLD account and connects to the OLD bridge channel. They can't find each other.
-
-**Complete working fix:** CDP approach in Step 4 — authorize the extension with the new account via the OAuth page, then pair via the pairing page. Fully automated.
-
-**Diagnostic hint:** Check `~/Library/Logs/Claude/main.log` for `"No Chrome extension connected after discovery"`. If present, skip directly to Step 4.
-
----
-
-## Known Issue: Focus Grabbing (Chrome loses focus to Claude app)
-
-**Problem:** When Claude tries to control Chrome via coordinate-based clicking, the Claude desktop app itself steals window focus.
-
-**Solution:** Use Chrome MCP tools and AppleScript for all Chrome interaction — these work in the background without requiring Chrome to be focused.
-
----
-
-## Architecture Reference
-
-The Claude-in-Chrome connection uses a **WebSocket bridge** (not a local socket):
-
-- Claude Desktop connects to: `wss://bridge.claudeusercontent.com/chrome/{userId}`
-- Chrome extension also connects to the same URL using its OAuth session
-- They find each other on the bridge via a pairing protocol
-- Local Unix socket at `/tmp/claude-mcp-browser-bridge-{username}/0.sock` is a secondary/legacy path — NOT the main connection path
-
-**After account switch:** The userId changes, so Claude Desktop connects to a new bridge channel. The extension must re-authenticate to join the same channel.
-
-**Native host binary:** `/Applications/Claude.app/Contents/Helpers/chrome-native-host` — started by Chrome extension via native messaging, creates the Unix socket. The manifest must be in `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/` (NOT just Chromium).
-
-**Claude Desktop socket client (`vNr()`):** Looks specifically for `/tmp/claude-mcp-browser-bridge-{username}/0.sock`. If multiple `.sock` files exist (different PIDs), create a symlink from `0.sock` to the active one.
+- Claude Desktop → `wss://bridge.claudeusercontent.com/chrome/{userId}` ← Chrome extension
+- Native host: `/Applications/Claude.app/Contents/Helpers/chrome-native-host`
+- Local socket: `/tmp/claude-mcp-browser-bridge-{username}/0.sock` (legacy/secondary)
+- Native messaging manifest: `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/`
