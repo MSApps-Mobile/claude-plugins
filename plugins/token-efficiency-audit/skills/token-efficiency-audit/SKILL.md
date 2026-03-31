@@ -100,14 +100,14 @@ See `references/optimization-patterns.md` for detailed pattern descriptions, imp
 - **Agents**: Supports multi-turn analysis with refinement iterations
 
 ## Audit Report Structure
-```
+```json
 {
   "audit_id": "aud-2026-0329-001",
   "created_at": "2026-03-29T12:00:00Z",
-  "scope": {...},
-  "baseline_metrics": {...},
-  "pattern_analysis": {...},
-  "recommendations": [...],
+  "scope": {},
+  "baseline_metrics": {},
+  "pattern_analysis": {},
+  "recommendations": [],
   "compliance_status": "APPROVED",
   "next_review": "2026-06-29"
 }
