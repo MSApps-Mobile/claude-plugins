@@ -1,0 +1,71 @@
+{
+  "_doc": "SOSA Impact Registry — maps tool patterns to impact levels. Used by PreToolUse hooks to classify and gate actions.",
+  "levels": {
+    "low": {
+      "description": "Read-only, internal computation, file creation. No approval needed.",
+      "action": "allow"
+    },
+    "medium": {
+      "description": "Write to internal systems, schedule changes. Log and continue.",
+      "action": "log"
+    },
+    "high": {
+      "description": "External communication, financial, destructive. Require approval.",
+      "action": "gate"
+    }
+  },
+  "tools": {
+    "high": [
+      { "pattern": "mcp__whatsapp__send_message", "reason": "External communication to real people" },
+      { "pattern": "mcp__whatsapp__send_audio_message", "reason": "External audio message" },
+      { "pattern": "mcp__whatsapp__send_file", "reason": "Sending file to external contact" },
+      { "pattern": "mcp__zoho-mail__zohomail_send_message", "reason": "Sends email externally" },
+      { "pattern": "mcp__zoho-mail__zohomail_reply_to_message", "reason": "Replies to email externally" },
+      { "pattern": "mcp__plugin_x-mcp_x-mcp__create_tweet", "reason": "Public social media post" },
+      { "pattern": "mcp__plugin_x-mcp_x-mcp__reply_to_tweet", "reason": "Public social media reply" },
+      { "pattern": "mcp__plugin_x-mcp_x-mcp__quote_tweet", "reason": "Public social media quote" },
+      { "pattern": "mcp__plugin_x-mcp_x-mcp__retweet", "reason": "Public social media retweet" },
+      { "pattern": "mcp__plugin_x-mcp_x-mcp__delete_tweet", "reason": "Destructive — deletes public content" },
+      { "pattern": "mcp__zoho-mail__zohomail_delete_message", "reason": "Destructive — deletes email" },
+      { "pattern": "mcp__cowork__allow_cowork_file_delete", "reason": "Destructive — file deletion" }
+    ],
+    "medium": [
+      { "pattern": "mcp__387a2a7c.*__notion-create-pages", "reason": "Creates Notion pages" },
+      { "pattern": "mcp__387a2a7c.*__notion-update-page", "reason": "Modifies Notion content" },
+      { "pattern": "mcp__387a2a7c.*__notion-create-database", "reason": "Creates Notion database" },
+      { "pattern": "mcp__387a2a7c.*__notion-move-pages", "reason": "Moves Notion pages" },
+      { "pattern": "mcp__58431857.*__create_item", "reason": "Creates Monday.com item" },
+      { "pattern": "mcp__58431857.*__change_item_column_values", "reason": "Modifies Monday.com data" },
+      { "pattern": "mcp__58431857.*__create_board", "reason": "Creates Monday.com board" },
+      { "pattern": "mcp__58431857.*__create_update", "reason": "Posts Monday.com update" },
+      { "pattern": "mcp__71a1b84a.*__gcal_create_event", "reason": "Creates calendar event" },
+      { "pattern": "mcp__71a1b84a.*__gcal_update_event", "reason": "Modifies calendar event" },
+      { "pattern": "mcp__71a1b84a.*__gcal_delete_event", "reason": "Deletes calendar event" },
+      { "pattern": "mcp__b4fd5d95.*__gmail_create_draft", "reason": "Creates email draft" },
+      { "pattern": "mcp__scheduled-tasks__create_scheduled_task", "reason": "Creates automated task" },
+      { "pattern": "mcp__scheduled-tasks__update_scheduled_task", "reason": "Modifies automated task" },
+      { "pattern": "mcp__Claude_in_Chrome__navigate", "reason": "Browser automation" },
+      { "pattern": "mcp__Claude_in_Chrome__computer", "reason": "Browser interaction" },
+      { "pattern": "mcp__Claude_in_Chrome__form_input", "reason": "Form manipulation" }
+    ],
+    "low": [
+      { "pattern": "mcp__whatsapp__list_messages", "reason": "Read-only" },
+      { "pattern": "mcp__whatsapp__list_chats", "reason": "Read-only" },
+      { "pattern": "mcp__whatsapp__get_chat", "reason": "Read-only" },
+      { "pattern": "mcp__whatsapp__search_contacts", "reason": "Read-only" },
+      { "pattern": "mcp__387a2a7c.*__notion-search", "reason": "Read-only" },
+      { "pattern": "mcp__387a2a7c.*__notion-fetch", "reason": "Read-only" },
+      { "pattern": "mcp__58431857.*__search", "reason": "Read-only" },
+      { "pattern": "mcp__58431857.*__get_.*", "reason": "Read-only" },
+      { "pattern": "mcp__b4fd5d95.*__gmail_search_messages", "reason": "Read-only" },
+      { "pattern": "mcp__b4fd5d95.*__gmail_read_message", "reason": "Read-only" },
+      { "pattern": "mcp__b4fd5d95.*__gmail_read_thread", "reason": "Read-only" },
+      { "pattern": "mcp__71a1b84a.*__gcal_list_events", "reason": "Read-only" },
+      { "pattern": "mcp__c1fc4002.*__google_drive_search", "reason": "Read-only" },
+      { "pattern": "mcp__c1fc4002.*__google_drive_fetch", "reason": "Read-only" },
+      { "pattern": "mcp__session_info__list_sessions", "reason": "Read-only" },
+      { "pattern": "mcp__session_info__read_transcript", "reason": "Read-only" }
+    ]
+  },
+  "default_level": "medium"
+}

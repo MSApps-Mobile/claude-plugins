@@ -1,0 +1,7 @@
+{
+  "_doc": "SOSA Trust Gradient State. Tracks per-tool trust scores. Updated by hooks after each approval/denial.",
+  "trust_threshold": 1.0,
+  "decay_on_incident": 0.5,
+  "gain_on_approval": 0.1,
+  "tools": {}
+}

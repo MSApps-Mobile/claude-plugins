@@ -9,6 +9,8 @@
 
 # MSApps Claude Plugins
 
+> **If you find these plugins useful, please ⭐ star this repo** — it helps other developers discover the marketplace and motivates us to keep building!
+
 **The largest open-source plugin marketplace for Claude.** 19 production-ready plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (CLI) and [Cowork](https://claude.ai) (desktop app) — built on the SOSA™ security framework.
 
 > Upload to Google Drive. Track time in Toggl. Transcribe YouTube videos. Send WhatsApp messages. Manage WordPress. Prospect with Apollo. Clean your Mac. All from a single Claude conversation.
@@ -194,6 +196,13 @@ Most other plugins (RTL Chat Fixer, VM Disk Cleanup, Cowork Session Fixer, Fix C
 </details>
 
 ---
+
+## Community
+
+- 💬 [Open an issue](https://github.com/MSApps-Mobile/claude-plugins/issues) for bugs or feature requests
+- 🤝 [Read CONTRIBUTING.md](./CONTRIBUTING.md) to get started with your first PR
+- ⭐ Star the repo to help others find it
+- 🐦 Follow [@MSAppsMobile](https://x.com/MSAppsMobile) for updates
 
 ## Contributing
 

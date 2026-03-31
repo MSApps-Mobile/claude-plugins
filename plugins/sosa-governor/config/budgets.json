@@ -1,0 +1,44 @@
+{
+  "_doc": "SOSA Token Budget Configuration. Budgets cascade: monthly → weekly → daily → per-agent.",
+  "monthly_token_budget": 25000000,
+  "weekly_allocation_strategy": "rolling_average",
+  "daily_reserve_percent": 15,
+  "agent_budgets": {
+    "revenue": {
+      "daily": 150000,
+      "priority": "critical",
+      "overage_policy": "borrow_from_reserve",
+      "tasks": ["invoicing", "lead-followup", "xplace", "apollo-prospecting"]
+    },
+    "communication": {
+      "daily": 120000,
+      "priority": "high",
+      "overage_policy": "borrow_from_reserve",
+      "tasks": ["gali", "email-outreach", "linkedin", "x-twitter"]
+    },
+    "operations": {
+      "daily": 80000,
+      "priority": "medium",
+      "overage_policy": "queue_until_tomorrow",
+      "tasks": ["health-checks", "backups", "session-context-save"]
+    },
+    "development": {
+      "daily": 100000,
+      "priority": "medium",
+      "overage_policy": "notify_and_continue",
+      "tasks": ["migration", "plugin-building", "skill-creation"]
+    },
+    "monitoring": {
+      "daily": 30000,
+      "priority": "low",
+      "overage_policy": "throttle",
+      "tasks": ["toggl-monitor", "github-monitor", "presence-performance"]
+    }
+  },
+  "overage_actions": {
+    "soft_limit_percent": 80,
+    "hard_limit_percent": 100,
+    "soft_action": "warn_in_audit_log",
+    "hard_action": "throttle_low_priority_first"
+  }
+}
