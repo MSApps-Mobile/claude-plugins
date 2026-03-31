@@ -7,7 +7,7 @@ description: >
   It diagnoses and repairs broken Claude-in-Chrome MCP connections step by step,
   then self-reflects on any new learnings to improve future runs.
 metadata:
-  version: "0.3.0"
+  version: "0.6.0"
   author: "MSApps"
 ---
 
@@ -61,7 +61,7 @@ strings ~/Library/Application\ Support/Google/Chrome/Default/Local\ Extension\ S
 - Only `oauthState` key (no `mcpConnected: true`, no `Connected: false`) → extension started an OAuth flow but never completed it → treat as auth failure, go to **Step 5 (Manual Re-auth)**. This pattern appears when Chrome is freshly launched and the extension lost its auth between sessions.
 
 **Ask yourself (or check logs):** Did the user recently switch Claude Desktop accounts?
-- If **yes** → skip to **Step 4 (Account Switch Fix)**. Steps 3 is unnecessary.
+- If **yes** → skip directly to **Step 5 (Manual Re-auth)**. ⚠️ Do NOT waste tokens on Steps 3, 3b, or 4. The CDP approach (Step 4) cannot fix an account switch — the debug Chrome profile has no session cookies, so the OAuth page just shows a login screen. Go straight to Step 5.
 - If logs show `connected=true, authenticated=true` but tool calls fail in ~70ms → go to **Step 2b (Stale Socket Fix)**.
 - If **no** → continue to Step 3.
 
@@ -117,9 +117,32 @@ Wait 3 seconds, then retry `tabs_context_mcp` with `createIfEmpty: false`.
 
 ---
 
-## Step 4: Account Switch Fix (PROGRAMMATIC — no user clicks needed)
+## Step 3b: Reconnect URL (quick trigger — try before Step 4)
 
-When the extension is authenticated with the wrong Claude account, the programmatic fix uses Chrome's DevTools Protocol (CDP) to click the Authorize and Connect buttons automatically.
+Navigate a Chrome tab to this URL. The extension service worker listens via `chrome.webNavigation.onBeforeNavigate` and triggers its reconnect handler (native host reconnect + bridge init):
+
+```bash
+osascript -e 'tell application "Google Chrome" to set URL of active tab of front window to "https://clau.de/chrome/reconnect"'
+```
+
+Wait 5 seconds, then check logs:
+```bash
+tail -10 ~/Library/Logs/Claude/main.log | grep -iE "chrome extension|bridge|No Chrome"
+```
+- `"Chrome extension connected to bridge"` → success! Test with `tabs_context_mcp`.
+- Still `"No Chrome extension connected"` → continue to Step 4.
+
+> **Note:** Requires Chrome to have an open window. If AppleScript returns "Can't get window 1" → open a window first: `osascript -e 'tell application "Google Chrome" to make new window'`
+
+---
+
+## Step 4: Re-auth Fix via CDP (NOT for account switches — only for expired/lost token)
+
+> ⚠️ **Do NOT use this step for account switches.** If the failure happened after a Claude Desktop account switch, go directly to **Step 5**. The CDP approach cannot fix account switches because the debug Chrome profile has no session cookies — the OAuth page shows a login screen instead of the Authorize button.
+
+This step only helps when the extension's token expired or was cleared, but the user's Chrome profile still has an active Claude.ai session.
+
+When the extension lost auth but Chrome still has a valid Claude.ai session, the programmatic fix uses Chrome's DevTools Protocol (CDP) to click the Authorize and Connect buttons automatically.
 
 **This procedure requires opening a temporary Chrome instance with a debug port.**
 
@@ -150,17 +173,23 @@ ls ~/Library/Application\ Support/Chromium/NativeMessagingHosts/ 2>/dev/null
 
 ### 4b: Launch debug Chrome
 
+> ⚠️ **Session cookie limitation:** The debug profile symlinks extension LevelDB storage but NOT Chrome session cookies. If the user hasn't previously logged into Claude.ai in this debug profile, the OAuth page will show a login screen — CDP can't proceed. Fall back to Step 5.
+
 ```bash
 # Quit regular Chrome first if running
 osascript -e 'tell application "Google Chrome" to quit' 2>/dev/null; sleep 3
 
-# Launch Chrome with debug port on temp profile
-open -a "Google Chrome" --args \
+# ⚠️ `open -a "Google Chrome" --args` does NOT pass arguments to the binary.
+# Use the full binary path directly:
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
   --remote-debugging-port=9222 \
   --user-data-dir=/tmp/chrome-debug-profile \
   --no-first-run \
-  --no-default-browser-check
-sleep 4
+  --no-default-browser-check &
+sleep 5
+
+# Verify CDP is listening
+cat /tmp/chrome-debug-profile/DevToolsActivePort 2>/dev/null || echo "⚠️ DevToolsActivePort missing — CDP not available, fall back to Step 5"
 ```
 
 ### 4c: Authorize the extension with the correct account via CDP
@@ -271,16 +300,25 @@ Then test `tabs_context_mcp` with `createIfEmpty: true`. It should succeed now.
 
 ---
 
-## Step 5: If CDP approach failed — Ask user to re-authenticate manually
+## Step 5: Manual Re-auth (always works — the reliable fix for account switches)
 
 Tell the user:
 
-> **"The Chrome extension is signed into the wrong Claude account. Please re-authenticate it manually:"**
-> 1. In Chrome toolbar → click the puzzle piece icon → find "Claude in Chrome"
-> 2. OR press **Cmd+E** to open the Claude side panel directly  
-> 3. Sign out from the extension
-> 4. Sign in with the correct account (`msmobileapps@gmail.com`)
-> 5. Connection restores automatically
+> **"The Chrome extension needs to be re-authenticated with your current Claude Desktop account. This takes ~60 seconds:"**
+> 1. In Chrome toolbar → click the puzzle piece icon (🧩) → find "Claude in Chrome" → sign out
+> 2. Sign back in with the **same account you use for Claude Desktop** (check Claude Desktop's account menu if unsure)
+> 3. Authorize the connection when prompted
+> 4. When the pairing page appears — type any name and click **Connect**
+> 5. Navigate Chrome to **https://claude.ai** to wake the extension service worker
+> 6. Tell Claude: "done" — then Claude will fix the `0.sock` symlink and verify
+
+After the user says done, run the socket fix and test:
+```bash
+DIR="/tmp/claude-mcp-browser-bridge-$(whoami)"
+NEW=$(ls -t "$DIR"/*.sock 2>/dev/null | grep -v '/0.sock' | head -1)
+[ -n "$NEW" ] && ln -sf "$NEW" "$DIR/0.sock" && echo "Updated 0.sock → $NEW" || echo "No socket — Chrome may need a new window"
+```
+Then call `tabs_context_mcp` with `createIfEmpty: true`. May take a few seconds to appear in logs — retry once if it fails immediately.
 
 ---
 
@@ -317,7 +355,7 @@ git push origin main
 
 3. Report what you learned, which files you changed, and confirm the push succeeded.
 
-**Only commit and push AFTER the fix is confirmed working.** Never push when the connection is still broken.
+**Only commit and push AFTER the fix is confirmed working or after learnings are captured from a failed run.**
 
 **If you did not learn anything new:** Simply state "No new learnings from this run." and finish.
 
@@ -381,17 +419,27 @@ input.dispatchEvent(new Event('change', { bubbles: true }));
 
 ---
 
-## Known Issue: Account Switch — Chrome Restart Does NOT Fix It
+## Known Issue: Account Switch — Only Manual Re-auth Works
 
-**Problem:** After switching Claude Desktop accounts, the Claude in Chrome extension stays authenticated with the old account. Chrome restart does not resolve this.
+**Problem:** After switching Claude Desktop accounts, the Chrome extension stays authenticated with the old account. Chrome restart, socket fixes, and the CDP approach all fail.
 
-**Symptoms:** All simple steps fail. Main log shows: `"No Chrome extension connected after discovery"` persisting even after Chrome restart.
+**Symptoms:** `"No Chrome extension connected after discovery"` persists in logs regardless of what automated steps are taken. Both accounts may show the same email (e.g. `michal@msapps.mobi`) yet still fail — the mismatch is at the userId level on the bridge, not just the email.
 
-**Root cause:** Claude Desktop connects via WebSocket bridge at `wss://bridge.claudeusercontent.com/chrome/{userId}`. After account switch, it uses the NEW user's bridge channel. But the Chrome extension is still authenticated with the OLD account and connects to the OLD bridge channel. They can't find each other.
+**Root cause:** Claude Desktop connects to `wss://bridge.claudeusercontent.com/chrome/{userId}`. After account switch the userId changes. The extension still connects to the OLD userId channel. They never find each other.
 
-**Complete working fix:** CDP approach in Step 4 — authorize the extension with the new account via the OAuth page, then pair via the pairing page. Fully automated.
+**Why CDP (Step 4) doesn't work for account switches:** The debug Chrome profile symlinks extension LevelDB storage (so the extension loads) but does NOT copy session cookies. The OAuth authorize page just shows a login screen. No way to complete re-auth programmatically without a live session.
 
-**Diagnostic hint:** Check `~/Library/Logs/Claude/main.log` for `"No Chrome extension connected after discovery"`. If present, skip directly to Step 4.
+**The only working fix:** Step 5 — user signs out and back into the extension with the correct account, navigates to claude.ai, then fixes the 0.sock symlink.
+
+**Complete working procedure (confirmed 2026-03-31):**
+1. In Chrome: sign out of Claude in Chrome extension, sign back in with current Claude Desktop account
+2. When pairing page appears — type a name, click Connect
+3. Navigate Chrome to `https://claude.ai` (wakes the extension service worker, starts native host)
+4. Fix the socket: `ln -sf $(ls -t /tmp/claude-mcp-browser-bridge-$(whoami)/*.sock | grep -v 0.sock | head -1) /tmp/claude-mcp-browser-bridge-$(whoami)/0.sock`
+5. Wait a few seconds — bridge connection log entry `"Chrome extension connected to bridge"` should appear
+6. Test with `tabs_context_mcp`
+
+**Diagnostic hint:** `"No Chrome extension connected after discovery"` in logs = go directly to Step 5, skip everything else.
 
 ---
 

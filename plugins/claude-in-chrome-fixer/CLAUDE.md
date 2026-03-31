@@ -1,6 +1,6 @@
 # Claude in Chrome Fixer — Claude Code Guide
 
-This plugin diagnoses and repairs broken Claude-in-Chrome MCP connections, including the difficult case of **Claude Desktop account switches**. It is fully self-improving: after every run it commits its learnings back to this repository.
+This plugin diagnoses and repairs broken Claude-in-Chrome MCP connections. It is fully self-improving: after every run it commits its learnings back to this repository.
 
 ---
 
@@ -19,9 +19,11 @@ Use `fix-chrome-connection` when:
 
 ```
 tabs_context_mcp(createIfEmpty=false) errors?
-├── YES → Check main.log for "No Chrome extension connected"
-│   ├── FOUND → Account switch issue → Run Step 4 (CDP fix)
-│   └── NOT FOUND → Simple disconnect → Run Step 3 (open pairing page)
+├── YES → Check main.log for "No Chrome extension connected after discovery"
+│   ├── FOUND → Account switch issue → Go to Step 5 (MANUAL re-auth, skip CDP entirely)
+│   └── NOT FOUND → Check logs for connected=true but 70ms timeout
+│       ├── YES → Stale 0.sock → Run Step 2b (fix symlink)
+│       └── NO → Simple disconnect → Run Step 3b (reconnect URL) then Step 3 (pairing page)
 └── NO (returns "no tab group") → Connection OK, test createIfEmpty=true
     ├── SUCCEEDS → Done ✅
     └── "normal windows" error → osascript make new window → retry
@@ -32,8 +34,8 @@ tabs_context_mcp(createIfEmpty=false) errors?
 ## Key commands
 
 ### Test connection
-```python
-# Call MCP tool
+```bash
+# Via MCP tool
 mcp__Claude_in_Chrome__tabs_context_mcp(createIfEmpty=False)
 ```
 
@@ -42,9 +44,23 @@ mcp__Claude_in_Chrome__tabs_context_mcp(createIfEmpty=False)
 tail -50 ~/Library/Logs/Claude/main.log | grep -i chrome
 ```
 
-### Open pairing page (simple fix)
+### Fix stale 0.sock (after any Chrome restart)
 ```bash
-open -a "Google Chrome" "chrome-extension://fcoeoabgfenejglbffodgkkbkcdhcgfn/pairing.html"
+DIR="/tmp/claude-mcp-browser-bridge-$(whoami)"
+NEW=$(ls -t "$DIR"/*.sock 2>/dev/null | grep -v '/0.sock' | head -1)
+[ -n "$NEW" ] && ln -sf "$NEW" "$DIR/0.sock" && echo "Updated 0.sock → $NEW" || echo "No socket found"
+```
+
+### Reconnect URL (quick trigger — try first)
+```bash
+osascript -e 'tell application "Google Chrome" to set URL of active tab of front window to "https://clau.de/chrome/reconnect"'
+sleep 5
+tail -5 ~/Library/Logs/Claude/main.log | grep -i "chrome extension"
+```
+
+### Open pairing page (for non-account-switch disconnects)
+```bash
+osascript -e 'tell application "Google Chrome" to set URL of active tab of front window to "chrome-extension://fcoeoabgfenejglbffodgkkbkcdhcgfn/pairing.html"'
 ```
 
 ### Fix "normal windows" error
@@ -52,36 +68,32 @@ open -a "Google Chrome" "chrome-extension://fcoeoabgfenejglbffodgkkbkcdhcgfn/pai
 osascript -e 'tell application "Google Chrome" to make new window'
 ```
 
-### Full account switch fix (CDP — programmatic, no user clicks)
+---
 
+## Account Switch Fix — MANUAL ONLY (CDP does not work)
+
+> ⚠️ The CDP/debug-profile approach (Step 4 in SKILL.md) **does not work** for account switches. The debug profile has no session cookies — the OAuth page shows a login screen. Don't attempt it.
+
+**Tell the user:**
+1. Chrome toolbar → 🧩 → Claude in Chrome → sign out
+2. Sign back in with the **same account as Claude Desktop** (check Claude Desktop's account menu)
+3. When pairing page appears — type a name → click Connect
+4. Navigate Chrome to `https://claude.ai` ← **critical: wakes the extension service worker**
+5. Tell Claude "done"
+
+**After user says done:**
 ```bash
-# Step 1: Create debug Chrome profile with symlinks to real profile
-mkdir -p /tmp/chrome-debug-profile/NativeMessagingHosts
-ln -sf "$HOME/Library/Application Support/Google/Chrome/Default" "/tmp/chrome-debug-profile/Default"
-ln -sf "$HOME/Library/Application Support/Google/Chrome/Local State" "/tmp/chrome-debug-profile/Local State"
-cp ~/Library/Application\ Support/Google/Chrome/NativeMessagingHosts/com.anthropic.claude_browser_extension.json \
-   /tmp/chrome-debug-profile/NativeMessagingHosts/ 2>/dev/null || \
-cp ~/Library/Application\ Support/Chromium/NativeMessagingHosts/com.anthropic.claude_browser_extension.json \
-   /tmp/chrome-debug-profile/NativeMessagingHosts/
+# Fix 0.sock
+DIR="/tmp/claude-mcp-browser-bridge-$(whoami)"
+NEW=$(ls -t "$DIR"/*.sock 2>/dev/null | grep -v '/0.sock' | head -1)
+[ -n "$NEW" ] && ln -sf "$NEW" "$DIR/0.sock" && echo "Updated"
 
-# Step 2: Quit regular Chrome, launch debug Chrome
-osascript -e 'tell application "Google Chrome" to quit'; sleep 3
-open -a "Google Chrome" --args \
-  --remote-debugging-port=9222 \
-  --user-data-dir=/tmp/chrome-debug-profile \
-  --no-first-run --no-default-browser-check
+# Wait for bridge — may take a few seconds
 sleep 5
-
-# Step 3: Run CDP script (see SKILL.md for full Python code)
-# Navigates to OAuth page → clicks Authorize → goes to pairing page → types name → clicks Connect
-
-# Step 4: Switch back to regular Chrome
-osascript -e 'tell application "Google Chrome" to quit'; sleep 3
-open -a "Google Chrome"; sleep 4
-
-# Step 5: Open new window to clear any OAuth popup interference
-osascript -e 'tell application "Google Chrome" to make new window'
+tail -10 ~/Library/Logs/Claude/main.log | grep -iE "chrome extension|bridge"
 ```
+
+Then call `tabs_context_mcp(createIfEmpty=true)`. Retry once if it fails immediately — the bridge connection log entry appears shortly after the socket is fixed.
 
 ---
 
@@ -89,10 +101,13 @@ osascript -e 'tell application "Google Chrome" to make new window'
 
 - Connection uses **WebSocket bridge**: `wss://bridge.claudeusercontent.com/chrome/{userId}`
 - Each Claude account = different `userId` = different bridge channel
-- After account switch: Claude Desktop joins new channel, extension stays on old channel → they can't find each other
+- After account switch: Claude Desktop joins new channel, extension stays on old → they never find each other
+- Both sides can show the same email but still fail — mismatch is at userId level
 - Chrome restarts do NOT fix account switches — extension auth persists across restarts
-- Local Unix socket `/tmp/claude-mcp-browser-bridge-{username}/0.sock` is secondary/legacy
-- Claude Desktop's socket client (`vNr()`) looks for `0.sock` specifically
+- Local Unix socket `/tmp/claude-mcp-browser-bridge-{username}/0.sock` — secondary path
+- The `0.sock` symlink goes stale on **every Chrome restart** — must be updated manually
+- Multiple `.sock` files = multiple native host instances (normal with multiple Chrome processes) — use newest
+- Navigating to `https://claude.ai` wakes the extension service worker and triggers native host start
 
 ## Pairing page: React input trick
 
@@ -105,17 +120,23 @@ input.dispatchEvent(new Event('input', { bubbles: true }));
 input.dispatchEvent(new Event('change', { bubbles: true }));
 ```
 
+## Known bugs filed with Anthropic
+
+GitHub issue: https://github.com/anthropics/claude-code/issues/41298
+- `0.sock` symlink not auto-updated on Chrome restart (native host bug)
+- Account switch doesn't trigger extension re-auth (should send native message to re-auth automatically)
+
 ## Self-improvement rule
 
-**Only commit and push AFTER the fix is confirmed working.** Never push when the connection is still broken.
-
-After a successful fix:
+After a successful fix OR after capturing learnings from a failed run:
 ```bash
 cd ~/claude-plugins
 git add plugins/claude-in-chrome-fixer/
 git commit -m "fix-chrome-connection: self-improvement from run on $(date '+%Y-%m-%d')"
-git push origin main
+git push origin HEAD:main
 ```
+
+Note: push to `HEAD:main` (not just `main`) to avoid branch mismatch issues.
 
 ---
 
