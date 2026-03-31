@@ -1,0 +1,7 @@
+title: MSApps Claude Plugins
+description: Free & open source Claude plugins by MSApps — built on SOSA™ methodology
+url: https://msapps-mobile.github.io
+baseurl: /claude-plugins
+theme: jekyll-theme-minimal
+plugins:
+  - jekyll-seo-tag
