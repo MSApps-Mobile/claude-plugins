@@ -52,6 +52,14 @@ Key log messages and their meaning:
 - `"Selected Chrome extension: ..."` → Fully working
 - `connected=true, authenticated=true, wsState=1` WITH `Tool call error: ... after ~70ms` → **Stale socket symlink** — bridge thinks it's connected but `0.sock` points to a dead socket from a previous Chrome session. Fix: see Step 2b below.
 
+**Quick LevelDB diagnostic (extension bridge status):**
+```bash
+strings ~/Library/Application\ Support/Google/Chrome/Default/Local\ Extension\ Settings/fcoeoabgfenejglbffodgkkbkcdhcgfn/*.ldb 2>/dev/null | grep -E "mcpConnected|Connected:"
+```
+- `Connected: false` with no `mcpConnected: true` → bridge WebSocket was never successfully established → account switch issue, skip to Step 4.
+- `mcpConnected: true` present → bridge did connect at some point; failure may be transient or stale socket.
+- Only `oauthState` key (no `mcpConnected: true`, no `Connected: false`) → extension started an OAuth flow but never completed it → treat as auth failure, go to **Step 5 (Manual Re-auth)**. This pattern appears when Chrome is freshly launched and the extension lost its auth between sessions.
+
 **Ask yourself (or check logs):** Did the user recently switch Claude Desktop accounts?
 - If **yes** → skip to **Step 4 (Account Switch Fix)**. Steps 3 is unnecessary.
 - If logs show `connected=true, authenticated=true` but tool calls fail in ~70ms → go to **Step 2b (Stale Socket Fix)**.
@@ -63,7 +71,11 @@ Key log messages and their meaning:
 
 **Symptom:** Logs show `connected=true, authenticated=true, wsState=1` but every tool call fails in ~70ms with "Selected Chrome extension disconnected."
 
-**Root cause:** Chrome restart creates a new `.sock` file (named after the new Chrome PID) in `/tmp/claude-mcp-browser-bridge-{username}/`. The `0.sock` symlink still points to the old (now-dead) socket from a previous Chrome session. Claude Desktop looks for `0.sock` and can't talk to Chrome.
+**Also applies when:** Chrome was not running → was just launched → socket directory exists but has NO `0.sock` symlink (only `XXXXXX.sock` files). The socket directory is freshly created without the symlink every time Chrome starts.
+
+**Root cause:** Chrome restart (or fresh start) creates a new `.sock` file (named after the new Chrome PID) in `/tmp/claude-mcp-browser-bridge-{username}/`. If `0.sock` doesn't exist or still points to an old dead socket, Claude Desktop can't talk to Chrome.
+
+**Important:** Fixing `0.sock` alone does NOT resolve authentication issues. If `tabs_context_mcp` still fails after fixing the symlink, the real problem is the WebSocket bridge auth — go to Step 5.
 
 **Fix:**
 ```bash
