@@ -443,6 +443,21 @@ input.dispatchEvent(new Event('change', { bubbles: true }));
 
 ---
 
+## Known Issue: Debug Chrome Profile — Session Cookies Not Transferred
+
+**Problem:** The symlink approach in Step 4a copies the extension's LevelDB storage (allowing the extension to load with its OAuth token) but does NOT transfer Chrome session cookies. These are stored separately in `Cookies` (SQLite) and `Network/Cookies` files which are NOT symlinked.
+
+**Result:** When debug Chrome opens the OAuth authorize page (`https://claude.ai/oauth/...`), it redirects to the Claude login page instead of showing the "Authorize" button — because the debug profile has no active session.
+
+**Workaround options:**
+1. Copy the real `Cookies` file (but this risks profile corruption if both Chrome instances open simultaneously)
+2. Ask the user to log in manually (Step 5) — most reliable
+3. Close ALL Chrome instances first, then launch debug Chrome with `--user-data-dir` pointing to the REAL profile directory (risky but avoids the cookie issue entirely). Use with caution.
+
+**Quick diagnosis:** If CDP navigation to `https://claude.ai/oauth/authorize?...` returns a page with a login form instead of an Authorize button → session cookies are missing from the debug profile. Fall back to Step 5.
+
+---
+
 ## Known Issue: Focus Grabbing (Chrome loses focus to Claude app)
 
 **Problem:** When Claude tries to control Chrome via coordinate-based clicking, the Claude desktop app itself steals window focus.

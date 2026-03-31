@@ -1,8 +1,7 @@
 # SOSA Compliance Audit
 
-
-## Description
-Use this skill to run a SOSA™ compliance audit on all installed Claude plugins and skills. Trigger on "SOSA audit", "SOSA check", "compliance check", or any request to evaluate plugin/skill compliance against the SOSA methodology.
+> **Description:** Use this skill to run SOSA compliance audits, check governance posture, and generate remediation plans for AI agent infrastructure.
+> **Trigger:** "run SOSA audit", "check compliance", "audit my agents", "SOSA report", "governance status"
 
 ## Objective
 Conduct comprehensive SOSA (Supervised Orchestrated Secured Agents) compliance assessment across your AI operations infrastructure. This skill audits adherence to the four SOSA pillars and identifies remediation actions needed to achieve target compliance levels.
