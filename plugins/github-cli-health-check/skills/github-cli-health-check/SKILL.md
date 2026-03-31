@@ -7,26 +7,29 @@ description: >
   or any request to verify that the GitHub CLI is authenticated and operational.
   Also triggered by the scheduled task named "github-cli-health-check".
 metadata:
-  version: "0.2.0"
+  version: "1.2.0"
+  updated: "2026-03-31"
   author: "MSApps"
 ---
 
-Run a GitHub CLI (gh) health check. All `gh` commands MUST be run via `mcp__Desktop_Commander__start_process` — NOT via the Bash tool. The Bash tool runs inside a sandboxed Linux environment where `gh` is not installed. Desktop Commander runs on the user's real Mac where `gh` is available at `/opt/homebrew/bin/gh`.
+This skill may run in an automated/scheduled context with no user present. Execute all steps autonomously without asking clarifying questions. For write actions (send, post, create, update, delete), only take them if explicitly requested. When in doubt, produce a report of what you found.
+
+Run a GitHub CLI (gh) health check. All `gh` commands MUST be run via the **Bash tool** (in the Claude sandbox), NOT via Desktop Commander. The sandbox uses a downloaded `gh` binary — see auto-fix loop below.
 
 ## Step 1 — Verify gh is installed
 
-Run via `mcp__Desktop_Commander__start_process`:
-```
-gh --version
+Run via Bash:
+```bash
+/tmp/gh_2.45.0_linux_arm64/bin/gh --version
 ```
 
-If exit code is non-zero or output is empty, mark Installation as ❌ and skip all remaining steps.
+If the binary doesn't exist, trigger the auto-fix loop (see below) to download it before continuing.
 
 ## Step 2 — Check authentication
 
-Run via `mcp__Desktop_Commander__start_process`:
-```
-gh auth status
+Run via Bash:
+```bash
+GH_TOKEN=$GH_TOKEN /tmp/gh_2.45.0_linux_arm64/bin/gh auth status
 ```
 
 Parse the output to determine:
@@ -34,23 +37,22 @@ Parse the output to determine:
 - What scopes/permissions are available
 - Whether the token is valid or expired
 
-If auth fails, mark Auth as ❌ and skip remaining steps.
+If auth fails, mark Auth as ❌ and skip repo/rate-limit steps. Document reason in report.
 
 ## Step 3 — List repositories (quick access test)
 
-Run via `mcp__Desktop_Commander__start_process`:
-```
-gh repo list --limit 5
+Run via Bash:
+```bash
+GH_TOKEN=$GH_TOKEN /tmp/gh_2.45.0_linux_arm64/bin/gh repo list --limit 5
 ```
 
-This verifies read access to the GitHub API. Record the repo names returned.
-If the call fails, mark Repos as ❌.
+Record the repo names returned. If the call fails, mark Repos as ❌.
 
 ## Step 4 — Check API rate limit
 
-Run via `mcp__Desktop_Commander__start_process`:
-```
-gh api rate_limit
+Run via Bash:
+```bash
+GH_TOKEN=$GH_TOKEN /tmp/gh_2.45.0_linux_arm64/bin/gh api rate_limit
 ```
 
 Parse the JSON output and extract:
@@ -58,11 +60,11 @@ Parse the JSON output and extract:
 - `resources.core.remaining` — requests left
 - `resources.core.reset` — reset timestamp (convert to human-readable)
 
-If remaining is below 100, flag it as a warning. If the call fails, mark Rate Limit as ❌.
+If remaining is below 100, flag as ⚠️ warning. If the call fails, mark Rate Limit as ❌.
 
 ## Step 5 — Save report
 
-Save a markdown report to the workspace folder as `github-health-check-YYYY-MM-DD.md` with this structure:
+Save a markdown report to the workspace folder as `github-health-check-YYYY-MM-DD.md`:
 
 ```
 # GitHub CLI Health Check — YYYY-MM-DD HH:MM
@@ -99,8 +101,26 @@ Save a markdown report to the workspace folder as `github-health-check-YYYY-MM-D
 
 Present the summary to the user after saving the report.
 
+## AUTO-FIX LOOP
+
+If any step fails, attempt these fixes automatically before giving up:
+
+1. **If `gh` binary not found:** detect arch via `uname -m`, download the correct binary:
+   - aarch64/arm64 → `https://github.com/cli/cli/releases/download/v2.45.0/gh_2.45.0_linux_arm64.tar.gz`
+   - x86_64 → `https://github.com/cli/cli/releases/download/v2.45.0/gh_2.45.0_linux_amd64.tar.gz`
+   Extract to `/tmp/` and use at `/tmp/gh_2.45.0_linux_{arch}/bin/gh`. Check if already exists before downloading.
+
+2. **If auth fails (no GH_TOKEN):** check environment for `GH_TOKEN` or `GITHUB_TOKEN`. If neither is set:
+   - Do NOT retry in an infinite loop.
+   - Document in the report: "GH_TOKEN not in environment — set in Cowork → Settings → Environment Variables, then restart Cowork. Token details documented in project CLAUDE.md."
+   - Attempt unauthenticated rate limit check as fallback: `curl -s https://api.github.com/rate_limit`
+
+3. **If rate limit check fails but auth succeeded:** retry once after 5 seconds.
+
+Maximum 3 fix attempts per step. Always save the final report regardless of pass/fail count.
+
 ## Autonomy rules
 
 - Run gh commands: ✅ always allowed (read-only)
 - Save report to workspace: ✅ always allowed
-- Modify any GitHub config or push any changes: ❌ never without user confirmation
+- Modify any GitHub config or push changes: ❌ never without explicit user confirmation
