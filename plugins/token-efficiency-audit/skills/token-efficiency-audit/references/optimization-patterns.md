@@ -82,6 +82,24 @@ Example: Classify 20 items vs. 20 separate calls → 1 call with structured outp
 **Implementation Effort**: Medium-High (3-5 hours client integration)
 **Risk Level**: Low
 
+### Pattern O6c-4: Redundant Context Detection
+**Description**: Identify token sources loaded into context that provide no unique value — either because they duplicate existing capabilities or because they are non-filterable platform overhead.
+**Use Case**: Claude Code setups with marketplace plugins, custom commands, and built-in MCP connectors
+**Token Savings**: 10-40% of baseline context overhead
+**Implementation Effort**: Low (audit + disable/remove)
+**Risk Level**: Low
+
+**Two sub-categories:**
+
+**Removable redundancy** — Marketplace plugins that duplicate built-in Claude Code features or user custom commands. Example: `commit-commands` plugin duplicates built-in `/commit`; `code-review` plugin duplicates a lighter user `/review` command. Fix: disable the redundant plugin.
+
+**Non-reducible overhead** — Built-in Claude.ai MCP connectors (prefixed `mcp__claude_ai_*`) register all their tools into every conversation with no filtering option. The only way to eliminate the cost is to disconnect the connector entirely. When auditing, flag these as informational — not as optimization opportunities — unless the connector is completely unused.
+
+**Audit checklist:**
+1. For each marketplace plugin: check if a built-in feature or custom command already covers it
+2. For each custom command: check if a lighter or heavier version exists elsewhere
+3. For each MCP connector: classify as user-configured (`.mcp.json`, filterable) or built-in (`mcp__claude_ai_*`, non-filterable)
+
 ## O6d: Cache Strategy Optimization
 
 ### Pattern O6d-1: Prompt Cache Configuration
@@ -135,7 +153,8 @@ Example: Use Haiku for moderation checks, Opus for nuanced reasoning
 ## Quick Wins (Implement First)
 1. **O6a-1**: Prompt consolidation (20-40% savings, low effort)
 2. **O6c-1**: Bulk classification (20-35% savings, low effort)
-3. **O6d-1**: Prompt caching (50-90% on cached portions, low effort)
+3. **O6c-4**: Redundant context detection (10-40% of baseline overhead, low effort)
+4. **O6d-1**: Prompt caching (50-90% on cached portions, low effort)
 
 ## Strategic Optimizations (Plan Next)
 1. **O6b-1**: Sliding window summarization (30-60% over time)

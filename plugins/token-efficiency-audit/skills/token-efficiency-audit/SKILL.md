@@ -8,7 +8,7 @@ This skill performs a comprehensive token efficiency audit on Claude usage patte
 - **Version**: 1.0.0
 - **SOSA Level**: 3 (Secured + Supervised)
 - **Audit Coverage**: Input tokens, output tokens, context window efficiency, cache hit rates
-- **Optimization Patterns**: 10 standard patterns (O6a-O6e categories)
+- **Optimization Patterns**: 11 standard patterns (O6a-O6e categories, including O6c-4 Redundant Context Detection)
 
 ## Execution Model: Plan → Act → Verify
 
@@ -48,6 +48,7 @@ Execute optimization analysis against 10 standard patterns:
    - Apply each pattern category to high-cost interactions
    - Calculate theoretical token savings
    - Identify implementation complexity and risk
+   - Apply O6c-4 (Redundant Context Detection): check marketplace plugins against built-in features and user commands for duplicates; classify MCP connectors as filterable (`.mcp.json`) vs non-filterable (`mcp__claude_ai_*`)
 
 3. **Output Generation**
    - Pattern match report (which patterns apply to which usage)
