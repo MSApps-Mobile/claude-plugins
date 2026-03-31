@@ -6,12 +6,13 @@ Connect Claude directly to WhatsApp for searching, reading, sending messages, an
 
 - **Go Bridge**: whatsmeow-based WhatsApp client with SQLite storage and REST API (port 8080)
 - **Python MCP Server**: FastMCP-powered tool server
-- **Conversation Memory**: Private Notion database storing learned contact preferences and history
+- **Conversation Memory**: Persistent contact profiles stored in Obsidian vault (People/ folder) or Notion database
 
 ## Available Tools/Skills
 
 - **whatsapp-messages**: Search and read message history, retrieve contact conversations
 - **whatsapp-send**: Send messages and media files (images, documents, audio)
+- **conversation-memory**: Persistent per-contact memory — stores preferences, learnings, and conversation history in Obsidian vault
 
 
 ## Configuration
