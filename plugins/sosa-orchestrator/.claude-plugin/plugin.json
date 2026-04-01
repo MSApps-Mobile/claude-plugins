@@ -1,0 +1,34 @@
+{
+  "name": "sosa-orchestrator",
+  "version": "1.0.0",
+  "description": "SOSA Orchestrator — token-aware task prioritization and budget management for Claude sessions. Ranks tasks by importance vs. cost, tracks consumption in real time, and pauses work before budget boundaries are crossed.",
+  "author": {
+    "name": "MSApps Research",
+    "url": "https://msapps.mobi"
+  },
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "license": "MIT",
+  "keywords": [
+    "sosa",
+    "orchestrator",
+    "token-budget",
+    "prioritization",
+    "task-management",
+    "governance"
+  ],
+  "platforms": ["claude-code", "cowork"],
+  "hooks": "./hooks/hooks.json",
+  "sosa": {
+    "compliant": true,
+    "level": 3,
+    "impact": "low",
+    "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md",
+    "pillars": {
+      "supervised": "Always pauses and asks user before stopping any task. Never auto-kills work.",
+      "orchestrated": "Maintains priority×cost matrix. Integrates with SOSA Governor budgets and Token Efficiency Audit patterns.",
+      "secured": "Read-only access to audit logs and budget configs. No credential handling. All decisions logged.",
+      "agents": "Role: Session resource manager. Tools: TodoList, scheduled-tasks, audit-log reader. Memory: session-ledger.json. Planning: Priority Score algorithm."
+    },
+    "dependencies": ["sosa-governor", "token-efficiency-audit"]
+  }
+}

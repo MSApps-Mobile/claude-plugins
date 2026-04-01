@@ -1,0 +1,113 @@
+{
+  "_doc": "Pre-configured task profiles for token estimation. avg_tokens and p95_tokens are based on observed runs. Add new profiles as tasks are discovered.",
+  "linkedin-lead-review": {
+    "category": "revenue",
+    "business_impact": 8,
+    "urgency": 4,
+    "avg_tokens": 35000,
+    "p95_tokens": 55000,
+    "dependencies": ["chrome"],
+    "frequency": "daily",
+    "description": "Scan LinkedIn inbox and connection requests, classify leads"
+  },
+  "aman-monthly-invoicing": {
+    "category": "revenue",
+    "business_impact": 9,
+    "urgency": 5,
+    "avg_tokens": 45000,
+    "p95_tokens": 70000,
+    "dependencies": ["chrome"],
+    "frequency": "monthly",
+    "description": "Duplicate iCount invoices, update tracking spreadsheet, send payment reminder"
+  },
+  "receipts-collection": {
+    "category": "operations",
+    "business_impact": 6,
+    "urgency": 3,
+    "avg_tokens": 40000,
+    "p95_tokens": 65000,
+    "dependencies": ["chrome", "zoho-mail", "gmail"],
+    "frequency": "weekly",
+    "description": "Match bank transactions to receipts in iCount"
+  },
+  "gali-whatsapp": {
+    "category": "communication",
+    "business_impact": 7,
+    "urgency": 3,
+    "avg_tokens": 15000,
+    "p95_tokens": 30000,
+    "dependencies": ["whatsapp"],
+    "frequency": "daily",
+    "description": "Reply to WhatsApp messages as Gali chatbot"
+  },
+  "toggl-health-check": {
+    "category": "monitoring",
+    "business_impact": 2,
+    "urgency": 1,
+    "avg_tokens": 5000,
+    "p95_tokens": 10000,
+    "dependencies": ["chrome"],
+    "frequency": "weekly",
+    "description": "Verify Toggl workspace is accessible and has recent entries"
+  },
+  "xplace-lead-response": {
+    "category": "revenue",
+    "business_impact": 8,
+    "urgency": 5,
+    "avg_tokens": 20000,
+    "p95_tokens": 35000,
+    "dependencies": ["chrome", "zoho-mail"],
+    "frequency": "on-demand",
+    "description": "Respond to incoming freelance leads from xplace"
+  },
+  "plugin-development": {
+    "category": "development",
+    "business_impact": 5,
+    "urgency": 2,
+    "avg_tokens": 60000,
+    "p95_tokens": 120000,
+    "dependencies": [],
+    "frequency": "on-demand",
+    "description": "Build, test, or improve Claude plugins and skills"
+  },
+  "github-migration": {
+    "category": "development",
+    "business_impact": 4,
+    "urgency": 2,
+    "avg_tokens": 30000,
+    "p95_tokens": 50000,
+    "dependencies": [],
+    "frequency": "on-demand",
+    "description": "MSApps Bitbucket to GitHub migration"
+  },
+  "skill-creation": {
+    "category": "development",
+    "business_impact": 5,
+    "urgency": 2,
+    "avg_tokens": 50000,
+    "p95_tokens": 100000,
+    "dependencies": [],
+    "frequency": "on-demand",
+    "description": "Create or improve Claude skills with eval testing"
+  },
+  "x-twitter-posting": {
+    "category": "communication",
+    "business_impact": 5,
+    "urgency": 2,
+    "avg_tokens": 8000,
+    "p95_tokens": 15000,
+    "dependencies": ["x-mcp"],
+    "frequency": "on-demand",
+    "description": "Post tweets, engage with timeline"
+  },
+  "session-backup": {
+    "category": "operations",
+    "business_impact": 3,
+    "urgency": 1,
+    "avg_tokens": 10000,
+    "p95_tokens": 20000,
+    "dependencies": ["desktop-commander"],
+    "frequency": "daily",
+    "description": "Backup session context to Google Drive"
+  }
+}
