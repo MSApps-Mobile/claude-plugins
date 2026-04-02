@@ -1,6 +1,46 @@
 {
   "_doc": "Running log of token consumption per session. Updated by the orchestrator at session end. Used for weekly/monthly budget tracking.",
   "sessions": {
+    "2026-04-01": {
+      "sessions": [
+        { "id": "auto_linkedin-outreach-msgs", "name": "Apr 1 – LinkedIn outreach messages (1:09am)", "status": "completed", "category": "revenue", "tokens": 35000 },
+        { "id": "auto_linkedin-lead-review", "name": "Apr 1 – LinkedIn lead review (1:10am)", "status": "completed", "category": "communication", "tokens": 15000 },
+        { "id": "auto_daily-linkedin-outreach", "name": "Apr 1 – Daily LinkedIn outreach (1:24am)", "status": "completed", "category": "revenue", "tokens": 40000 },
+        { "id": "auto_token-efficiency-audit", "name": "Apr 1 – Token efficiency audit (2:09am)", "status": "completed", "category": "monitoring", "tokens": 12000 },
+        { "id": "auto_opsagent-startup", "name": "Apr 1 – OpsAgent startup (3:04am)", "status": "completed", "category": "revenue", "tokens": 40000 },
+        { "id": "auto_opsagent-lead-check", "name": "Apr 1 – OpsAgent lead check (6:03am)", "status": "partial", "category": "revenue", "tokens": 10000 },
+        { "id": "auto_sosa-morning", "name": "Apr 1 – SOSA morning plan (6:04am)", "status": "completed", "category": "monitoring", "tokens": 15000 },
+        { "id": "auto_x-ai-first-posting", "name": "Apr 1 – X AI first posting (7:01am)", "status": "failed", "category": "communication", "tokens": 8000 },
+        { "id": "auto_receipts-overnight", "name": "Apr 1 – Receipts collection (overnight run)", "status": "partial", "category": "operations", "tokens": 10000 },
+        { "id": "auto_plugin-analytics-report", "name": "Apr 1 – Plugin analytics report", "status": "completed", "category": "development", "tokens": 25000 },
+        { "id": "unplanned_sosa-plugin-dev", "name": "Apr 1 – SOSA Orchestrator plugin dev (published to marketplace)", "status": "completed", "category": "development", "tokens": 30000 },
+        { "id": "unplanned_demo-branding", "name": "Apr 1 – OpsAgent demo website branding fix", "status": "completed", "category": "development", "tokens": 15000 },
+        { "id": "unplanned_vm-cleanup", "name": "Apr 1 – VM disk cleanup (ECONNRESET, partial)", "status": "partial", "category": "operations", "tokens": 5000 },
+        { "id": "unplanned_opsagent-2nd", "name": "Apr 1 – OpsAgent 2nd session (LinkedIn re-auth)", "status": "partial", "category": "revenue", "tokens": 10000 },
+        { "id": "auto_sosa-afternoon", "name": "Apr 1 – SOSA afternoon checkpoint (2:09pm)", "status": "completed", "category": "monitoring", "tokens": 10000 },
+        { "id": "auto_toggl-github-monitor", "name": "Apr 1 – Daily Toggl/GitHub monitor (6pm)", "status": "completed", "category": "monitoring", "tokens": 20000 },
+        { "id": "auto_cowork-backup", "name": "Apr 1 – Daily cowork backup (11pm)", "status": "completed", "category": "operations", "tokens": 10000 },
+        { "id": "auto_receipts-11pm", "name": "Apr 1 – Receipts collection (11:08pm run)", "status": "completed", "category": "operations", "tokens": 40000 },
+        { "id": "possible_github-token-fix", "name": "Apr 1 – Fix hardcoded GitHub token (status unknown post-2pm)", "status": "unknown", "category": "development", "tokens": 8000 },
+        { "id": "possible_remove-plugin", "name": "Apr 1 – Remove duplicate cowork-plugin-management (status unknown)", "status": "unknown", "category": "operations", "tokens": 5000 },
+        { "id": "possible_gali-sweep", "name": "Apr 1 – Gali WhatsApp sweep (status unknown)", "status": "unknown", "category": "communication", "tokens": 15000 },
+        { "id": "auto_sosa-midnight", "name": "Apr 1 – SOSA midnight close-out (this run)", "status": "running", "category": "monitoring", "tokens": 10000 }
+      ],
+      "daily_total": 388000,
+      "daily_budget": 480000,
+      "utilization": 0.81,
+      "tasks_completed": 13,
+      "tasks_deferred": 4,
+      "tasks_failed": 1,
+      "category_breakdown": {
+        "revenue": 135000,
+        "communication": 38000,
+        "operations": 70000,
+        "development": 78000,
+        "monitoring": 67000
+      },
+      "_notes": "Major win: All 3 LinkedIn tasks succeeded (30 messages sent) vs. prior days of zero sends. SOSA Orchestrator plugin published to marketplace. Monitoring significantly over-budget (223%) due to 5 monitoring tasks vs. 30K daily budget — overage absorbed by other categories. X (Twitter) auth failed again. Three afternoon manual tasks (GitHub token fix, remove plugin, Gali sweep) status unknown — recommended but not confirmed completed. Morning plan and afternoon checkpoint existed (first full SOSA planning day)."
+    },
     "2026-03-31": {
       "sessions": [
         { "id": "local_e118e97e", "name": "Mar 31 – Linkedin lead review", "status": "failed", "category": "communication", "tokens": 1000 },

@@ -1,10 +1,16 @@
 <p align="center">
-  <img src="https://img.shields.io/github/stars/MSApps-Mobile/claude-plugins?style=social" alt="GitHub Stars">
+  <a href="https://github.com/MSApps-Mobile/claude-plugins/stargazers"><img src="https://img.shields.io/github/stars/MSApps-Mobile/claude-plugins?style=social" alt="GitHub Stars"></a>
   <img src="https://img.shields.io/github/forks/MSApps-Mobile/claude-plugins?style=social" alt="GitHub Forks">
   <img src="https://img.shields.io/badge/plugins-19-blue" alt="Plugins">
   <img src="https://img.shields.io/badge/SOSA%E2%84%A2-compliant-brightgreen" alt="SOSA Compliant">
   <img src="https://img.shields.io/badge/Claude_Code-compatible-8A2BE2" alt="Claude Code">
   <img src="https://img.shields.io/badge/Cowork-compatible-8A2BE2" alt="Cowork">
+</p>
+
+<p align="center">
+  <a href="https://github.com/MSApps-Mobile/claude-plugins/stargazers">
+    <img src="https://img.shields.io/badge/%E2%AD%90_Found_this_useful%3F-Star_on_GitHub-yellow?style=for-the-badge&logo=github" alt="Star on GitHub">
+  </a>
 </p>
 
 # MSApps Claude Plugins

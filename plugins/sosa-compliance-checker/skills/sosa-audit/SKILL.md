@@ -88,7 +88,7 @@ Compliance is assessed at three levels:
 #### Code Security (SOSA for Code)
 - **Sandboxed Execution**: Each coding agent operates within a sandbox restricting file system access to the target repository, limiting network to approved services
 - **Scoped Repository Permissions**: Each agent has a capability set specifying which repos, branches, and file paths it may read or modify — enforced at the file system level
-- **Secrets Exclusion**: Environment variables, .env files, API keys, cryptographic material excluded from agent capability sets
+- **Secrets Exclusion**: Environment variables, .env files, API keys, cryptographic material, and secrets management systems are excluded from agent capability sets
 - **Immutable Code Audit Trail**: Every code change, file access, shell command, and external API call is logged with the reasoning chain that led to each decision
 - **Prompt Injection Protection**: External data is scanned for prompt injection attempts
 
