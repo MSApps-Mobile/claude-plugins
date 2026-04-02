@@ -122,7 +122,7 @@ Used for cost calculations in reports:
 
 ## How to Invoke This Expert
 
-This skill activates when:
+**Use this skill** when:
 - The token-efficiency-audit task needs deep analysis on a specific finding
 - Michal asks: "analyze this prompt", "why is this expensive", "optimize this task", "token expert", "Dr. Reshef", "Noa"
 - A component scores <60% efficiency and needs a detailed prescription
