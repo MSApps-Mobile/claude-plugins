@@ -516,3 +516,92 @@ The log pattern determines the correct fix path immediately:
 
 **`tengu_copper_bridge` flag is a red herring for auth failures.** Setting `tengu_copper_bridge: false` in `~/.claude.json` switches from WebSocket bridge to local socket mode, but does NOT fix auth failures. The WebSocket bridge (`wss://bridge.claudeusercontent.com/chrome/{userId}`) is the primary connection path. Only change this flag if the local socket approach is specifically needed.
 
+
+---
+
+## Known Issue: Corrupt LevelDB (Partial Deletion Leaves Broken MANIFEST)
+
+**Symptom:** Chrome logs show `IO error: FILE_ERROR_ACCESS_DENIED (ChromeMethodBFE: 0::SequentialFileRead::5)` and Chrome cannot write new auth data to the extension's LevelDB.
+
+**Root cause:** If only the `.ldb` and `.log` files are deleted from the extension's LevelDB directory (but `MANIFEST-000001` is left behind), LevelDB becomes permanently corrupt. The MANIFEST references `.ldb` files that no longer exist, causing every write attempt to fail with an access error.
+
+**Diagnosis:**
+```bash
+cat ~/Library/Application\ Support/Google/Chrome/Profile\ 3/Local\ Extension\ Settings/fcoeoabgfenejglbffodgkkbkcdhcgfn/LOG
+```
+If output contains `Error recovering version set with 0 records: IO error: ...FILE_ERROR_ACCESS_DENIED` → MANIFEST is corrupt.
+
+**Fix: Delete the ENTIRE directory and let Chrome recreate it (NOT just the .ldb files):**
+```bash
+# Quit Chrome first!
+osascript -e 'tell application "Google Chrome" to quit'; sleep 3
+
+rm -rf "$HOME/Library/Application Support/Google/Chrome/Profile 3/Local Extension Settings/fcoeoabgfenejglbffodgkkbkcdhcgfn"
+
+# Relaunch Chrome — it will recreate a fresh LevelDB automatically
+open -a "Google Chrome"
+sleep 6
+
+# Confirm fresh LevelDB was created (should see 000003.log file)
+ls "$HOME/Library/Application Support/Google/Chrome/Profile 3/Local Extension Settings/fcoeoabgfenejglbffodgkkbkcdhcgfn/"
+```
+
+**Profile note:** The LevelDB may be in `Default` or `Profile 3` depending on which Chrome profile has the extension installed. Check both.
+
+---
+
+## Known Issue: "Multiple Chrome Extensions Connected"
+
+**Symptom:** `tabs_context_mcp` returns:
+> `"Multiple Chrome extensions connected. Open the Claude extension in the browser you want to use and click 'Connect'."`
+
+**Meaning:** The bridge IS working and the extension IS connected — but multiple Chrome sessions or windows are connected simultaneously. Claude Desktop can't decide which one to use.
+
+**This is NOT a broken connection — it's a disambiguation prompt.**
+
+**Fix:**
+1. In Chrome, click the **Claude extension icon** (orange Claude logo in the toolbar)
+2. In the popup that appears, click **"Connect"**
+
+This selects the current Chrome window as the active MCP connection. `tabs_context_mcp` should succeed immediately after.
+
+---
+
+## Known Issue: Manual OAuth URL Always Fails (Missing State Parameter)
+
+**Never manually construct the OAuth URL** — it will always fail with "Invalid OAuth Request - Missing state parameter".
+
+The extension's `initiateOAuthFlow()` function generates a cryptographically random `state` and PKCE `code_verifier`/`code_challenge`, stores them in LevelDB, then opens:
+```
+https://claude.ai/oauth/authorize
+  ?client_id=dae2cad8-15c5-43d2-9046-fcaecc135fa4
+  &response_type=code
+  &scope=user:profile+user:inference+user:chat
+  &redirect_uri=chrome-extension://fcoeoabgfenejglbffodgkkbkcdhcgfn/oauth_callback.html
+  &state=<random_32_chars>
+  &code_challenge=<sha256_base64url>
+  &code_challenge_method=S256
+```
+
+**Note:** Despite the `redirect_uri` referencing `oauth_callback.html`, this file does NOT exist in the extension. Instead, claude.ai's page JavaScript sends the authorization code directly to the extension via:
+```javascript
+chrome.runtime.sendMessage("fcoeoabgfenejglbffodgkkbkcdhcgfn", {
+    type: "oauth_redirect",
+    redirect_uri: "chrome-extension://...?code=AUTH_CODE&state=STATE"
+})
+```
+
+**The correct way to trigger OAuth:** Open `chrome-extension://fcoeoabgfenejglbffodgkkbkcdhcgfn/pairing.html` as a Chrome tab — the pairing page's JS calls `initiateOAuthFlow()` automatically when no stored token is found.
+
+---
+
+## Diagnostic Update (2026-04-02, Run 2)
+
+**The complete fix for "no token after LevelDB clear" + "Multiple extensions connected":**
+
+1. Wipe the ENTIRE LevelDB directory (not just `.ldb` files — see Corrupt LevelDB issue above)
+2. Quit and restart Chrome (it recreates a fresh LevelDB)
+3. Navigate Chrome to `chrome-extension://fcoeoabgfenejglbffodgkkbkcdhcgfn/pairing.html` — this triggers OAuth + pairing
+4. If `tabs_context_mcp` returns "Multiple Chrome extensions connected" → click **Connect** in the Chrome extension popup
+5. Test again — should succeed
+
