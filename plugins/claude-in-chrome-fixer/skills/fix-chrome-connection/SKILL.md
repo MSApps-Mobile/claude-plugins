@@ -480,3 +480,39 @@ The Claude-in-Chrome connection uses a **WebSocket bridge** (not a local socket)
 **Native host binary:** `/Applications/Claude.app/Contents/Helpers/chrome-native-host` — started by Chrome extension via native messaging, creates the Unix socket. The manifest must be in `~/Library/Application Support/Google/Chrome/NativeMessagingHosts/` (NOT just Chromium).
 
 **Claude Desktop socket client (`vNr()`):** Looks specifically for `/tmp/claude-mcp-browser-bridge-{username}/0.sock`. If multiple `.sock` files exist (different PIDs), create a symlink from `0.sock` to the active one.
+
+---
+
+## Known Issue: macOS Quarantine on Socket Directory
+
+**Symptom:** Connection fails despite native host running and socket accepting connections.
+
+**Diagnosis:** Check xattrs on the socket directory:
+```bash
+xattr -l /tmp/claude-mcp-browser-bridge-$(whoami)/
+```
+If output shows `com.apple.quarantine: 0081;00000000;Chrome;` → Chrome set a quarantine flag on the directory.
+
+**Note:** In testing, the quarantine attribute did NOT actually prevent socket connections (Python test confirmed socket accepted connections even with quarantine). However it is worth clearing as a precaution:
+```bash
+xattr -rd com.apple.quarantine /tmp/claude-mcp-browser-bridge-$(whoami)/
+```
+
+**Important:** The quarantine attribute is NOT the cause of "No Chrome extension connected after discovery". That error is always an auth issue. Check logs FIRST before attempting socket fixes.
+
+---
+
+## Diagnostic Priority (Lessons from 2026-04-02)
+
+**ALWAYS check logs as Step 2 before attempting ANY fixes:**
+```bash
+tail -50 ~/Library/Logs/Claude/main.log | grep -i chrome
+```
+
+The log pattern determines the correct fix path immediately:
+- `connected=true, authenticated=true` + `"No Chrome extension connected after discovery"` → **auth failure → Step 5 only**
+- `connected=true` + tool calls fail in ~70ms → **stale socket → Step 2b**
+- No chrome entries at all → **Chrome not launched or MCP server not started**
+
+**`tengu_copper_bridge` flag is a red herring for auth failures.** Setting `tengu_copper_bridge: false` in `~/.claude.json` switches from WebSocket bridge to local socket mode, but does NOT fix auth failures. The WebSocket bridge (`wss://bridge.claudeusercontent.com/chrome/{userId}`) is the primary connection path. Only change this flag if the local socket approach is specifically needed.
+

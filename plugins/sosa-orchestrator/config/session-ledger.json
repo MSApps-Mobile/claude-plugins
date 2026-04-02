@@ -1,0 +1,44 @@
+{
+  "_doc": "Running log of token consumption per session. Updated by the orchestrator at session end. Used for weekly/monthly budget tracking.",
+  "sessions": {
+    "2026-03-31": {
+      "sessions": [
+        { "id": "local_e118e97e", "name": "Mar 31 – Linkedin lead review", "status": "failed", "category": "communication", "tokens": 1000 },
+        { "id": "local_b722e17f", "name": "Mar 31 – Attention", "status": "completed", "category": "communication", "tokens": 75000 },
+        { "id": "local_6336b49a", "name": "Mar 31 – Receipts collection", "status": "partial", "category": "operations", "tokens": 90000 },
+        { "id": "local_f1c16f73", "name": "Mar 31 – Monthly invoicing", "status": "running", "category": "revenue", "tokens": 220000 },
+        { "id": "local_866671db", "name": "Mar 31 – Token efficiency audit (v1)", "status": "completed", "category": "monitoring", "tokens": 55000 },
+        { "id": "local_2dafda2d", "name": "Mar 31 – Token efficiency audit (v2)", "status": "running", "category": "monitoring", "tokens": 50000 },
+        { "id": "local_758b7a4d", "name": "Mar 31 – Linkedin outreach messages", "status": "partial", "category": "communication", "tokens": 160000 },
+        { "id": "local_35cb9a6f", "name": "Mar 31 – Opsagent lead check", "status": "failed", "category": "revenue", "tokens": 1000 },
+        { "id": "local_b38f9cae", "name": "Mar 31 – Daily toggl github monitor", "status": "completed", "category": "monitoring", "tokens": 40000 },
+        { "id": "local_362cbb88", "name": "Mar 31 – Daily cowork backup", "status": "completed", "category": "operations", "tokens": 35000 },
+        { "id": "local_349a80ad", "name": "Mar 31 – Gcal connection check", "status": "failed", "category": "monitoring", "tokens": 1000 },
+        { "id": "local_d2d9d590", "name": "Find contact for OpsAgent Joel Wong", "status": "partial", "category": "revenue", "tokens": 80000 },
+        { "id": "local_16b3ace8", "name": "Mar 31 – Fix chrome connection", "status": "completed", "category": "development", "tokens": 45000 },
+        { "id": "local_d9174d29", "name": "Install token efficiency audit plugin", "status": "completed", "category": "development", "tokens": 40000 },
+        { "id": "local_4966afd1", "name": "Token-aware task orchestration system", "status": "completed", "category": "development", "tokens": 25000 },
+        { "id": "local_206f0f2d", "name": "Find contact for Shuli Ozeri Adato", "status": "unknown", "category": "revenue", "tokens": 25000 },
+        { "id": "local_f3e1100c", "name": "Transfer files to Google Drive and Notion", "status": "unknown", "category": "operations", "tokens": 20000 },
+        { "id": "local_dea334cf", "name": "Fix GitHub Pages marketplace link", "status": "unknown", "category": "development", "tokens": 20000 },
+        { "id": "local_50b04c72", "name": "Add GitHub plugin to SOSA compliance", "status": "unknown", "category": "development", "tokens": 20000 },
+        { "id": "local_8bf80873", "name": "Rollback demo to landing page", "status": "unknown", "category": "development", "tokens": 25000 },
+        { "id": "local_eager-heisenberg", "name": "SOSA midnight close-out (this run)", "status": "running", "category": "monitoring", "tokens": 20000 }
+      ],
+      "daily_total": 1048000,
+      "daily_budget": 833000,
+      "utilization": 1.26,
+      "tasks_completed": 8,
+      "tasks_deferred": 5,
+      "tasks_failed": 3,
+      "category_breakdown": {
+        "revenue": 326000,
+        "communication": 236000,
+        "operations": 145000,
+        "development": 175000,
+        "monitoring": 166000
+      },
+      "_notes": "First run of SOSA orchestrator system. No morning/afternoon plans existed yet — this was the inaugural midnight close-out. Token efficiency audit ran 3x (cron 0 8,13,18 * * *) — audit itself flagged this as top priority fix. Three tasks failed due to 9am rate-limit collision: linkedin-lead-review, opsagent-lead-check, gcal-connection-check. Monthly invoicing session had 276+ turns and was still running at midnight."
+    }
+  }
+}

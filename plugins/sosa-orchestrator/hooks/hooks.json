@@ -1,0 +1,9 @@
+{
+  "hooks": [
+    {
+      "type": "SessionStart",
+      "script": "./scripts/session-start.sh",
+      "description": "Display budget snapshot and task priorities at session start"
+    }
+  ]
+}
