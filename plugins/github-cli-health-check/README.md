@@ -1,6 +1,6 @@
 # github-cli-health-check
 
-Scheduled health check plugin for the GitHub CLI (`gh`) on MSApps machines.
+Scheduled health check plugin for the GitHub CLI (`gh`).
 
 ## What it does
 
@@ -24,7 +24,7 @@ brew install gh
 gh auth login
 ```
 
-No additional MCPs or environment variables are required.
+Set `GH_TOKEN` in Cowork → Settings → Environment Variables (a GitHub personal access token with `repo` and `read:org` scopes).
 
 ## Usage
 

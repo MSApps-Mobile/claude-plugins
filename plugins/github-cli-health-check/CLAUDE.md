@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Scheduled health check for the GitHub CLI (`gh`) on MSApps machines. Verifies installation, authentication, repo access, and API rate limit. Saves a structured report to the workspace.
+Scheduled health check for the GitHub CLI (`gh`). Verifies installation, authentication, repo access, and API rate limit. Saves a structured report to the workspace.
 
 ## Critical: Tool Selection — Auto-detect
 
@@ -56,3 +56,4 @@ Saved to workspace outputs folder.
 | 0.3.0 | 2026-03-31 | Switched to Bash with auto-download of gh binary + GH_TOKEN |
 | 0.4.0 | 2026-04-02 | Clarified sandbox limitations: no network/sudo, gh cannot be installed in Bash sandbox |
 | 0.5.0 | 2026-04-03 | Auto-detect tool: try Bash first, attempt apt install, fall back to Desktop Commander |
+| 0.6.0 | 2026-04-06 | Removed org-specific references — plugin is now fully generic |

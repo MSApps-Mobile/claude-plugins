@@ -112,7 +112,7 @@ If any step fails, attempt these fixes automatically before giving up:
 
 2. **If auth fails (no GH_TOKEN):** check environment for `GH_TOKEN` or `GITHUB_TOKEN`. If neither is set:
    - Do NOT retry in an infinite loop.
-   - Document in the report: "GH_TOKEN not in environment — set in Cowork → Settings → Environment Variables, then restart Cowork. Token details documented in project CLAUDE.md."
+   - Document in the report: "GH_TOKEN not in environment — set a GitHub personal access token (repo + read:org scopes) in Cowork → Settings → Environment Variables as GH_TOKEN, then restart Cowork."
    - Attempt unauthenticated rate limit check as fallback: `curl -s https://api.github.com/rate_limit`
 
 3. **If rate limit check fails but auth succeeded:** retry once after 5 seconds.
