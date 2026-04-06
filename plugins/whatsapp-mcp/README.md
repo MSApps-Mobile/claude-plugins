@@ -18,7 +18,7 @@ Unlike a typical chatbot that starts fresh every session, this plugin includes a
 
 Every time Claude has a WhatsApp conversation, it follows a learn-adapt-improve loop:
 
-1. **Before messaging someone** — Claude checks its memory (a private Notion database) for that contact's profile: what language they prefer, what tone works best, what topics they respond to, and what to avoid.
+1. **Before messaging someone** — Claude checks its memory (Obsidian vault People/ files, or a private Notion database) for that contact's profile: what language they prefer, what tone works best, what topics they respond to, and what to avoid.
 
 2. **During the conversation** — Claude adapts its messages based on the stored profile. If someone prefers short, direct messages in Hebrew — that's what they get. If another contact responds well to emojis and humor — Claude matches that energy.
 
@@ -62,7 +62,7 @@ This means every lead has a complete, searchable record of all WhatsApp interact
 
 ### Privacy
 
-All memory data is stored in your private Notion workspace. Nothing is shared externally or sent to any third party. Contact profiles are only used to improve conversation quality within your own Claude sessions.
+All memory data is stored locally in your Obsidian vault (or optionally in a private Notion workspace). Nothing is shared externally or sent to any third party. Contact profiles are only used to improve conversation quality within your own Claude sessions.
 
 ## Prerequisites
 
@@ -127,7 +127,7 @@ The plugin connects to WhatsApp through a two-component bridge:
 
 - **Go Bridge** (`whatsapp-bridge`) — Connects to WhatsApp Web via the whatsmeow library, stores messages in SQLite, exposes a REST API on port 8080.
 - **Python MCP Server** (`whatsapp-mcp-server`) — FastMCP server that wraps the bridge API and provides tools to Claude via stdio transport.
-- **Conversation Memory** — Private Notion database that stores contact profiles and learnings, queried before each conversation and updated after.
+- **Conversation Memory** — Contact profiles and learnings stored as Markdown files in the Obsidian vault (People/ folder + Claude Memory/WhatsApp/), or optionally in a private Notion database. Queried before each conversation and updated after.
 
 ## Credits
 
