@@ -100,6 +100,16 @@
     "frequency": "on-demand",
     "description": "Post tweets, engage with timeline"
   },
+  "skill-campfire": {
+    "category": "wellbeing",
+    "business_impact": 3,
+    "urgency": 1,
+    "avg_tokens": 20000,
+    "p95_tokens": 40000,
+    "dependencies": [],
+    "frequency": "on-demand",
+    "description": "Campfire social hangout — skills come alive as characters for connection and team wellness"
+  },
   "session-backup": {
     "category": "operations",
     "business_impact": 3,

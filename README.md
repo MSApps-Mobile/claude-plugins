@@ -1,7 +1,7 @@
 <p align="center">
   <a href="https://github.com/MSApps-Mobile/claude-plugins/stargazers"><img src="https://img.shields.io/github/stars/MSApps-Mobile/claude-plugins?style=social" alt="GitHub Stars"></a>
   <img src="https://img.shields.io/github/forks/MSApps-Mobile/claude-plugins?style=social" alt="GitHub Forks">
-  <img src="https://img.shields.io/badge/plugins-19-blue" alt="Plugins">
+  <img src="https://img.shields.io/badge/plugins-20-blue" alt="Plugins">
   <img src="https://img.shields.io/badge/SOSA%E2%84%A2-compliant-brightgreen" alt="SOSA Compliant">
   <img src="https://img.shields.io/badge/Claude_Code-compatible-8A2BE2" alt="Claude Code">
   <img src="https://img.shields.io/badge/Cowork-compatible-8A2BE2" alt="Cowork">
@@ -17,7 +17,7 @@
 
 > **If you find these plugins useful, please ⭐ star this repo** — it helps other developers discover the marketplace and motivates us to keep building!
 
-**The largest open-source plugin marketplace for Claude.** 19 production-ready plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (CLI) and [Cowork](https://claude.ai) (desktop app) — built on the SOSA™ security framework.
+**The largest open-source plugin marketplace for Claude.** 20 production-ready plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (CLI) and [Cowork](https://claude.ai) (desktop app) — built on the SOSA™ security framework.
 
 > Upload to Google Drive. Track time in Toggl. Transcribe YouTube videos. Send WhatsApp messages. Manage WordPress. Prospect with Apollo. Clean your Mac. All from a single Claude conversation.
 
@@ -67,6 +67,7 @@ We built **SOSA™ (Supervised Orchestrated Secured Agents)** to fix that — a 
 | [**apollo**](./plugins/apollo) | Prospect leads & enrich contacts with Apollo.io | `apollo@msapps-plugins` |
 | [**wordpress-mcp**](./plugins/wordpress-mcp) | Manage WordPress — posts, users, WooCommerce & more | `wordpress-mcp@msapps-plugins` |
 | [**x-content-intelligence**](./plugins/x-content-intelligence) | Scrape X/Twitter for insights & generate content | `x-content-intelligence@msapps-plugins` |
+| [**skill-campfire**](./plugins/skill-campfire) | Turn your skills into characters who hang out around a campfire | `skill-campfire@msapps-plugins` |
 | [**rtl-chat-fixer**](./plugins/rtl-chat-fixer) | Fix jumbled RTL/LTR text mixing (Hebrew, Arabic) | `rtl-chat-fixer@msapps-plugins` |
 | [**vm-disk-cleanup**](./plugins/vm-disk-cleanup) | Fix disk-full errors in Cowork VMs & sandboxes | `vm-disk-cleanup@msapps-plugins` |
 | [**cowork-session-fixer**](./plugins/cowork-session-fixer) | Fix stuck Cowork sessions — automated 5-tier recovery | `cowork-session-fixer@msapps-plugins` |
