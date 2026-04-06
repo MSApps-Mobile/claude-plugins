@@ -1,0 +1,35 @@
+{
+  "name": "skill-campfire",
+  "version": "0.1.0",
+  "description": "Turn your installed Cowork skills into living characters who hang out, joke, argue, and bond around a virtual campfire. Zero config — works with any skill set.",
+  "author": {
+    "name": "Michal Shatz"
+  },
+  "homepage": "https://github.com/MSApps-Mobile/claude-plugins",
+  "keywords": [
+    "campfire",
+    "skills",
+    "characters",
+    "hangout",
+    "social",
+    "personality",
+    "creative",
+    "fun",
+    "sosa-agents"
+  ],
+  "sosa": {
+    "compliant": true,
+    "level": 1,
+    "impact": "low",
+    "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md",
+    "pillars": {
+      "supervised": "Fully autonomous — social conversation only, no external actions",
+      "orchestrated": "Scans installed skills, generates characters, runs campfire flow",
+      "secured": "No external access, read-only skill scanning, pure conversational output",
+      "agents": "R=skill-scanner, T=none, M=none, P=character-gen-and-conversation"
+    }
+  },
+  "topics": [
+    "sosa-agents"
+  ]
+}
