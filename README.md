@@ -1,7 +1,7 @@
 <p align="center">
   <a href="https://github.com/MSApps-Mobile/claude-plugins/stargazers"><img src="https://img.shields.io/github/stars/MSApps-Mobile/claude-plugins?style=social" alt="GitHub Stars"></a>
   <img src="https://img.shields.io/github/forks/MSApps-Mobile/claude-plugins?style=social" alt="GitHub Forks">
-  <img src="https://img.shields.io/badge/plugins-20-blue" alt="Plugins">
+  <img src="https://img.shields.io/badge/plugins-21-blue" alt="Plugins">
   <img src="https://img.shields.io/badge/SOSA%E2%84%A2-compliant-brightgreen" alt="SOSA Compliant">
   <img src="https://img.shields.io/badge/Claude_Code-compatible-8A2BE2" alt="Claude Code">
   <img src="https://img.shields.io/badge/Cowork-compatible-8A2BE2" alt="Cowork">
@@ -17,7 +17,7 @@
 
 > **If you find these plugins useful, please ⭐ star this repo** — it helps other developers discover the marketplace and motivates us to keep building!
 
-**The largest open-source plugin marketplace for Claude.** 20 production-ready plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (CLI) and [Cowork](https://claude.ai) (desktop app) — built on the SOSA™ security framework.
+**The largest open-source plugin marketplace for Claude.** 21 production-ready plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (CLI) and [Cowork](https://claude.ai) (desktop app) — built on the SOSA™ security framework.
 
 > Upload to Google Drive. Track time in Toggl. Transcribe YouTube videos. Send WhatsApp messages. Manage WordPress. Prospect with Apollo. Clean your Mac. All from a single Claude conversation.
 
@@ -74,6 +74,7 @@ We built **SOSA™ (Supervised Orchestrated Secured Agents)** to fix that — a 
 | [**fix-chrome-connection**](./plugins/fix-chrome-connection) | Fix stale Claude in Chrome connections | `fix-chrome-connection@msapps-plugins` |
 | [**github-cli-health-check**](./plugins/github-cli-health-check) | Scheduled health check for GitHub CLI | `github-cli-health-check@msapps-plugins` |
 | [**zoho-mail-health**](./plugins/zoho-mail-health) | Daily health check for Zoho Mail accounts | `zoho-mail-health@msapps-plugins` |
+| [**gcloud-cli-health-check**](./plugins/gcloud-cli-health-check) | Scheduled health check for Google Cloud CLI (gcloud) | `gcloud-cli-health-check@msapps-plugins` |
 
 ### Security & Optimization Plugins
 
@@ -199,7 +200,7 @@ No config needed. macOS Ventura+. Only touches auto-regenerated caches — never
 <details>
 <summary><strong>Other plugins</strong></summary>
 
-Most other plugins (RTL Chat Fixer, VM Disk Cleanup, Cowork Session Fixer, Fix Chrome Connection, GitHub CLI Health Check, SOSA Compliance Checker) require **no configuration** — just install and use.
+Most other plugins (RTL Chat Fixer, VM Disk Cleanup, Cowork Session Fixer, Fix Chrome Connection, GitHub CLI Health Check, GCloud CLI Health Check, SOSA Compliance Checker) require **no configuration** — just install and use.
 </details>
 
 ---
