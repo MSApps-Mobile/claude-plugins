@@ -15,8 +15,8 @@ Two-component bridge:
 │   ├── go.mod / go.sum
 │   ├── whatsapp-bridge    # compiled binary
 │   └── store/
-│       ├── whatsapp.db    # device session + keys
-│       └── messages.db    # message history
+│       ├── whatsapp.db    # device session + keys (tables: whatsmeow_contacts, whatsmeow_device, etc.)
+│       └── messages.db    # message history (table: messages)
 └── whatsapp-mcp-server/   # Python MCP server
 ```
 
@@ -97,12 +97,44 @@ go build -o whatsapp-bridge .
 - Correct: `https://github.com/lharries/whatsapp-mcp.git`
 - Wrong (old): `https://github.com/lharrak/whatsapp-mcp.git`
 
+### Multiple Bridge Instances
+- If `ps aux | grep whatsapp-bridge` shows more than one process, duplicate instances may be running.
+- This can happen when nohup/background starts are repeated without killing the old process.
+- Safe to kill older instances: `pkill -f whatsapp-bridge && sleep 2 && cd ~/whatsapp-mcp/whatsapp-bridge && nohup ./whatsapp-bridge > /tmp/whatsapp-bridge.log 2>&1 &`
+
 ## Health Check
 
 The bridge is healthy when:
 - `ps aux | grep whatsapp-bridge` shows a running process
-- `curl http://localhost:8080/health` returns 200
-- `store/whatsapp.db` contains device keys (authenticated session)
+- `curl -s -X POST http://localhost:8080/api/send -H "Content-Type: application/json" -d '{}'` returns `Recipient is required` (not a connection error)
+- `store/whatsapp.db` table `whatsmeow_device` contains a JID row (authenticated session)
+
+> **Note**: The `/health` and `/` endpoints return 404. Use the POST /api/send probe above to confirm the bridge is responding correctly.
+
+## Database Tables
+
+**whatsapp.db** (device session + contacts):
+- `whatsmeow_device` — authenticated device session (JID)
+- `whatsmeow_contacts` — contact list (use this, NOT `contacts`)
+- `whatsmeow_sessions`, `whatsmeow_identity_keys`, etc. — crypto state
+
+**messages.db**:
+- `messages` — full message history
+
+Sample health queries:
+```bash
+# Contact count
+sqlite3 ~/whatsapp-mcp/whatsapp-bridge/store/whatsapp.db \
+  "SELECT COUNT(*) FROM whatsmeow_contacts;"
+
+# Message count + latest
+sqlite3 ~/whatsapp-mcp/whatsapp-bridge/store/messages.db \
+  "SELECT COUNT(*) as total, MAX(timestamp) as latest FROM messages;"
+
+# Device/auth check
+sqlite3 ~/whatsapp-mcp/whatsapp-bridge/store/whatsapp.db \
+  "SELECT jid FROM whatsmeow_device LIMIT 1;"
+```
 
 ## Starting the Bridge
 

@@ -79,7 +79,11 @@ The WhatsApp MCP bridge must be running for all tools to work. If tools fail wit
 **Check bridge health:**
 ```bash
 ps aux | grep whatsapp-bridge | grep -v grep
-curl -s http://localhost:8080/health
+# Note: /health endpoint returns 404 — use this probe instead:
+curl -s -X POST http://localhost:8080/api/send \
+  -H "Content-Type: application/json" -d '{}'
+# Expected response when healthy: "Recipient is required"
+# Connection refused or timeout = bridge is down
 ```
 
 **Start bridge (if installed):**
@@ -98,3 +102,9 @@ cd ~/whatsapp-mcp/whatsapp-bridge && go build -o whatsapp-bridge .
 **If 405 "client outdated" error appears:** The bridge needs the `GetLatestVersion` patch in `main.go`. See plugin `CLAUDE.md` for the fix.
 
 **If WebSocket close 1006 during QR scan:** Wait 60 seconds and retry. Run interactively (not headless) so QR code displays on screen.
+
+**If multiple bridge processes found:** Kill all and restart one clean instance:
+```bash
+pkill -f whatsapp-bridge && sleep 2
+cd ~/whatsapp-mcp/whatsapp-bridge && nohup ./whatsapp-bridge > /tmp/whatsapp-bridge.log 2>&1 &
+```
