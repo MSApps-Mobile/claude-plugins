@@ -372,8 +372,11 @@ After each run, always output a brief summary:
 
 ## Known Issue: tabs_context_mcp "Tabs can only be moved to and from normal windows"
 
-**Symptom:** `tabs_context_mcp` with `createIfEmpty: true` returns:
+**Symptom:** `tabs_context_mcp` with `createIfEmpty: true` returns one of these errors:
 > `"Failed to query tabs: Tabs can only be moved to and from normal windows"`
+> `"Failed to query tabs: Grouping is not supported by tabs in this window."`
+
+Both errors have the same root cause and the same fix (see below).
 
 **Root cause:** Chrome has one or more non-normal windows open — typically OAuth/login popup windows (e.g., "Zoho Accounts", "Adobe ID" login popups). These appear as "normal" to AppleScript but Chrome's internal API sees them as type "popup". When the extension tries to create a tab group, Chrome refuses because it can't move tabs from popup windows.
 
