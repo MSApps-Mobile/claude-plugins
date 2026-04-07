@@ -82,6 +82,8 @@ We built **SOSA™ (Supervised Orchestrated Secured Agents)** to fix that — a 
 |--------|-------------|---------|
 | [**sosa-compliance-checker**](./plugins/sosa-compliance-checker) | Audit your entire plugin ecosystem against SOSA™ | `sosa-compliance-checker@msapps-plugins` |
 | [**token-efficiency-audit**](./plugins/token-efficiency-audit) | Find and fix token waste — typical savings: 20-50% | `token-efficiency-audit@msapps-plugins` |
+| [**sosa-governor**](./plugins/sosa-governor) | Real-time SOSA governance layer — classifies, gates, and logs every MCP tool call | `sosa-governor@msapps-plugins` |
+| [**sosa-orchestrator**](./plugins/sosa-orchestrator) | Token-aware task prioritization and budget management for Claude sessions | `sosa-orchestrator@msapps-plugins` |
 
 > **Pro tip:** Run `sosa-compliance-checker` on all your installed plugins — not just ours. It catches hardcoded API keys, missing confirmation gates, unpinned packages, and prompt injection vulnerabilities in *any* plugin.
 
