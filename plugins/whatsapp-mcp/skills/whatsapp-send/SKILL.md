@@ -72,3 +72,28 @@ For group chats, the recipient must be the group JID (ending in `@g.us`). Use `l
 - If `send_audio_message` fails with an FFmpeg error, retry with `send_file`
 - If contact not found, ask the user for the phone number directly
 - If send fails, report the error message and suggest checking the WhatsApp bridge is running
+
+## Bridge Status Requirements
+
+The WhatsApp bridge must be running and authenticated for sending to work.
+
+**Check bridge:**
+```bash
+ps aux | grep whatsapp-bridge | grep -v grep
+curl -s http://localhost:8080/health
+```
+
+**Start bridge (if installed and authenticated):**
+```bash
+cd ~/whatsapp-mcp/whatsapp-bridge && nohup ./whatsapp-bridge > /tmp/whatsapp-bridge.log 2>&1 &
+```
+
+**Not yet set up? Full setup:**
+```bash
+brew install go
+git clone https://github.com/lharries/whatsapp-mcp.git ~/whatsapp-mcp
+cd ~/whatsapp-mcp/whatsapp-bridge && go build -o whatsapp-bridge .
+./whatsapp-bridge   # Run interactively — scan the QR code with WhatsApp on your phone
+```
+
+Once QR is scanned successfully, the bridge remembers the session. Future starts don't need QR.

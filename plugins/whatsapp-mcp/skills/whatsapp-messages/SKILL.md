@@ -71,3 +71,30 @@ Present results clearly:
 - For messages: show sender, timestamp, and message content
 - For chat lists: show chat name and last message preview
 - Always summarize findings in natural language, don't dump raw data
+
+## Bridge Status Requirements
+
+The WhatsApp MCP bridge must be running for all tools to work. If tools fail with connection errors:
+
+**Check bridge health:**
+```bash
+ps aux | grep whatsapp-bridge | grep -v grep
+curl -s http://localhost:8080/health
+```
+
+**Start bridge (if installed):**
+```bash
+cd ~/whatsapp-mcp/whatsapp-bridge && nohup ./whatsapp-bridge > /tmp/whatsapp-bridge.log 2>&1 &
+```
+
+**First-time setup (if bridge not installed):**
+```bash
+brew install go
+git clone https://github.com/lharries/whatsapp-mcp.git ~/whatsapp-mcp
+cd ~/whatsapp-mcp/whatsapp-bridge && go build -o whatsapp-bridge .
+./whatsapp-bridge   # Will print QR code — scan with WhatsApp mobile app
+```
+
+**If 405 "client outdated" error appears:** The bridge needs the `GetLatestVersion` patch in `main.go`. See plugin `CLAUDE.md` for the fix.
+
+**If WebSocket close 1006 during QR scan:** Wait 60 seconds and retry. Run interactively (not headless) so QR code displays on screen.

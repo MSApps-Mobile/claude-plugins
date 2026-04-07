@@ -1,71 +1,94 @@
-# WhatsApp MCP
-
-Connect Claude directly to WhatsApp for searching, reading, sending messages, and managing business outreach with persistent per-contact memory.
-
-## Health Check Loop
-
-This plugin includes an automated **check → fix → update → push → repeat** health check cycle:
-
-1. **Check** — verify bridge process, REST API (:8080), and SQLite databases
-2. **Fix** — attempt bridge restart, rebuild, or fresh clone if not running
-3. **Update** — improve task and skill files based on what was found
-4. **Push** — commit generic improvements to this repo (no private data)
-5. **Repeat** — loop until healthy or manual action required (QR scan, install)
+# WhatsApp MCP Plugin — Architecture & Setup Notes
 
 ## Architecture
 
-- **Go Bridge**: whatsmeow-based WhatsApp client with SQLite storage and REST API (port 8080)
-  - Bridge directory: `~/whatsapp-mcp/whatsapp-bridge/`
-  - Messages DB: `store/messages.db`
-  - Contacts DB: `store/whatsapp.db`
-- **Python MCP Server**: FastMCP-powered tool server
-- **Conversation Memory**: Private Notion database storing learned contact preferences and history
+Two-component bridge:
+- **Go Bridge** (`whatsapp-bridge`) — Connects to WhatsApp Web via the `whatsmeow` library, stores messages in SQLite, exposes a REST API on port 8080.
+- **Python MCP Server** (`whatsapp-mcp-server`) — FastMCP server that wraps the bridge API and provides tools to Claude via stdio transport.
 
-## Available Tools/Skills
+## Bridge Location
 
-- **whatsapp-messages**: Search and read message history, retrieve contact conversations
-- **whatsapp-send**: Send messages and media files (images, documents, audio)
+```
+~/whatsapp-mcp/
+├── whatsapp-bridge/       # Go bridge source + binary
+│   ├── main.go
+│   ├── go.mod / go.sum
+│   ├── whatsapp-bridge    # compiled binary
+│   └── store/
+│       ├── whatsapp.db    # device session + keys
+│       └── messages.db    # message history
+└── whatsapp-mcp-server/   # Python MCP server
+```
 
-## Configuration
+## Prerequisites
 
-**Prerequisites**:
-- Go 1.21 or later
-- Python with UV package manager
-- FFmpeg (optional, for voice message processing)
-- WhatsApp mobile app for QR scan authentication
-
-**Setup Steps**:
-1. Clone the WhatsApp MCP repository: `git clone https://github.com/lharrak/whatsapp-mcp.git ~/whatsapp-mcp`
-2. Build the Go bridge: `cd ~/whatsapp-mcp/whatsapp-bridge && go build -o whatsapp-bridge .`
-3. Start the bridge: `./whatsapp-bridge &`
-4. Scan QR code to authenticate WhatsApp
-5. Set `WHATSAPP_MCP_PATH` environment variable
-6. Start the Python MCP server
-
-**Verify connection**:
 ```bash
-ps aux | grep whatsapp-bridge | grep -v grep
-curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/send
+brew install go             # Go 1.21+ required
+brew install uv             # Python package manager
+brew install ffmpeg         # Optional: voice messages
+```
+
+## Setup (First Time)
+
+```bash
+# 1. Clone the correct repo (note: lharries, not lharrak)
+git clone https://github.com/lharries/whatsapp-mcp.git ~/whatsapp-mcp
+
+# 2. Build bridge
+cd ~/whatsapp-mcp/whatsapp-bridge
+go build -o whatsapp-bridge .
+
+# 3. Start bridge — will print QR code for phone scan
+./whatsapp-bridge
+
+# 4. Scan QR code with WhatsApp mobile app
+# (Settings → Linked Devices → Link a Device)
 ```
 
 ## Known Issues & Fixes
 
-| Symptom | Fix |
-|---------|-----|
-| Port 8080 connection refused | Bridge not running — restart it |
-| `~/whatsapp-mcp/` missing | Bridge never installed — run setup from scratch |
-| Bridge exits immediately | Check Go version, missing dependencies |
-| QR code loop | Previous session expired — rescan QR |
-| macOS Contacts: "Operation not permitted" | Grant Full Disk Access to Terminal in System Settings |
+### 405 "Client Outdated" Error
+- **Symptom**: `Client outdated (405) connect failure`
+- **Root cause**: whatsmeow's hardcoded client version becomes stale over time
+- **Fix**: Patch `main.go` to call `whatsmeow.GetLatestVersion()` at startup:
+  ```go
+  // Add import: "go.mau.fi/whatsmeow/store"
+  if latestVer, err := whatsmeow.GetLatestVersion(nil); err == nil {
+      store.SetWAVersion(*latestVer)
+  }
+  ```
+  This patch is already applied to the repo at `~/whatsapp-mcp/`.
 
-## Common Workflows
+### Dependency Version Pinning
+- When running `go get -u`, `go.mau.fi/libsignal` may upgrade to v0.2.1 which breaks compilation.
+- **Fix**: Pin it back: `go get go.mau.fi/libsignal@v0.1.2 && go mod tidy`
+- Newer whatsmeow versions (post-2026) require context arguments — incompatible with existing `main.go`.
 
-- **Analyze community before outreach**: Search similar contacts' conversations
-- **Send personalized messages**: Leverage memory system for tailored tone
-- **Multi-language support**: Hebrew, English, and any language WhatsApp supports
+### WebSocket Close 1006 (abnormal closure)
+- **Symptom**: `websocket: close 1006 (abnormal closure): unexpected EOF`
+- **When**: On new/unauthenticated devices during initial QR pairing
+- **Root cause**: WhatsApp server closes connection during initial handshake; may be transient rate-limiting after multiple reconnect attempts
+- **Fix**: Wait 30–60 seconds between attempts. Run bridge in a terminal (not headless) so QR code displays. Once QR is scanned and device authenticated, this error goes away permanently.
+- **Note**: Auto-reconnect only works for authenticated sessions (`Store.ID != nil`). New devices must successfully complete QR scan in one attempt.
 
-## Best Practices
+### Repo URL Typo in Old SKILL.md
+- Correct: `https://github.com/lharries/whatsapp-mcp.git`
+- Wrong (old): `https://github.com/lharrak/whatsapp-mcp.git`
 
-- Start with business-neutral tone until relationship is established
-- Always verify bridge is running before attempting MCP tool calls
-- Bridge must be authenticated (QR scanned) before any data is accessible
+## Health Check
+
+The bridge is healthy when:
+- `ps aux | grep whatsapp-bridge` shows a running process
+- `curl http://localhost:8080/health` returns 200
+- `store/whatsapp.db` contains device keys (authenticated session)
+
+## Starting the Bridge
+
+```bash
+cd ~/whatsapp-mcp/whatsapp-bridge && nohup ./whatsapp-bridge > /tmp/whatsapp-bridge.log 2>&1 &
+```
+
+For QR scan (must be interactive — QR prints to stdout):
+```bash
+cd ~/whatsapp-mcp/whatsapp-bridge && ./whatsapp-bridge
+```
