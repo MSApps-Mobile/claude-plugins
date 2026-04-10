@@ -1,0 +1,18 @@
+{
+  "name": "claude-woman",
+  "version": "0.1.0",
+  "description": "Persistent memory across Cowork sessions. Automatically recalls past decisions, file changes, insights, and errors so you never lose context between sessions. Inspired by claude-mem, rebuilt natively for Cowork.",
+  "author": {
+    "name": "MSApps"
+  },
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "license": "MIT",
+  "keywords": [
+    "memory",
+    "persistence",
+    "context",
+    "sessions",
+    "recall",
+    "history"
+  ]
+}
