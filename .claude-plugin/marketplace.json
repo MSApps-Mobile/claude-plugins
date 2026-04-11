@@ -387,6 +387,20 @@
       "keywords": ["zoho", "mail", "health-check", "monitoring", "email", "sosa-agents"],
       "category": "devops",
       "tags": ["zoho", "mail-health", "monitoring", "email", "sosa", "free"]
+    },
+    {
+      "name": "cowork-mem",
+      "source": "./plugins/cowork-mem",
+      "description": "Persistent memory across Cowork sessions — automatically recalls past decisions, file changes, insights, and errors so you never lose context between sessions. SQLite + FTS5, token-efficient 3-layer retrieval.",
+      "version": "0.1.0",
+      "platforms": ["claude-code", "cowork"],
+      "author": {"name": "MSApps", "email": "michal@msapps.mobi"},
+      "homepage": "https://msapps.mobi/plugins",
+      "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+      "license": "MIT",
+      "keywords": ["memory", "persistence", "context", "sessions", "recall", "history"],
+      "category": "productivity",
+      "tags": ["memory", "persistent-storage", "cross-session", "context-recall", "sqlite", "free"]
     }
   ]
 }
