@@ -1,40 +1,44 @@
 # cowork-mem
 
-Persistent memory for Cowork sessions. Never lose context between sessions again.
+**Stop wasting tokens re-explaining your project every session.**
+
+cowork-mem gives Claude persistent memory across Cowork sessions. Instead of burning thousands of tokens re-establishing context every time you start a new chat, Claude remembers what happened — decisions made, bugs fixed, architecture chosen, files changed — and picks up right where you left off.
 
 > Inspired by [claude-mem](https://github.com/thedotmack/claude-mem) by [@thedotmack](https://github.com/thedotmack). Rebuilt natively for Cowork.
 
-## What it does
+## The Problem
 
-cowork-mem gives Claude a persistent memory that survives across Cowork sessions. It stores decisions, file changes, insights, errors, and session summaries in a SQLite database on your machine — so when you come back tomorrow, Claude remembers what happened today.
+Every new Cowork session starts from zero. Claude doesn't know what you built yesterday, what you decided last week, or what broke an hour ago. So you spend the first 5-10 minutes (and hundreds of tokens) catching Claude up. Multiply that across dozens of sessions and you're wasting serious context window on repeat information.
 
-## How it works
+## The Fix
 
-- **Session start**: Claude automatically checks what happened in previous sessions and gives you a brief recap
-- **During work**: Claude saves important observations — architectural decisions, bugs encountered, insights learned
-- **Session end**: Claude writes a summary so next time picks up right where you left off
-- **Search**: Ask "what did we decide about X?" and Claude searches across all past sessions
+cowork-mem stores observations, decisions, and session summaries in a local SQLite database. When you start a new session, Claude pulls only what's relevant — using a 3-layer retrieval pattern that minimizes token usage:
+
+1. **Search** — FTS5 full-text search finds matching memories (returns IDs + snippets, not full content)
+2. **Scan** — Quick scan of results to identify what's actually relevant
+3. **Fetch** — Only retrieve the full text of memories that matter
+This means Claude loads context in tens of tokens instead of thousands. Your context window stays free for actual work.
 
 ## Features
 
-- SQLite with FTS5 full-text search for fast retrieval
-- 3-layer search: search → scan → fetch (keeps token usage low)
-- Session management with project tracking
-- Privacy controls (\`<private>\` tags exclude sensitive content from search)
-- Memory compaction for long-running projects
-- Export to JSON or Markdown
+- **Token-efficient recall** — 3-layer search → scan → fetch keeps context lean
+- **Automatic session tracking** — Claude saves what matters as you work, recaps when you return
+- **SQLite + FTS5** — Fast full-text search across all past sessions, stored locally on your machine
+- **Project-aware** — Memories are tagged by project so context stays relevant
+- **Privacy controls** — `<private>` tags exclude sensitive content from search
+- **Memory compaction** — Consolidates old memories to keep the database lean
+- **Export** — Dump your project history to JSON or Markdown anytime
 
 ## Installation
 
 ### Cowork
-Settings → Plugins → Marketplaces → Add \`MSApps-Mobile/claude-plugins\` → Install \`cowork-mem\`
+Settings → Plugins → Marketplaces → Add `MSApps-Mobile/claude-plugins` → Install `cowork-mem`
 
 ### Claude Code
-\`\`\`
+```
 /plugin marketplace add MSApps-Mobile/claude-plugins
 /plugin install cowork-mem@msapps-plugins
-\`\`\`
-
+```
 ## Usage
 
 Just start working. The skill triggers automatically when you:
@@ -50,7 +54,7 @@ You can also explicitly ask:
 
 ## Storage
 
-Memories are stored in \`~/.cowork-mem/memory.db\` (in your Cowork workspace folder). The database persists on your machine across sessions.
+Memories are stored in `~/.cowork-mem/memory.db` (in your Cowork workspace folder). The database persists on your machine across sessions.
 
 ## Requirements
 
