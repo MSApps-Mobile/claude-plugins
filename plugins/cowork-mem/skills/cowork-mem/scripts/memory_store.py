@@ -48,17 +48,27 @@ def _find_db_path() -> Path:
     if env_path := os.environ.get("COWORK_MEM_DB"):
         return Path(env_path)
 
-    # Look for the workspace mount (user's selected folder)
-    candidates = [
-        Path("/sessions") / os.environ.get("SESSION_ID", "") / "mnt" / "Claude" / ".cowork-mem",
-    ]
-    # Walk up from cwd to find a mnt/Claude directory
+    # Look for the workspace mount (persists on user's machine).
+    # Cowork uses "mnt/outputs" as the default persistent folder;
+    # older/custom setups may use "mnt/Claude" or a user-selected folder.
+    candidates = []
+    session_id = os.environ.get("SESSION_ID", "")
+
+    # Walk up from cwd to find a mnt directory with a known subfolder
     cwd = Path.cwd()
     for parent in [cwd] + list(cwd.parents):
-        candidate = parent / "mnt" / "Claude" / ".cowork-mem"
-        if (parent / "mnt" / "Claude").exists():
-            candidates.insert(0, candidate)
-            break
+        for subfolder in ("outputs", "Claude"):
+            mount = parent / "mnt" / subfolder
+            if mount.exists() and mount.is_dir():
+                candidates.insert(0, mount / ".cowork-mem")
+                break
+
+    # Also try the /sessions/<id>/mnt/ path directly
+    if session_id:
+        for subfolder in ("outputs", "Claude"):
+            candidates.append(
+                Path("/sessions") / session_id / "mnt" / subfolder / ".cowork-mem"
+            )
 
     for candidate in candidates:
         try:
