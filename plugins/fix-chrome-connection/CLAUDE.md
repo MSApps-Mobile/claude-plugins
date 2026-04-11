@@ -35,11 +35,24 @@ Diagnose and repair broken Claude in Chrome MCP connections. Resolves issues whe
 
 ## Root Cause
 
-macOS user switches cause Chrome extension service worker to go stale. Extension remains loaded but loses server connection. Fix requires full Chrome restart (not just tab reload).
+macOS user switches cause Chrome extension service worker to go stale. Extension remains loaded but loses server connection.
+
+## Key Learnings (2026-04-11)
+
+- **Control_Chrome (CDP) ≠ Claude_in_Chrome (MCP extension)** — these are two separate connections.
+  - `Control_Chrome` uses Chrome DevTools Protocol — works as long as Chrome is open.
+  - `Claude_in_Chrome` uses the Claude desktop extension WebSocket — requires user to click Connect.
+- **Chrome restart does NOT auto-reconnect** — even after `pkill + open`, the extension does not reconnect automatically. User must click the Claude extension icon → Connect.
+- **Programmatic fix has limits** — bash restart helps when the extension service worker is fully stale/crashed, but cannot substitute for the manual Connect click in the popup.
+- **Diagnostic triage:**
+  1. `tabs_context_mcp` fails → check `Control_Chrome list_tabs`
+  2. If `Control_Chrome` fails → Chrome not running → restart Chrome
+  3. If `Control_Chrome` works → Chrome open, but extension disconnected → user must click Connect
 
 ## Best Practices
 
-- **Use bash restart, not UI clicks** - Script quits Chrome cleanly then restarts it
+- **Bash restart clears stale service workers** — use `pkill -a "Google Chrome" && sleep 3 && open -a "Google Chrome"` then wait 10s
+- **After restart, user must click Connect** — the extension popup requires a manual click; this cannot be automated
 - **Schedule proactively** - Run daily health checks to catch issues early
 - **Requires Chrome to be running** - Plugin cannot fix if Chrome is closed
 - **Safe for repeated use** - Health checks have no side effects
