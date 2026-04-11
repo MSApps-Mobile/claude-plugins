@@ -1,26 +1,18 @@
 ---
 name: fix-chrome-connection
 description: >
-  Fixes a broken Claude in Chrome MCP connection. Use this skill whenever the user says
-  "fix chrome", "chrome not connecting", "chrome is broken", "reconnect chrome",
-  "chrome MCP not working", "chrome stopped working", or any complaint about the
-  Claude in Chrome extension not responding. Also trigger when any Chrome MCP tool call
-  fails with a connection error and the user asks to fix it.
+  Use when: tabs_context_mcp fails, Chrome MCP is broken, user says "fix Chrome",
+  "reconnect Chrome", "Chrome extension not responding", or after switching Claude Desktop accounts.
+  Diagnoses and repairs broken Claude-in-Chrome MCP connections step by step,
+  then commits any new learnings to GitHub.
+metadata:
+  version: "1.0.0"
+  author: "MSApps"
 ---
 
-# Fix Chrome MCP Connection
+## Purpose
 
-Systematically restore a broken Chrome MCP connection. Work through steps in order,
-stopping and reporting success as soon as the connection is restored.
-
-**Platform note:** This skill uses macOS-specific commands (AppleScript, `open`, `osascript`).
-It requires Chrome to be the browser and macOS to be the OS.
-
-## ⚠️ Critical: do not attempt UI clicking
-
-Do NOT try to click elements on `chrome://extensions` using coordinate-based AppleScript.
-The Claude desktop app steals focus from Chrome, causing clicks to land in the wrong window.
-Use only terminal commands (Desktop Commander) to control Chrome.
+Diagnose and repair a broken Claude-in-Chrome MCP connection. Work through steps in order, stop as soon as it works.
 
 ---
 
@@ -28,130 +20,209 @@ Use only terminal commands (Desktop Commander) to control Chrome.
 
 Call `tabs_context_mcp` with `createIfEmpty: false`.
 
-- Response contains tab info OR "no tab group exists" → **Chrome IS connected.** Tell the user and stop.
-- Response says "not connected" error → note it, continue to Step 2.
-- Response says **"Multiple Chrome extensions connected"** → go to **Step 1a** below.
+- Returns anything (even "no tab group exists") → Chrome is connected. Go to Step 1b.
+- Throws a connection error or times out → note the error, go to Step 2.
+
+### Step 1b: Verify tab group creation
+
+Call `tabs_context_mcp` with `createIfEmpty: true`.
+
+- Succeeds → report success, jump to Self-Reflection.
+- Returns **"Tabs can only be moved to and from normal windows"** → run:
+  ```bash
+  osascript -e 'tell application "Google Chrome" to make new window'
+  ```
+  Then retry `createIfEmpty: true`. (See Known Issue: "normal windows" error.)
 
 ---
 
-## Step 1a: Handle "Multiple Chrome extensions connected"
+## Step 2: Diagnose the failure mode
 
-This error means the Claude Desktop app's MCP server sees more than one Chrome extension
-instance connected (e.g., from a prior session, stale WebSocket, or multiple Chrome profiles).
-
-**First, try the automated fix — quit and relaunch Chrome:**
+Check logs first — this determines the correct fix immediately:
 
 ```bash
-osascript -e 'tell application "Google Chrome" to quit'
-sleep 5
-open -a "Google Chrome"
-sleep 10
+tail -50 ~/Library/Logs/Claude/main.log | grep -i chrome
 ```
 
-Retry `tabs_context_mcp` with `createIfEmpty: false`.
+| Log message | Meaning | Go to |
+|---|---|---|
+| `"No Chrome extension connected after discovery"` + live session | Session mismatch or account switch | Step 3 (session fix) or Step 6 (re-auth) |
+| `"No Chrome extension connected after discovery"` + scheduled task | Expected — Chrome can't pair to scheduled sessions | Report status only, use Control_Chrome |
+| `connected=true, authenticated=true` + tool calls fail ~70ms | Stale 0.sock symlink | Step 2b |
+| `"Chrome extension connected to bridge"` | Bridge connected — may be transient | Retry tabs_context_mcp |
+| No Chrome entries at all | Chrome not running | Restart Chrome |
 
-- If connected → done, report success.
-- If still showing "Multiple Chrome extensions connected" → the issue persists on the MCP
-  server side (stale connections from previous Claude sessions survive a Chrome restart).
-  **User action is required:** Tell the user:
-
-> "Chrome is showing as 'Multiple Chrome extensions connected', which means there are leftover
-> connections from a previous session that I can't clear automatically.
-> Please click the Claude in Chrome extension icon (top-right in Chrome's toolbar) and then
-> click the **Connect** button in the popup. This tells the MCP bridge which Chrome window to use.
-> Let me know once you've done that and I'll retry."
-
-After the user confirms, retry `tabs_context_mcp`. If it succeeds → report success and stop.
-If not → continue to Step 2.
+**Quick LevelDB diagnostic (extension bridge status):**
+```bash
+strings ~/Library/Application\ Support/Google/Chrome/Default/Local\ Extension\ Settings/fcoeoabgfenejglbffodgkkbkcdhcgfn/*.ldb 2>/dev/null | grep -E "mcpConnected|Connected:"
+```
+- `Connected: false`, no `mcpConnected: true` → auth failure → Step 6 (re-auth)
+- `mcpConnected: true` → bridge connected before, may be transient or stale socket → Step 2b
+- Only `oauthState` key → OAuth started but never completed → Step 6 (re-auth)
 
 ---
 
-## Step 2: Screenshot and assess
+## Step 2b: Stale Socket Symlink Fix
 
-Use Desktop Commander to capture and view the current screen state:
+**Symptom:** `connected=true, authenticated=true, wsState=1` but every tool call fails in ~70ms.
+
+**Root cause:** Chrome restart creates a new `{pid}.sock` file but doesn't update `0.sock`. Claude Desktop looks specifically for `0.sock`.
 
 ```bash
-screencapture -x /tmp/chrome_check.png
-sips -Z 1920 /tmp/chrome_check.png --out /tmp/chrome_check_small.png
+DIR="/tmp/claude-mcp-browser-bridge-$(whoami)"
+ls -la "$DIR/"
+NEW_SOCK=$(ls -t "$DIR"/*.sock 2>/dev/null | grep -v '0.sock' | head -1)
+if [ -n "$NEW_SOCK" ]; then
+  ln -sf "$NEW_SOCK" "$DIR/0.sock"
+  echo "Updated 0.sock → $NEW_SOCK"
+else
+  echo "No active socket found"
+fi
 ```
 
-Copy to the workspace folder and Read it. Note: Is Chrome open? Is it on the right profile?
-Report what you see before continuing.
+Retry `tabs_context_mcp` with `createIfEmpty: false`. Works → jump to Self-Reflection.
 
 ---
 
-## Step 3: Open Chrome
+## Step 3: Session focus fix (live sessions only)
 
-```bash
-open -a "Google Chrome"
-sleep 3
-```
-
-Retry connection test. If connected → done and report success.
-
----
-
-## Step 4: Quit and relaunch Chrome ← PRIMARY FIX
-
-If Step 3 didn't work, go straight here. This is the most reliable fix — no UI interaction needed.
-
-```bash
-# Quit Chrome via AppleScript
-osascript -e 'tell application "Google Chrome" to quit'
-sleep 5
-
-# Relaunch
-open -a "Google Chrome"
-sleep 8
-```
-
-Retry connection test. If connected → done and report success.
-
-**Why this works:** Quitting Chrome terminates any stale extension service workers.
-On relaunch, extensions reinitialize cleanly and the MCP bridge reconnects.
-
----
-
-## Step 5: Ask the user
-
-If automated steps haven't worked, report every step tried and ask:
-
-> "Are you on the correct Chrome profile? After switching macOS users, Chrome sometimes opens
-> under a different profile where the extension isn't installed. Try clicking the profile icon
-> (top-right in Chrome) and switching profiles, then let me know and I'll retry."
-
-After they confirm, retry the connection test.
-
----
-
-## Step 6: Last resort
+**Root cause:** Chrome extension pairs to whichever Cowork window is in focus when Connect is clicked.
 
 Tell the user:
-- Open `chrome://extensions` in Chrome
-- Find "Claude in Chrome", click Remove
-- Reinstall from the Chrome Web Store
+> "Please focus this Cowork chat window, then click the Claude extension icon in Chrome's toolbar and click **Connect**."
+
+After they confirm:
+1. Call `tabs_context_mcp` with `createIfEmpty: false` → if it works → done ✅
+2. Also run the 0.sock fix from Step 2b as a safety measure.
+
+---
+
+## Step 4: Reconnect URL (quick trigger for non-account-switch disconnects)
+
+```bash
+osascript -e 'tell application "Google Chrome" to set URL of active tab of front window to "https://clau.de/chrome/reconnect"'
+sleep 5
+tail -10 ~/Library/Logs/Claude/main.log | grep -iE "chrome extension|bridge|No Chrome"
+```
+
+- `"Chrome extension connected to bridge"` → success! Test with `tabs_context_mcp`.
+- Still failing → continue to Step 5.
+
+> If AppleScript returns "Can't get window 1": `osascript -e 'tell application "Google Chrome" to make new window'`
+
+---
+
+## Step 5: Open pairing page
+
+```bash
+open -a "Google Chrome" "chrome-extension://fcoeoabgfenejglbffodgkkbkcdhcgfn/pairing.html"
+```
+
+Wait 3 seconds, retry `tabs_context_mcp`.
+
+If still failing, tell user: **"The pairing page is open in Chrome. Type any name in the input field, then click the orange Connect button."**
+
+> **Note:** The Connect button is disabled until a name is typed. If automating via CDP, use the React native setter — `input.value = "text"` does NOT work with React controlled inputs. Use:
+> ```javascript
+> let setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+> setter.call(input, 'Claude Desktop');
+> input.dispatchEvent(new Event('input', { bubbles: true }));
+> ```
+
+---
+
+## Step 6: Manual Re-auth (account switch — the reliable fix)
+
+> ⚠️ Go directly here if logs show `"No Chrome extension connected after discovery"` in a live session and Steps 3–5 don't work. This is the ONLY fix for account switches.
+
+Tell the user:
+
+> **"The Chrome extension needs to re-authenticate with your current Claude Desktop account:"**
+> 1. Chrome toolbar → 🧩 → "Claude in Chrome" → sign out
+> 2. Sign back in with the **same account as Claude Desktop** (check Claude Desktop's account menu if unsure)
+> 3. Authorize the connection when prompted
+> 4. When the pairing page appears — type any name → click **Connect**
+> 5. Navigate Chrome to **https://claude.ai** (wakes the extension service worker)
+> 6. Tell Claude: "done"
+
+After user says done:
+```bash
+DIR="/tmp/claude-mcp-browser-bridge-$(whoami)"
+NEW=$(ls -t "$DIR"/*.sock 2>/dev/null | grep -v '/0.sock' | head -1)
+[ -n "$NEW" ] && ln -sf "$NEW" "$DIR/0.sock" && echo "Updated" || echo "No socket"
+sleep 5
+tail -10 ~/Library/Logs/Claude/main.log | grep -iE "chrome extension|bridge"
+```
+
+Then call `tabs_context_mcp` with `createIfEmpty: true`. Retry once if it fails immediately.
+
+---
+
+## Step 7: Last resort
+
+Tell the user to open `chrome://extensions`, remove Claude in Chrome, then reinstall from the Chrome Web Store.
+
+---
+
+## Self-Reflection Step (run after EVERY execution)
+
+> "Did I learn anything that would make future runs faster or better?"
+
+If yes:
+1. Update relevant files in `~/Documents/claude-plugins/plugins/fix-chrome-connection/`
+2. Commit and push:
+```bash
+cd ~/Documents/claude-plugins
+git add plugins/fix-chrome-connection/
+git commit -m "fix-chrome-connection: self-improvement $(date '+%Y-%m-%d')"
+git pull --rebase origin main && git push origin main
+```
+
+If no: state "No new learnings from this run."
 
 ---
 
 ## Reporting
 
-After every step, tell the user:
-- What you tried
-- What happened (success, error, still broken)
-- What you're trying next
+After each run, output:
+- Steps attempted
+- Outcome
+- What was learned and updated (if anything)
 
 ---
 
-## Self-Reflection Step
+## Known Issues
 
-After completing the skill (whether successful or not), record what happened:
+### "Tabs can only be moved to and from normal windows"
+Chrome has popup windows open (OAuth/login popups). Fix: `osascript -e 'tell application "Google Chrome" to make new window'`
 
-1. What error was encountered?
-2. What step resolved it (or what step failed)?
-3. Was there a new scenario not covered by this skill?
-4. If new knowledge was gained, update this SKILL.md and commit the changes.
+### Stale 0.sock
+Chrome restart creates new `{pid}.sock` but doesn't update `0.sock`. Claude Desktop looks for `0.sock` specifically. Fix: update symlink (Step 2b).
 
-**Known error scenarios and their resolutions:**
-- `not connected` → Step 3 (open Chrome) or Step 4 (quit/relaunch) usually fixes this.
-- `Multiple Chrome extensions connected` (persists after Chrome restart) → Requires user to click
-  **Connect** in the Chrome extension popup. Cannot be fully automated. (Documented 2026-03-26)
+### Account switch — only manual re-auth works
+After switching Claude Desktop accounts, the userId changes. The extension connects to the old bridge channel (`wss://bridge.claudeusercontent.com/chrome/{userId}`). Chrome restart and socket fixes don't help. CDP automation doesn't work (debug profile lacks session cookies for OAuth). Only Step 6 (manual re-auth) works.
+
+### Scheduled task sessions — tabs_context_mcp always fails
+`tabs_context_mcp` pairs to a specific Cowork `localSessionId` stored in `bridge-state.json`. Scheduled task sessions have their own ID. Chrome can't pair to them. Use `Control_Chrome` for scheduled health checks.
+
+### Pairing page — React input
+Connect button is disabled until a name is typed. `input.value = "text"` doesn't work with React. Must use the native setter (see Step 5).
+
+### Corrupt LevelDB
+If only `.ldb`/`.log` files were deleted (not the whole directory), LevelDB is permanently corrupt. Fix: delete the ENTIRE directory:
+```bash
+osascript -e 'tell application "Google Chrome" to quit'; sleep 3
+rm -rf "$HOME/Library/Application Support/Google/Chrome/Default/Local Extension Settings/fcoeoabgfenejglbffodgkkbkcdhcgfn"
+open -a "Google Chrome"; sleep 6
+```
+
+### Multiple Chrome extensions connected
+`tabs_context_mcp` returns: "Multiple Chrome extensions connected. Open the Claude extension and click Connect." This is NOT broken — multiple sessions are connected simultaneously. Fix: click the Claude extension icon → **Connect** in the active Chrome window.
+
+### Manual OAuth URL always fails
+Never manually construct the OAuth URL — it will fail (missing `state` parameter). The extension generates a random `state`+PKCE pair and stores it in LevelDB. The correct way: open the pairing page (`pairing.html`) — it triggers `initiateOAuthFlow()` automatically.
+
+### macOS quarantine on socket directory
+Check: `xattr -l /tmp/claude-mcp-browser-bridge-$(whoami)/`
+If `com.apple.quarantine` present: `xattr -rd com.apple.quarantine /tmp/claude-mcp-browser-bridge-$(whoami)/`
+Note: quarantine is NOT the cause of "No Chrome extension connected" — that's always an auth issue.

@@ -1,95 +1,153 @@
-# Fix Chrome Connection
+# Fix Chrome Connection — Claude Guide
 
-**Impact Level:** Low (diagnostic, read-only operations)
-**Role:** Detect and repair broken Chrome extension connections for Claude-in-Chrome MCP.
+**Plugin:** fix-chrome-connection
+**Author:** MSApps
+**Role:** Diagnose and repair broken Claude-in-Chrome MCP connections. Fully self-improving — commits learnings to GitHub after every run.
 
-Diagnose and repair broken Claude in Chrome MCP connections. Resolves issues when Claude extension loses communication with Claude Code server.
+---
 
-## Available Tools/Skills
+## When to use this skill
 
-- **fix-chrome-connection** - Full repair workflow: diagnose issue, restart Chrome service, verify connection
-- **chrome-health-check** - Quick status check without repairs (safe to run anytime)
+- `tabs_context_mcp` returns a connection error or times out
+- `tabs_context_mcp` returns "Tabs can only be moved to and from normal windows"
+- User says "fix Chrome", "Chrome MCP broken", "reconnect Chrome", "Chrome not responding", "is chrome connected?"
+- User recently switched Claude Desktop accounts
+- A scheduled task triggers this skill
 
-## Configuration
+---
 
-- **Platform**: macOS only (uses bash commands to quit/restart Chrome)
-- **Required**: Google Chrome installed, Claude in Chrome extension
-- **Server**: Local bash commands
+## Quick decision tree
 
-## Common Workflows
+```
+tabs_context_mcp(createIfEmpty=false) errors?
+├── YES → Check main.log: tail -50 ~/Library/Logs/Claude/main.log | grep -i chrome
+│   ├── "No Chrome extension connected after discovery"
+│   │   ├── Is this a scheduled task session? → Expected — use Control_Chrome only (see Scheduled Tasks)
+│   │   └── Live session? → Account switch or session mismatch → Step 5 (manual re-auth)
+│   ├── connected=true + tool calls fail in ~70ms → Stale 0.sock → Step 2b
+│   └── No log entries → Chrome not running → restart Chrome
+└── NO (returns "no tab group") → Connection OK
+    └── tabs_context_mcp(createIfEmpty=true)
+        ├── SUCCEEDS → Done ✅
+        └── "normal windows" error → osascript make new window → retry
+```
 
-1. **Fix Broken Connection**
-   - Trigger: User says "fix chrome", "chrome not connecting", or "is chrome connected?"
-   - Tool runs: Diagnose → quit Chrome → restart → verify
-   - Result: Connection restored, ready to use
+---
 
-2. **Quick Status Check**
-   - Run chrome-health-check anytime
-   - Returns: "Connected", "Disconnected", or error details
-   - Safe to run repeatedly without side effects
+## Key commands
 
-3. **Scheduled Daily Check**
-   - Configure daily task: chrome-health-check every morning
-   - Proactively catch stale connections before user notices
-   - Use Control_Chrome only (not tabs_context_mcp) in scheduled tasks
+### Test connection
+```bash
+# MCP tool
+mcp__Claude_in_Chrome__tabs_context_mcp(createIfEmpty=false)
+```
+
+### Check logs
+```bash
+tail -50 ~/Library/Logs/Claude/main.log | grep -i chrome
+```
+
+### Fix stale 0.sock (after any Chrome restart)
+```bash
+DIR="/tmp/claude-mcp-browser-bridge-$(whoami)"
+NEW=$(ls -t "$DIR"/*.sock 2>/dev/null | grep -v '/0.sock' | head -1)
+[ -n "$NEW" ] && ln -sf "$NEW" "$DIR/0.sock" && echo "Updated 0.sock → $NEW" || echo "No socket found"
+```
+
+### Reconnect URL (quick trigger — try first for non-account-switch)
+```bash
+osascript -e 'tell application "Google Chrome" to set URL of active tab of front window to "https://clau.de/chrome/reconnect"'
+sleep 5
+tail -5 ~/Library/Logs/Claude/main.log | grep -i "chrome extension"
+```
+
+### Open pairing page
+```bash
+open -a "Google Chrome" "chrome-extension://fcoeoabgfenejglbffodgkkbkcdhcgfn/pairing.html"
+```
+
+### Fix "normal windows" error
+```bash
+osascript -e 'tell application "Google Chrome" to make new window'
+```
+
+### Restart Chrome
+```bash
+pkill -a "Google Chrome"; sleep 3; open -a "Google Chrome"; sleep 8
+```
+
+---
 
 ## Architecture (fully reverse-engineered 2026-04-11)
 
-The Claude in Chrome connection uses a 3-layer bridge:
+Two separate Chrome connections — do NOT confuse them:
 
+| Connection | Protocol | When it works |
+|---|---|---|
+| `Control_Chrome` | Chrome DevTools Protocol (CDP) | Any time Chrome is open |
+| `Claude_in_Chrome` | WebSocket bridge + native host | Only when extension is paired to the active session |
+
+### Bridge architecture
 ```
 Chrome Extension
-      ↕ (stdin/stdout native messaging)
-chrome-native-host (binary at /Applications/Claude.app/Contents/Helpers/chrome-native-host)
-      ↕ (Unix socket at /tmp/claude-mcp-browser-bridge-{user}/{pid}.sock)
+      ↕ stdin/stdout (native messaging)
+chrome-native-host  (/Applications/Claude.app/Contents/Helpers/chrome-native-host)
+      ↕ Unix socket (/tmp/claude-mcp-browser-bridge-{user}/{pid}.sock)
 Claude App MCP server
-      ↕ (WebSocket wsState, connects to Anthropic's Cowork servers)
-Cowork Session
+      ↕ WebSocket (wss://bridge.claudeusercontent.com/chrome/{userId})
+Cowork Session (paired via ~/Library/Application Support/Claude/bridge-state.json)
 ```
 
-- The native host creates the socket and waits for the Claude app to connect to it
-- The Claude app does "discovery" by scanning the socket directory
-- When a match is found, the native host notifies Chrome: "MCP connected"
-- Pairing is stored in `~/Library/Application Support/Claude/bridge-state.json`
+### Critical session-pairing rule (discovered 2026-04-11)
+- The extension pairs to whichever **Cowork session window is in focus** when you click Connect
+- `bridge-state.json` stores the `localSessionId` for the pairing
+- **Scheduled task sessions have their own sessionId** — Chrome CANNOT pair to them
+- `tabs_context_mcp` will ALWAYS fail in scheduled tasks — this is by design, not a bug
+- **Fix for live sessions:** focus the Cowork window, THEN click Connect in Chrome
 
-## Root Cause (critical — 2026-04-11)
+### 0.sock symlink
+- Claude Desktop socket client looks specifically for `0.sock` in the socket directory
+- Chrome restart creates a new `{pid}.sock` but does NOT update `0.sock`
+- Stale `0.sock` = `connected=true, authenticated=true` but every tool call fails in ~70ms
+- Fix: `ln -sf {newest.sock} 0.sock`
 
-**Chrome extension pairing is SESSION-SPECIFIC.**
+---
 
-- `bridge-state.json` stores the pairing between a Chrome extension instance and a specific Cowork `localSessionId`
-- The Chrome extension pairs to whichever Cowork session window is **active and in focus** when the user clicks Connect
-- **Scheduled task sessions have their own session ID** — Chrome cannot pair to them
-- `tabs_context_mcp` will ALWAYS fail in scheduled task sessions — this is by design
+## Scheduled Tasks
 
-## The Fix That Works
+`tabs_context_mcp` does NOT work in scheduled task sessions. Use `Control_Chrome` instead:
 
-When `tabs_context_mcp` fails despite Chrome being open:
+```bash
+mcp__Control_Chrome__list_tabs()  # Works in scheduled tasks
+```
 
-1. Make the target Cowork chat window **active and in focus**
-2. Click the Claude extension icon in Chrome's toolbar
-3. Click **Connect** while the Cowork window is still in focus
-4. Retry `tabs_context_mcp` — it will now succeed
+Health check logic for scheduled tasks:
+1. `Control_Chrome list_tabs` fails → Chrome not running → restart it
+2. `Control_Chrome` works + `tabs_context_mcp` fails → expected in scheduled tasks — report status only
 
-**The key:** Chrome must see the correct Cowork session as active at the moment of clicking Connect.
+---
 
-## Key Learnings
+## Self-improvement rule
 
-- **Control_Chrome (CDP) ≠ Claude_in_Chrome (MCP extension)** — two separate connections
-  - `Control_Chrome` uses Chrome DevTools Protocol — works as long as Chrome is open
-  - `Claude_in_Chrome` uses the Claude desktop extension WebSocket bridge — requires session pairing
-- **Chrome restart does NOT auto-reconnect** — after restart, user must click Connect in the active Cowork window
-- **Clicking Connect repeatedly in a background window does nothing** — the window must be in focus
-- **Programmatic fix is impossible for session mismatch** — no bash command can re-pair Chrome to a session
-- **Diagnostic triage:**
-  1. `tabs_context_mcp` fails → check `Control_Chrome list_tabs`
-  2. If `Control_Chrome` fails → Chrome not running → `pkill -a "Google Chrome" && sleep 3 && open -a "Google Chrome"`
-  3. If `Control_Chrome` works but `tabs_context_mcp` fails → bring Cowork window into focus, then click Connect
-  4. Check `~/Library/Logs/Claude/main.log` for `[Claude in Chrome] No Chrome extension connected after discovery`
+After every run (successful or not), if you learned something:
+1. Update relevant files in `~/Documents/claude-plugins/plugins/fix-chrome-connection/`
+2. Run:
+```bash
+cd ~/Documents/claude-plugins
+git add plugins/fix-chrome-connection/
+git commit -m "fix-chrome-connection: self-improvement $(date '+%Y-%m-%d')"
+git pull --rebase origin main && git push origin main
+```
 
-## Best Practices
+---
 
-- **Claude-in-Chrome tools only work in live Cowork sessions** — not in scheduled task runs
-- **Health checks for Chrome should use `Control_Chrome`** — works in scheduled tasks, no pairing needed
-- **To connect**: focus the Cowork window first, THEN click Connect in Chrome extension
-- **Bash restart** useful only when native host is crashed — `pkill -a "Google Chrome" && sleep 3 && open -a "Google Chrome"`
-- **Works after system sleep** — connection breaks after macOS sleep/wake; run check after waking
+## Files in this plugin
+
+| File | Purpose |
+|---|---|
+| `skills/fix-chrome-connection/SKILL.md` | Full step-by-step repair procedure |
+| `skills/chrome-health-check/SKILL.md` | Lightweight status check (safe to run anytime) |
+| `scheduled/fix-chrome-connection/SKILL.md` | Scheduled daily health check task |
+| `README.md` | User-facing documentation |
+| `CLAUDE.md` | This file — quick reference |
+| `.claude-plugin/plugin.json` | Plugin metadata |
