@@ -41,8 +41,10 @@ Call `tabs_context_mcp` with `createIfEmpty: true`.
 Check logs first — this determines the correct fix immediately:
 
 ```bash
-tail -50 ~/Library/Logs/Claude/main.log | grep -i chrome
+tail -50 ~/Library/Logs/Claude/main.log | grep -iE "chrome|extension|bridge" | grep -v "getSessionsFor\|scheduledTaskId"
 ```
+
+> **⚠️ Scheduled task log noise:** When `fix-chrome-connection` runs as a scheduled task, `main.log` is flooded with `LocalAgentModeSessions.getSessionsForScheduledTask: scheduledTaskId=fix-chrome-connection` entries — these contain "chrome" so a plain `grep -i chrome` returns only those. Always pipe through `| grep -v getSessionsFor`.
 
 | Log message | Meaning | Go to |
 |---|---|---|
@@ -59,6 +61,15 @@ strings ~/Library/Application\ Support/Google/Chrome/Default/Local\ Extension\ S
 - `Connected: false`, no `mcpConnected: true` → auth failure → Step 6 (re-auth)
 - `mcpConnected: true` → bridge connected before, may be transient or stale socket → Step 2b
 - Only `oauthState` key → OAuth started but never completed → Step 6 (re-auth)
+
+**Quick account mismatch check** (do alongside LevelDB check):
+```bash
+# Bridge userId Claude Desktop is using:
+grep "Connecting to bridge:" ~/Library/Logs/Claude/main.log | grep -v "getSessionsFor" | tail -1
+# Extension's stored accountUuid:
+strings ~/Library/Application\ Support/Google/Chrome/Default/Local\ Extension\ Settings/fcoeoabgfenejglbffodgkkbkcdhcgfn/*.ldb 2>/dev/null | grep -A1 "ountUuid" | head -3
+```
+If the bridge URL shows `chrome/{UUID-A}` but extension `accountUuid` is `UUID-B` → **account mismatch → Step 6 directly**.
 
 ---
 
@@ -198,6 +209,9 @@ Chrome has popup windows open (OAuth/login popups). Fix: `osascript -e 'tell app
 
 ### Stale 0.sock
 Chrome restart creates new `{pid}.sock` but doesn't update `0.sock`. Claude Desktop looks for `0.sock` specifically. Fix: update symlink (Step 2b).
+
+### Native host cycling (start → ~2 min → stop) = account mismatch or auth failure
+`chrome-native-host.log` shows the host repeatedly starting (new `.sock`) then stopping ("Chrome disconnected (EOF received)") within ~2 minutes. This means the extension service worker starts, fails to pair on the bridge (userId/auth mismatch), then Chrome suspends the idle service worker (sending EOF). **This is NOT a socket problem** — updating `0.sock` won't help. Repeatedly navigating pages to "wake" the extension just repeats the cycle. Compare bridge URL userId vs extension `accountUuid` (see account mismatch check above) and go to Step 6.
 
 ### Account switch — only manual re-auth works
 After switching Claude Desktop accounts, the userId changes. The extension connects to the old bridge channel (`wss://bridge.claudeusercontent.com/chrome/{userId}`). Chrome restart and socket fixes don't help. CDP automation doesn't work (debug profile lacks session cookies for OAuth). Only Step 6 (manual re-auth) works.
