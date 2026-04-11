@@ -1,4 +1,4 @@
-# claude-woman
+# cowork-mem
 
 Persistent memory plugin for Cowork. Stores observations (decisions, file edits, insights, errors) in a SQLite database with FTS5 full-text search.
 

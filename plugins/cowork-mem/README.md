@@ -1,4 +1,4 @@
-# claude-woman
+# cowork-mem
 
 Persistent memory for Cowork sessions. Never lose context between sessions again.
 
@@ -6,7 +6,7 @@ Persistent memory for Cowork sessions. Never lose context between sessions again
 
 ## What it does
 
-claude-woman gives Claude a persistent memory that survives across Cowork sessions. It stores decisions, file changes, insights, errors, and session summaries in a SQLite database on your machine — so when you come back tomorrow, Claude remembers what happened today.
+cowork-mem gives Claude a persistent memory that survives across Cowork sessions. It stores decisions, file changes, insights, errors, and session summaries in a SQLite database on your machine — so when you come back tomorrow, Claude remembers what happened today.
 
 ## How it works
 
@@ -27,12 +27,12 @@ claude-woman gives Claude a persistent memory that survives across Cowork sessio
 ## Installation
 
 ### Cowork
-Settings → Plugins → Marketplaces → Add \`MSApps-Mobile/claude-plugins\` → Install \`claude-woman\`
+Settings → Plugins → Marketplaces → Add \`MSApps-Mobile/claude-plugins\` → Install \`cowork-mem\`
 
 ### Claude Code
 \`\`\`
 /plugin marketplace add MSApps-Mobile/claude-plugins
-/plugin install claude-woman@msapps-plugins
+/plugin install cowork-mem@msapps-plugins
 \`\`\`
 
 ## Usage
@@ -59,7 +59,7 @@ Memories are stored in \`~/.cowork-mem/memory.db\` (in your Cowork workspace fol
 
 ## Credits
 
-This plugin was inspired by [claude-mem](https://github.com/thedotmack/claude-mem) by [@thedotmack](https://github.com/thedotmack), which provides persistent memory for Claude Code using hooks, Bun, and MCP. claude-woman adapts the core concept for Cowork's skill-based architecture.
+This plugin was inspired by [claude-mem](https://github.com/thedotmack/claude-mem) by [@thedotmack](https://github.com/thedotmack), which provides persistent memory for Claude Code using hooks, Bun, and MCP. cowork-mem adapts the core concept for Cowork's skill-based architecture.
 
 ## License
 
