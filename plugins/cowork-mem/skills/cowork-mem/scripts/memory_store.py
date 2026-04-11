@@ -140,7 +140,12 @@ CREATE INDEX IF NOT EXISTS idx_obs_type ON observations(type);
 def get_db() -> sqlite3.Connection:
     conn = sqlite3.connect(str(DB_PATH))
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
+    # Use MEMORY journal mode — WAL and DELETE fail on Cowork's workspace
+    # mount (FUSE/network FS). MEMORY is safe here: single-user, single-
+    # process, and we commit after every write.
+    conn.execute("PRAGMA journal_mode=MEMORY")
+    conn.execute("PRAGMA synchronous=OFF")
+    conn.execute("PRAGMA locking_mode=EXCLUSIVE")
     conn.execute("PRAGMA foreign_keys=ON")
     conn.executescript(SCHEMA)
     return conn
