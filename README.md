@@ -69,7 +69,7 @@ We built **SOSA™ (Supervised Orchestrated Secured Agents)** to fix that — a 
 | [**x-content-intelligence**](./plugins/x-content-intelligence) | Scrape X/Twitter for insights & generate content | `x-content-intelligence@msapps-plugins` |
 | [**linkedin-scraper**](./plugins/linkedin-scraper) | Token-efficient LinkedIn scraping — profiles, companies & jobs via MCP | `linkedin-scraper@msapps-plugins` |
 | [**digital-presence**](./plugins/digital-presence) | Manage online presence across all major social platforms | `digital-presence@msapps-plugins` |
-| [**claude-woman**](./plugins/claude-woman) | Persistent memory across Cowork sessions — so Claude Man never loses context | `claude-woman@msapps-plugins` |
+| [**claude-mam**](./plugins/cowork-mem) | Persistent memory across Cowork sessions — so Claude never loses context | `cowork-mem@msapps-plugins` |
 | [**skill-campfire**](./plugins/skill-campfire) | Turn your skills into characters who hang out around a campfire | `skill-campfire@msapps-plugins` |
 | [**rtl-chat-fixer**](./plugins/rtl-chat-fixer) | Fix jumbled RTL/LTR text mixing (Hebrew, Arabic) | `rtl-chat-fixer@msapps-plugins` |
 | [**vm-disk-cleanup**](./plugins/vm-disk-cleanup) | Fix disk-full errors in Cowork VMs & sandboxes | `vm-disk-cleanup@msapps-plugins` |
