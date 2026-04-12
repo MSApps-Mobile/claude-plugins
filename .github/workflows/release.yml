@@ -1,0 +1,164 @@
+name: Plugin Release
+
+# Triggers on every push to main — detects which plugins changed,
+# bumps their patch version, packages them, and creates GitHub releases.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'plugins/**'
+
+permissions:
+  contents: write  # needed to push version bump commit and create releases
+
+jobs:
+  # ── Job 1: Detect which plugins changed ─────────────────────────
+  detect:
+    name: Detect Changed Plugins
+    runs-on: ubuntu-latest
+    outputs:
+      plugins: ${{ steps.detect.outputs.plugins }}
+      has_changes: ${{ steps.detect.outputs.has_changes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2   # need parent commit for diff
+
+      - name: Detect changed plugins
+        id: detect
+        run: |
+          chmod +x scripts/detect-changed-plugins.sh
+          CHANGED=$(bash scripts/detect-changed-plugins.sh ${{ github.event.before }} ${{ github.sha }} || true)
+
+          if [[ -z "$CHANGED" ]]; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "plugins=[]" >> $GITHUB_OUTPUT
+            echo "No plugin changes detected"
+          else
+            # Build JSON array for matrix strategy
+            JSON=$(echo "$CHANGED" | python3 -c "import sys,json; lines=[l.strip() for l in sys.stdin if l.strip()]; print(json.dumps(lines))")
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "plugins=$JSON" >> $GITHUB_OUTPUT
+            echo "Changed plugins: $CHANGED"
+          fi
+
+  # ── Job 2: Build, bump version, package, and release ─────────────
+  release:
+    name: Release ${{ matrix.plugin }}
+    runs-on: ubuntu-latest
+    needs: detect
+    if: needs.detect.outputs.has_changes == 'true'
+    strategy:
+      matrix:
+        plugin: ${{ fromJson(needs.detect.outputs.plugins) }}
+      fail-fast: false  # release other plugins even if one fails
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # ── Validate plugin structure ──────────────────────────────
+      - name: Validate plugin structure
+        run: |
+          PLUGIN="${{ matrix.plugin }}"
+          echo "Validating $PLUGIN..."
+
+          if [[ ! -d "plugins/$PLUGIN/.claude-plugin" ]]; then
+            echo "::error::Missing .claude-plugin/ in plugins/$PLUGIN — skipping"
+            exit 1
+          fi
+
+          if [[ ! -f "plugins/$PLUGIN/.claude-plugin/plugin.json" ]]; then
+            echo "::error::Missing plugin.json in plugins/$PLUGIN/.claude-plugin"
+            exit 1
+          fi
+
+          echo "✓ Plugin structure valid"
+
+      # ── Bump patch version ─────────────────────────────────────
+      - name: Bump version
+        id: bump
+        run: |
+          chmod +x scripts/bump-version.sh
+          bash scripts/bump-version.sh ${{ matrix.plugin }} patch
+
+      # ── Commit version bump ────────────────────────────────────
+      - name: Commit version bump
+        run: |
+          PLUGIN="${{ matrix.plugin }}"
+          NEW_VERSION="${{ steps.bump.outputs.new_version }}"
+          git add "plugins/$PLUGIN/.claude-plugin/plugin.json"
+          git commit -m "chore(release): bump $PLUGIN to v$NEW_VERSION [skip ci]"
+          git push
+
+      # ── Package the plugin ─────────────────────────────────────
+      - name: Package plugin
+        id: package
+        run: |
+          chmod +x scripts/package-plugin.sh
+          bash scripts/package-plugin.sh ${{ matrix.plugin }} dist
+
+      # ── Generate release notes ─────────────────────────────────
+      - name: Generate release notes
+        id: notes
+        run: |
+          PLUGIN="${{ matrix.plugin }}"
+          VERSION="${{ steps.bump.outputs.new_version }}"
+          OLD_VERSION="${{ steps.bump.outputs.old_version }}"
+
+          # Get commits that touched this plugin since last version tag
+          TAG="$PLUGIN-v$OLD_VERSION"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            COMMITS=$(git log "$TAG"..HEAD --oneline -- "plugins/$PLUGIN/" 2>/dev/null | head -20)
+          else
+            COMMITS=$(git log --oneline -10 -- "plugins/$PLUGIN/" 2>/dev/null)
+          fi
+
+          DESCRIPTION=$(python3 -c "import json; d=json.load(open('plugins/$PLUGIN/.claude-plugin/plugin.json')); print(d.get('description',''))" 2>/dev/null || echo "")
+
+          NOTES="## $PLUGIN v$VERSION
+
+$DESCRIPTION
+
+### Changes since v$OLD_VERSION
+\`\`\`
+${COMMITS:-No commit history found}
+\`\`\`
+
+### Installation
+Add this plugin in Claude Desktop → Settings → Plugins → Marketplaces → \`MSApps-Mobile/claude-plugins\`
+
+Or install the \`.plugin\` file directly for offline use."
+
+          # Write to temp file (avoids multiline GITHUB_OUTPUT issues)
+          echo "$NOTES" > /tmp/release_notes.md
+          echo "notes_file=/tmp/release_notes.md" >> $GITHUB_OUTPUT
+
+      # ── Create GitHub Release ──────────────────────────────────
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ matrix.plugin }}-v${{ steps.bump.outputs.new_version }}
+          name: "${{ matrix.plugin }} v${{ steps.bump.outputs.new_version }}"
+          body_path: ${{ steps.notes.outputs.notes_file }}
+          files: dist/${{ matrix.plugin }}-${{ steps.bump.outputs.new_version }}.plugin
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "### ✅ Released ${{ matrix.plugin }} v${{ steps.bump.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Previous version:** ${{ steps.bump.outputs.old_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **New version:** ${{ steps.bump.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Package:** \`${{ matrix.plugin }}-${{ steps.bump.outputs.new_version }}.plugin\`" >> $GITHUB_STEP_SUMMARY
