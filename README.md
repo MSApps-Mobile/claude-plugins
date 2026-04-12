@@ -1,7 +1,7 @@
 <p align="center">
   <a href="https://github.com/MSApps-Mobile/claude-plugins/stargazers"><img src="https://img.shields.io/github/stars/MSApps-Mobile/claude-plugins?style=social" alt="GitHub Stars"></a>
   <img src="https://img.shields.io/github/forks/MSApps-Mobile/claude-plugins?style=social" alt="GitHub Forks">
-  <img src="https://img.shields.io/badge/plugins-28-blue" alt="Plugins">
+  <img src="https://img.shields.io/badge/plugins-31-blue" alt="Plugins">
   <img src="https://img.shields.io/badge/SOSA%E2%84%A2-compliant-brightgreen" alt="SOSA Compliant">
   <img src="https://img.shields.io/badge/Claude_Code-compatible-8A2BE2" alt="Claude Code">
   <img src="https://img.shields.io/badge/Cowork-compatible-8A2BE2" alt="Cowork">
@@ -17,7 +17,7 @@
 
 > **If you find these plugins useful, please ⭐ star this repo** — it helps other developers discover the marketplace and motivates us to keep building!
 
-**The largest open-source plugin marketplace for Claude.** 28 production-ready plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (CLI) and [Cowork](https://claude.ai) (desktop app) — built on the SOSA™ security framework.
+**The largest open-source plugin marketplace for Claude.** 31 production-ready plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (CLI) and [Cowork](https://claude.ai) (desktop app) — built on the SOSA™ security framework.
 
 > Upload to Google Drive. Track time in Toggl. Transcribe YouTube videos. Send WhatsApp messages. Manage WordPress. Prospect with Apollo. Clean your Mac. All from a single Claude conversation.
 
@@ -89,6 +89,15 @@ We built **SOSA™ (Supervised Orchestrated Secured Agents)** to fix that — a 
 | [**token-efficiency-audit**](./plugins/token-efficiency-audit) | Find and fix token waste — typical savings: 20-50% | `token-efficiency-audit@msapps-plugins` |
 | [**sosa-governor**](./plugins/sosa-governor) | Real-time SOSA governance layer — classifies, gates, and logs every MCP tool call | `sosa-governor@msapps-plugins` |
 | [**sosa-orchestrator**](./plugins/sosa-orchestrator) | Token-aware task prioritization and budget management for Claude sessions | `sosa-orchestrator@msapps-plugins` |
+
+### Developer Tools
+
+| Plugin | What it does | Install |
+|--------|-------------|---------|
+| [**swift-lsp**](./plugins/swift-lsp) | Real-time Swift code intelligence — diagnostics, go-to-definition, hover types via SourceKit-LSP | `swift-lsp@msapps-plugins` |
+| [**kotlin-lsp**](./plugins/kotlin-lsp) | Real-time Kotlin code intelligence — diagnostics, go-to-definition, hover types via kotlin-language-server | `kotlin-lsp@msapps-plugins` |
+
+> **Mobile devs:** swift-lsp ships with Xcode — zero extra setup. kotlin-lsp installs via `brew install kotlin-language-server`.
 
 > **Pro tip:** Run `sosa-compliance-checker` on all your installed plugins — not just ours. It catches hardcoded API keys, missing confirmation gates, unpinned packages, and prompt injection vulnerabilities in *any* plugin.
 
