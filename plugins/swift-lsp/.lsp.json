@@ -1,0 +1,12 @@
+{
+  "swift": {
+    "command": "sourcekit-lsp",
+    "extensionToLanguage": {
+      ".swift": "swift"
+    },
+    "restartOnCrash": true,
+    "maxRestarts": 3,
+    "startupTimeout": 15000,
+    "shutdownTimeout": 5000
+  }
+}

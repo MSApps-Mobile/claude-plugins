@@ -1,0 +1,16 @@
+{
+  "kotlin": {
+    "command": "kotlin-language-server",
+    "extensionToLanguage": {
+      ".kt": "kotlin",
+      ".kts": "kotlin"
+    },
+    "restartOnCrash": true,
+    "maxRestarts": 3,
+    "startupTimeout": 30000,
+    "shutdownTimeout": 5000,
+    "initializationOptions": {
+      "storagePath": "${CLAUDE_PLUGIN_DATA}/kotlin-lsp"
+    }
+  }
+}
