@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|Bash|Task|TodoWrite|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "COWORK_MEM_DB=~/.claude/.cowork-mem/memory.db python3 ~/.claude/skills/cowork-mem/scripts/post_tool_capture.py 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  }
+}
