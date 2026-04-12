@@ -1,7 +1,7 @@
 {
   "name": "gcloud-cli-health-check",
   "version": "1.0.0",
-  "description": "Google Cloud CLI health check — verifies gcloud is installed, authenticated with the correct account, active project is set, critical APIs are enabled, billing is linked, and Cloud Run services are live. Produces a structured ✅/❌ report.",
+  "description": "Google Cloud CLI health check \u2014 verifies gcloud is installed, authenticated with the correct account, active project is set, critical APIs are enabled, billing is linked, and Cloud Run services are live. Produces a structured \u2705/\u274c report.",
   "author": {
     "name": "MSApps"
   },
@@ -23,5 +23,7 @@
     "compliant": true,
     "level": 2,
     "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md"
-  }
+  },
+  "privacy_policy": "https://opsagents.agency/privacy",
+  "terms_of_service": "https://opsagents.agency/terms"
 }

@@ -7,6 +7,8 @@
     "url": "https://msapps.mobi"
   },
   "license": "MIT",
+  "privacy_policy": "https://opsagents.agency/privacy",
+  "terms_of_service": "https://opsagents.agency/terms",
   "keywords": [
     "backup",
     "session",

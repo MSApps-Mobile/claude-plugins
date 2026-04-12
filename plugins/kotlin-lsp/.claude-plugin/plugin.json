@@ -1,7 +1,7 @@
 {
   "name": "kotlin-lsp",
   "version": "1.0.0",
-  "description": "Real-time Kotlin code intelligence for Claude — instant diagnostics, go-to-definition, find references, and type info via kotlin-language-server.",
+  "description": "Real-time Kotlin code intelligence for Claude \u2014 instant diagnostics, go-to-definition, find references, and type info via kotlin-language-server.",
   "author": {
     "name": "MSApps",
     "email": "michal@msapps.mobi",
@@ -10,7 +10,18 @@
   "homepage": "https://msapps.mobi/plugins",
   "repository": "https://github.com/MSApps-Mobile/claude-plugins",
   "license": "MIT",
-  "keywords": ["kotlin", "lsp", "android", "jetbrains", "gradle", "code-intelligence", "diagnostics", "sosa-agents"],
+  "privacy_policy": "https://opsagents.agency/privacy",
+  "terms_of_service": "https://opsagents.agency/terms",
+  "keywords": [
+    "kotlin",
+    "lsp",
+    "android",
+    "jetbrains",
+    "gradle",
+    "code-intelligence",
+    "diagnostics",
+    "sosa-agents"
+  ],
   "lspServers": "./.lsp.json",
   "sosa": {
     "compliant": true,
@@ -19,11 +30,13 @@
     "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md",
     "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
     "pillars": {
-      "supervised": "Fully autonomous — read-only code analysis, no external calls or side effects",
+      "supervised": "Fully autonomous \u2014 read-only code analysis, no external calls or side effects",
       "orchestrated": "LSP protocol handles diagnostics, navigation, and hover automatically on file changes",
-      "secured": "No credentials, no network access, no file writes — pure code analysis via local binary",
+      "secured": "No credentials, no network access, no file writes \u2014 pure code analysis via local binary",
       "agents": "R=kotlin-code-intelligence, T=kotlin-language-server, M=none, P=analyze-on-edit"
     }
   },
-  "topics": ["sosa-agents"]
+  "topics": [
+    "sosa-agents"
+  ]
 }
