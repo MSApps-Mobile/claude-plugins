@@ -1,1 +1,38 @@
-{"name":"linkedin-scraper","version":"0.1.0","description":"Scrape LinkedIn profiles and company pages using Apify actors — extract professional data, work history, and company info without manual browsing.","author":{"name":"MSApps","email":"michal@msapps.mobi"},"repository":"https://github.com/MSApps-Mobile/claude-plugins","homepage":"https://github.com/MSApps-Mobile/claude-plugins/tree/main/plugins/linkedin-scraper","license":"MIT","keywords":["linkedin","scraper","apify","sales","leads","profiles","prospecting","sosa-agents"],"sosa":{"compliant":true,"level":2,"impact":"medium","methodology":"https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md","whitepaper":"https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf","pillars":{"supervised":"User confirmation before scraping operations and data extraction","orchestrated":"URL→Scrape→Parse→Format pipeline with structured output","secured":"Apify API token authentication, rate limiting, LinkedIn ToS awareness","agents":"R=profile-extraction+company-intel, T=Apify API, M=LinkedIn data, P=scraping pipeline"}},"topics":["sosa-agents"]}
+{
+  "name": "linkedin-scraper",
+  "version": "0.2.0",
+  "description": "Scrape LinkedIn profiles and company pages using Apify actors — extract professional data, work history, and company info without manual browsing.",
+  "author": {
+    "name": "MSApps",
+    "email": "michal@msapps.mobi"
+  },
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "homepage": "https://github.com/MSApps-Mobile/claude-plugins/tree/main/plugins/linkedin-scraper",
+  "license": "MIT",
+  "keywords": [
+    "linkedin",
+    "scraper",
+    "apify",
+    "sales",
+    "leads",
+    "profiles",
+    "prospecting",
+    "sosa-agents"
+  ],
+  "sosa": {
+    "compliant": true,
+    "level": 2,
+    "impact": "medium",
+    "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md",
+    "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
+    "pillars": {
+      "supervised": "User confirmation before scraping operations and data extraction",
+      "orchestrated": "URL→Scrape→Parse→Format pipeline with structured output",
+      "secured": "Apify API token authentication, rate limiting, LinkedIn ToS awareness",
+      "agents": "R=profile-extraction+company-intel, T=Apify API, M=LinkedIn data, P=scraping pipeline"
+    }
+  },
+  "topics": [
+    "sosa-agents"
+  ]
+}

@@ -1,7 +1,7 @@
 {
   "name": "whatsapp-mcp",
-  "version": "0.1.0",
-  "description": "Connect Claude to WhatsApp \u2014 search messages, read conversations, send texts and media, and manage business outreach. Works in any language.",
+  "version": "0.2.0",
+  "description": "Connect Claude to WhatsApp — search messages, read conversations, send texts and media, and manage business outreach. Works in any language.",
   "author": {
     "name": "MSApps",
     "url": "https://msapps.mobi"
@@ -30,7 +30,7 @@
     "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
     "pillars": {
       "supervised": "Message confirmation before sending, rate limiting for outreach",
-      "orchestrated": "Contact lookup \u2192 message compose \u2192 send \u2192 verify delivery",
+      "orchestrated": "Contact lookup → message compose → send → verify delivery",
       "secured": "Local bridge on localhost, SQLite contact DB, prompt injection scanning on incoming messages",
       "agents": "R=whatsapp-messaging, T=WhatsApp-bridge+Contacts-DB, M=chat-history, P=compose-confirm-send-verify"
     }

@@ -1,7 +1,7 @@
 {
   "name": "apollo",
-  "version": "0.1.0",
-  "description": "3 pre-built skills that chain multiple Apollo APIs into complete sales workflows \u2014 no manual steps, no tab switching. Enrich any contact from a name, email, or LinkedIn URL. Prospect by describing your ICP in plain English and get ranked leads. Find, enrich, and load contacts into a sequence in one shot.",
+  "version": "0.2.0",
+  "description": "3 pre-built skills that chain multiple Apollo APIs into complete sales workflows — no manual steps, no tab switching. Enrich any contact from a name, email, or LinkedIn URL. Prospect by describing your ICP in plain English and get ranked leads. Find, enrich, and load contacts into a sequence in one shot.",
   "author": {
     "name": "Apollo.io",
     "url": "https://www.apollo.io/"
@@ -27,7 +27,7 @@
     "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
     "pillars": {
       "supervised": "Confirmation before sequence enrollment and bulk operations",
-      "orchestrated": "Enrichment\u2192Create\u2192Enroll pipeline with structured handoffs",
+      "orchestrated": "Enrichment→Create→Enroll pipeline with structured handoffs",
       "secured": "OAuth authentication, scoped API access, contact deduplication",
       "agents": "R=lead-enrichment+outreach, T=Apollo API, M=CRM contacts, P=ICP-matching pipeline"
     }
