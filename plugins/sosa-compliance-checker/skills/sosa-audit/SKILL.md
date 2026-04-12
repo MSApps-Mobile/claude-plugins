@@ -92,6 +92,35 @@ Compliance is assessed at three levels:
 - **Immutable Code Audit Trail**: Every code change, file access, shell command, and external API call is logged with the reasoning chain that led to each decision
 - **Prompt Injection Protection**: External data is scanned for prompt injection attempts
 
+#### Marketplace Policy Compliance (C6)
+For any plugin with a `plugin.json` intended for public distribution, verify:
+- `privacy_policy` field is present and not a placeholder (not the same as `homepage`, not a bare domain root, not a generic site URL without a `/privacy` or `/legal` path)
+- `terms_of_service` field is present and not a placeholder (same rules as above)
+- Flag as **FAIL** if: either field is absent, equals the `homepage` value exactly, has no path component, or contains the text `TODO` or `placeholder`
+- Flag as **PARTIAL** if fields are present but URLs return 404 or redirect to the homepage
+
+**Quick scan command:**
+```bash
+python3 -c "
+import json, glob, sys
+issues = []
+for path in sorted(glob.glob('plugins/*/.claude-plugin/plugin.json')):
+    d = json.load(open(path))
+    name = d.get('name', path)
+    homepage = d.get('homepage', '')
+    for field in ['privacy_policy', 'terms_of_service']:
+        url = d.get(field, '')
+        if not url:
+            issues.append(f'FAIL  {name}: missing {field}')
+        elif url == homepage or '/' not in url.rstrip('/').split('://')[-1]:
+            issues.append(f'FAIL  {name}: {field} is a placeholder ({url})')
+if issues:
+    print('\n'.join(issues)); sys.exit(1)
+else:
+    print('C6 PASS — all manifests have valid policy URLs')
+"
+```
+
 ### Step 4: Agent Specification Assessment
 
 #### Core Agent Controls

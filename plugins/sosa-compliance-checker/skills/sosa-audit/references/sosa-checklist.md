@@ -161,6 +161,19 @@ This checklist covers both enterprise operations and software engineering (SOSA 
 - [ ] Agent behavior governed by structured role specs (not prompt templates)
 - [ ] Tool manifests prevent unauthorized tool access regardless of prompt content
 
+### Marketplace Policy Compliance (C6)
+Applies to any plugin with a `plugin.json` manifest intended for public distribution.
+- [ ] `plugin.json` contains a `privacy_policy` field
+- [ ] `plugin.json` contains a `terms_of_service` field
+- [ ] Both URLs are distinct from the `homepage` value — dedicated policy pages, not the site root
+- [ ] Both URLs contain a recognizable policy path segment (e.g. `/privacy`, `/terms`, `/legal`)
+- [ ] Neither URL is a bare domain root (e.g. `https://example.com` with no path)
+- [ ] **Placeholder patterns that trigger FAIL** (flag any of these):
+  - Field absent entirely
+  - URL equals `homepage` value exactly
+  - URL path is `/` or empty
+  - URL contains `TODO` or `placeholder`
+
 ### `[CODE]` Code-Specific Zero Trust
 - [ ] Sandboxed execution: coding agents restricted to target repository file system
 - [ ] Network access limited to approved services (package registries, docs, CI systems)
