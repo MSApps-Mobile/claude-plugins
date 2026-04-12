@@ -1,0 +1,221 @@
+name: Validate Plugin PR
+
+# Runs on every PR targeting main that touches plugins/
+# Validates structure, plugin.json schema, and SOSA compliance.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'plugins/**'
+      - 'scripts/**'
+
+jobs:
+  # ── Job 1: Detect which plugins are in this PR ───────────────────
+  detect:
+    name: Detect Changed Plugins
+    runs-on: ubuntu-latest
+    outputs:
+      plugins: ${{ steps.detect.outputs.plugins }}
+      has_plugins: ${{ steps.detect.outputs.has_plugins }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed plugins
+        id: detect
+        run: |
+          CHANGED=$(git diff --name-only origin/main...HEAD | grep '^plugins/' | cut -d'/' -f2 | sort -u || true)
+
+          if [[ -z "$CHANGED" ]]; then
+            echo "has_plugins=false" >> $GITHUB_OUTPUT
+            echo "plugins=[]" >> $GITHUB_OUTPUT
+          else
+            JSON=$(echo "$CHANGED" | python3 -c "import sys,json; lines=[l.strip() for l in sys.stdin if l.strip()]; print(json.dumps(lines))")
+            echo "has_plugins=true" >> $GITHUB_OUTPUT
+            echo "plugins=$JSON" >> $GITHUB_OUTPUT
+            echo "Plugins in this PR: $CHANGED"
+          fi
+
+  # ── Job 2: Validate each changed plugin ─────────────────────────
+  validate:
+    name: Validate ${{ matrix.plugin }}
+    runs-on: ubuntu-latest
+    needs: detect
+    if: needs.detect.outputs.has_plugins == 'true'
+    strategy:
+      matrix:
+        plugin: ${{ fromJson(needs.detect.outputs.plugins) }}
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── 1. Structure check ─────────────────────────────────────
+      - name: Check plugin structure
+        run: |
+          PLUGIN="${{ matrix.plugin }}"
+          ERRORS=0
+
+          if [[ ! -d "plugins/$PLUGIN/.claude-plugin" ]]; then
+            echo "::error file=plugins/$PLUGIN::Missing .claude-plugin/ directory"
+            ERRORS=$((ERRORS + 1))
+          fi
+
+          if [[ ! -f "plugins/$PLUGIN/.claude-plugin/plugin.json" ]]; then
+            echo "::error file=plugins/$PLUGIN/.claude-plugin/plugin.json::Missing plugin.json"
+            ERRORS=$((ERRORS + 1))
+          fi
+
+          if [[ ! -f "plugins/$PLUGIN/README.md" ]]; then
+            echo "::warning file=plugins/$PLUGIN/README.md::Missing README.md — strongly recommended"
+          fi
+
+          SKILL_COUNT=$(find "plugins/$PLUGIN" -name "SKILL.md" | wc -l)
+          if [[ "$SKILL_COUNT" -eq 0 ]]; then
+            echo "::error file=plugins/$PLUGIN::No SKILL.md found — every plugin needs at least one skill"
+            ERRORS=$((ERRORS + 1))
+          else
+            echo "✓ Found $SKILL_COUNT SKILL.md file(s)"
+          fi
+
+          if [[ "$ERRORS" -gt 0 ]]; then
+            exit 1
+          fi
+          echo "✓ Structure valid"
+
+      # ── 2. plugin.json schema validation ─────────────────────────
+      - name: Validate plugin.json schema
+        run: |
+          python3 - <<'PYEOF'
+          import json, sys, re, os
+
+          path = f"plugins/${{ matrix.plugin }}/.claude-plugin/plugin.json"
+
+          try:
+              with open(path) as f:
+                  d = json.load(f)
+          except Exception as e:
+              print(f"::error file={path}::Invalid JSON: {e}")
+              sys.exit(1)
+
+          errors = []
+          warnings = []
+
+          for field in ['name', 'version', 'description', 'author', 'license']:
+              if field not in d:
+                  errors.append(f"Missing required field: {field}")
+
+          ver = d.get('version', '')
+          if not re.match(r'^\d+\.\d+\.\d+$', ver):
+              errors.append(f"Invalid version format '{ver}' — must be semver (x.y.z)")
+
+          author = d.get('author', {})
+          if isinstance(author, dict) and 'name' not in author:
+              errors.append("author.name is required")
+
+          if 'sosa' not in d:
+              warnings.append("Missing sosa block — recommended for marketplace compliance")
+          else:
+              for pillar in ['supervised', 'orchestrated', 'secured', 'agents']:
+                  if pillar not in d['sosa'].get('pillars', {}):
+                      warnings.append(f"sosa.pillars.{pillar} not documented")
+
+          if 'platforms' not in d:
+              warnings.append("platforms not specified — recommended: ['claude-code', 'cowork']")
+
+          for w in warnings:
+              print(f"::warning file={path}::{w}")
+
+          if errors:
+              for e in errors:
+                  print(f"::error file={path}::{e}")
+              sys.exit(1)
+
+          print(f"✓ plugin.json valid (v{d.get('version','?')})")
+          PYEOF
+
+      # ── 3. SKILL.md quality check ─────────────────────────────
+      - name: Check SKILL.md quality
+        run: |
+          PLUGIN="${{ matrix.plugin }}"
+          ISSUES=0
+
+          while IFS= read -r skill_file; do
+            SKILL_NAME=$(dirname "$skill_file" | xargs basename)
+            WORD_COUNT=$(wc -w < "$skill_file")
+            LINE_COUNT=$(wc -l < "$skill_file")
+
+            if ! head -3 "$skill_file" | grep -q "^---"; then
+              echo "::error file=$skill_file::Missing YAML frontmatter (---)"
+              ISSUES=$((ISSUES + 1))
+            fi
+
+            if [[ "$WORD_COUNT" -gt 3000 ]]; then
+              echo "::warning file=$skill_file::$SKILL_NAME is $WORD_COUNT words — exceeds 3000 word budget"
+            fi
+
+            echo "✓ $SKILL_NAME: ${WORD_COUNT}w / ${LINE_COUNT}l"
+          done < <(find "plugins/$PLUGIN" -name "SKILL.md")
+
+          if [[ "$ISSUES" -gt 0 ]]; then
+            exit 1
+          fi
+
+      # ── 4. Secret scan ────────────────────────────────────────
+      - name: Scan for hardcoded secrets
+        run: |
+          PLUGIN="${{ matrix.plugin }}"
+          FOUND=0
+
+          PATTERNS=(
+            'api[_-]?key\s*[=:]\s*["\x27][A-Za-z0-9_\-]{10,}'
+            'secret\s*[=:]\s*["\x27][A-Za-z0-9_\-]{10,}'
+            'password\s*[=:]\s*["\x27][^"\x27]{6,}'
+            'token\s*[=:]\s*["\x27][A-Za-z0-9_\-\.]{20,}'
+            'sk-[a-zA-Z0-9]{20,}'
+            'xoxb-[0-9A-Za-z\-]+'
+          )
+
+          for pattern in "${PATTERNS[@]}"; do
+            if grep -rniP "$pattern" "plugins/$PLUGIN/" \
+               --include="*.ts" --include="*.js" --include="*.py" \
+               --include="*.json" --include="*.md" \
+               --exclude-dir="node_modules" 2>/dev/null; then
+              echo "::error::Potential hardcoded secret detected"
+              FOUND=1
+            fi
+          done
+
+          if find "plugins/$PLUGIN" -name ".env" | grep -q .; then
+            echo "::error::.env file found — never commit secrets"
+            FOUND=1
+          fi
+
+          if [[ "$FOUND" -eq 1 ]]; then exit 1; fi
+          echo "✓ No secrets detected"
+
+      # ── 5. Dry-run package build ───────────────────────────────
+      - name: Dry-run package build
+        run: |
+          chmod +x scripts/package-plugin.sh
+          bash scripts/package-plugin.sh ${{ matrix.plugin }} /tmp/dist-test
+          echo "✓ Package build succeeded"
+
+  # ── Job 3: SOSA compliance (repo-wide) ──────────────────────────
+  sosa:
+    name: SOSA Compliance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: SOSA lint
+        run: |
+          chmod +x scripts/sosa-lint.sh
+          bash scripts/sosa-lint.sh .
+
+      - name: SOSA eval (CI gate)
+        run: |
+          chmod +x scripts/sosa-eval.sh
+          bash scripts/sosa-eval.sh . --ci
