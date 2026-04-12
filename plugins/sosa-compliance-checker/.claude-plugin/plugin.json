@@ -1,15 +1,32 @@
 {
   "name": "sosa-compliance-checker",
   "version": "0.2.0",
-  "description": "SOSA™ compliance auditor for Claude plugins, skills, and coding agents. Scans your entire ecosystem against the four SOSA pillars (Supervised, Orchestrated, Secured, Agents) across both enterprise operations and software engineering domains. Includes SOSA for Code governance: graduated supervision levels, trust gradients, Plan-Code-Verify execution model, codebase knowledge models, and adaptive CLAUDE.md institutional memory.",
+  "description": "SOSA\u2122 compliance auditor for Claude plugins, skills, and coding agents. Scans your entire ecosystem against the four SOSA pillars (Supervised, Orchestrated, Secured, Agents) across both enterprise operations and software engineering domains. Includes SOSA for Code governance: graduated supervision levels, trust gradients, Plan-Code-Verify execution model, codebase knowledge models, and adaptive CLAUDE.md institutional memory.",
   "author": {
     "name": "MSApps",
     "url": "https://msapps.mobi"
   },
   "license": "MIT",
+  "privacy_policy": "https://opsagents.agency/privacy",
+  "terms_of_service": "https://opsagents.agency/terms",
   "homepage": "https://msapps.mobi/plugins",
-  "platforms": ["claude-code", "cowork"],
-  "keywords": ["sosa", "security", "compliance", "audit", "governance", "agents", "supervision", "coding-agents", "code-review", "trust-gradient", "sdlc"],
+  "platforms": [
+    "claude-code",
+    "cowork"
+  ],
+  "keywords": [
+    "sosa",
+    "security",
+    "compliance",
+    "audit",
+    "governance",
+    "agents",
+    "supervision",
+    "coding-agents",
+    "code-review",
+    "trust-gradient",
+    "sdlc"
+  ],
   "sosa": {
     "compliant": true,
     "level": 1,
@@ -17,8 +34,8 @@
     "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md",
     "whitepaper": "https://msapps-mobile.github.io/claude-plugins/sosa-whitepaper",
     "pillars": {
-      "supervised": "Fully autonomous — read-only analysis, no modifications. Supports graduated code supervision levels (L0-L4) and adaptive trust gradient assessment.",
-      "orchestrated": "Structured scan → score → report pipeline. Evaluates merge serialization, code context registries, and Plan-Code-Verify execution model.",
+      "supervised": "Fully autonomous \u2014 read-only analysis, no modifications. Supports graduated code supervision levels (L0-L4) and adaptive trust gradient assessment.",
+      "orchestrated": "Structured scan \u2192 score \u2192 report pipeline. Evaluates merge serialization, code context registries, and Plan-Code-Verify execution model.",
       "secured": "Read-only access to skill files, no credential handling. Audits sandboxed execution, scoped repo permissions, and secrets isolation.",
       "agents": "R=compliance-auditor, T=Read+Grep+Glob, M=none, P=scan-score-report, K=sosa-checklist"
     }

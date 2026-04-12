@@ -1,7 +1,7 @@
 {
   "name": "linkedin-scraper",
   "version": "0.2.0",
-  "description": "Scrape LinkedIn profiles and company pages using Apify actors — extract professional data, work history, and company info without manual browsing.",
+  "description": "Scrape LinkedIn profiles and company pages using Apify actors \u2014 extract professional data, work history, and company info without manual browsing.",
   "author": {
     "name": "MSApps",
     "email": "michal@msapps.mobi"
@@ -9,6 +9,8 @@
   "repository": "https://github.com/MSApps-Mobile/claude-plugins",
   "homepage": "https://github.com/MSApps-Mobile/claude-plugins/tree/main/plugins/linkedin-scraper",
   "license": "MIT",
+  "privacy_policy": "https://opsagents.agency/privacy",
+  "terms_of_service": "https://opsagents.agency/terms",
   "keywords": [
     "linkedin",
     "scraper",
@@ -27,7 +29,7 @@
     "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
     "pillars": {
       "supervised": "User confirmation before scraping operations and data extraction",
-      "orchestrated": "URL→Scrape→Parse→Format pipeline with structured output",
+      "orchestrated": "URL\u2192Scrape\u2192Parse\u2192Format pipeline with structured output",
       "secured": "Apify API token authentication, rate limiting, LinkedIn ToS awareness",
       "agents": "R=profile-extraction+company-intel, T=Apify API, M=LinkedIn data, P=scraping pipeline"
     }
