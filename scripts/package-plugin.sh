@@ -47,6 +47,7 @@ fi
 
 # ── Prepare output dir ──────────────────────────────
 mkdir -p "$OUTPUT_DIR"
+OUTPUT_DIR="$(cd "$OUTPUT_DIR" && pwd)"
 OUTPUT_FILE="$OUTPUT_DIR/$PLUGIN_NAME-$VERSION.plugin"
 
 # Remove any existing build for this version
@@ -56,7 +57,7 @@ rm -f "$OUTPUT_FILE"
 # We zip the CONTENTS of .claude-plugin/ so the archive root
 # contains plugin.json, skills/, agents/, etc. directly.
 cd "$CLAUDE_PLUGIN_DIR"
-zip -r "$OLDPWD/$OUTPUT_FILE" . \
+zip -r "$OUTPUT_FILE" . \
   --exclude "*.DS_Store" \
   --exclude "__pycache__/*" \
   --exclude "*.pyc" \
