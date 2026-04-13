@@ -64,3 +64,4 @@ User: What does the Ben Ish Hai say about Havdala?
 - **Orchestrated:** Single-step tool calls with clear mode selection
 - **Secured:** No credentials required, no external auth, configurable endpoint
 - **Agents:** Scoped to Torah/halachah domain, declares boundaries in SKILL.md
+
