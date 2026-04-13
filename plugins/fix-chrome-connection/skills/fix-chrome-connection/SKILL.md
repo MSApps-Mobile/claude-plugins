@@ -216,8 +216,12 @@ Chrome restart creates new `{pid}.sock` but doesn't update `0.sock`. Claude Desk
 ### Account switch — only manual re-auth works
 After switching Claude Desktop accounts, the userId changes. The extension connects to the old bridge channel (`wss://bridge.claudeusercontent.com/chrome/{userId}`). Chrome restart and socket fixes don't help. CDP automation doesn't work (debug profile lacks session cookies for OAuth). Only Step 6 (manual re-auth) works.
 
-### Scheduled task sessions — tabs_context_mcp always fails
-`tabs_context_mcp` pairs to a specific Cowork `localSessionId` stored in `bridge-state.json`. Scheduled task sessions have their own ID. Chrome can't pair to them. Use `Control_Chrome` for scheduled health checks.
+### Scheduled task sessions — tabs_context_mcp behavior
+`tabs_context_mcp` pairs to a specific Cowork `localSessionId` stored in `bridge-state.json`. Scheduled task sessions have their own ID, so:
+- `createIfEmpty: false` → returns "No tab group exists for this session" (expected, not an error)
+- `createIfEmpty: true` → **CAN succeed** if the socket is healthy, creating a fresh tab group
+
+Use `Control_Chrome` as the primary health check for scheduled tasks (it doesn't require a session pair). After fixing a stale socket, try `tabs_context_mcp` with `createIfEmpty: true` to confirm the extension is fully functional.
 
 ### Pairing page — React input
 Connect button is disabled until a name is typed. `input.value = "text"` doesn't work with React. Must use the native setter (see Step 5).
