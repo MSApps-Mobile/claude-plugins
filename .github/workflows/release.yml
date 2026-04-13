@@ -124,22 +124,22 @@ jobs:
 
           DESCRIPTION=$(python3 -c "import json; d=json.load(open('plugins/$PLUGIN/.claude-plugin/plugin.json')); print(d.get('description',''))" 2>/dev/null || echo "")
 
-          NOTES="## $PLUGIN v$VERSION
-
-$DESCRIPTION
-
-### Changes since v$OLD_VERSION
-\`\`\`
-${COMMITS:-No commit history found}
-\`\`\`
-
-### Installation
-Add this plugin in Claude Desktop → Settings → Plugins → Marketplaces → \`MSApps-Mobile/claude-plugins\`
-
-Or install the \`.plugin\` file directly for offline use."
-
-          # Write to temp file (avoids multiline GITHUB_OUTPUT issues)
-          echo "$NOTES" > /tmp/release_notes.md
+          # Build body in shell (avoids multiline YAML that breaks block indentation)
+          {
+            echo "## $PLUGIN v$VERSION"
+            echo ""
+            echo "$DESCRIPTION"
+            echo ""
+            echo "### Changes since v$OLD_VERSION"
+            echo '```'
+            echo "${COMMITS:-No commit history found}"
+            echo '```'
+            echo ""
+            echo "### Installation"
+            echo "Add this plugin in Claude Desktop → Settings → Plugins → Marketplaces → \`MSApps-Mobile/claude-plugins\`"
+            echo ""
+            echo "Or install the \`.plugin\` file directly for offline use."
+          } > /tmp/release_notes.md
           echo "notes_file=/tmp/release_notes.md" >> $GITHUB_OUTPUT
 
       # ── Create GitHub Release ──────────────────────────────────
