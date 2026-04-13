@@ -1,0 +1,34 @@
+{
+  "name": "ollama-torah-mcp",
+  "version": "0.1.0",
+  "description": "Torah Q&A MCP server powered by a local/remote Ollama instance — bilingual Hebrew/English halachic guidance with 6 specialized modes.",
+  "author": {
+    "name": "MSApps"
+  },
+  "keywords": [
+    "ollama",
+    "torah",
+    "halacha",
+    "hebrew",
+    "jewish-law",
+    "ai",
+    "mcp",
+    "sosa-agents"
+  ],
+  "sosa": {
+    "compliant": true,
+    "level": 2,
+    "impact": "low",
+    "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md",
+    "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
+    "pillars": {
+      "supervised": "Read-only Torah Q&A — no destructive operations, no external writes",
+      "orchestrated": "Single Ollama endpoint, structured tool responses with mode selection",
+      "secured": "URL and model via env vars, Zod input validation, request timeout enforcement",
+      "agents": "R=torah-knowledge, T=Ollama API, M=conversation context, P=chat completion"
+    }
+  },
+  "topics": [
+    "sosa-agents"
+  ]
+}
