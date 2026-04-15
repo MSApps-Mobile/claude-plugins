@@ -18,6 +18,8 @@ Diagnose and repair a broken Claude-in-Chrome MCP connection. Work through steps
 
 ## Step 1: Test current connection
 
+> **⚠️ Scheduled task note:** If this skill is running as a **scheduled task**, `tabs_context_mcp` will ALWAYS fail (known limitation — scheduled sessions can't pair to the Chrome extension). Skip directly to verifying with `Control_Chrome` (`get_current_tab`). If that works, Chrome is healthy — report success.
+
 Call `tabs_context_mcp` with `createIfEmpty: false`.
 
 - Returns anything (even "no tab group exists") → Chrome is connected. Go to Step 1b.
@@ -82,7 +84,7 @@ If the bridge URL shows `chrome/{UUID-A}` but extension `accountUuid` is `UUID-B
 ```bash
 DIR="/tmp/claude-mcp-browser-bridge-$(whoami)"
 ls -la "$DIR/"
-NEW_SOCK=$(ls -t "$DIR"/*.sock 2>/dev/null | grep -v '0.sock' | head -1)
+NEW_SOCK=$(ls -t "$DIR"/*.sock 2>/dev/null | grep -v '/0\.sock$' | head -1)
 if [ -n "$NEW_SOCK" ]; then
   ln -sf "$NEW_SOCK" "$DIR/0.sock"
   echo "Updated 0.sock → $NEW_SOCK"
