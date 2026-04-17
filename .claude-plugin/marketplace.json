@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Free Claude plugins by MSApps \u2014 Google Drive upload, Toggl time tracking, YouTube transcription, Notion memory, session backups, SOSA governance, and more. Works in both Claude Code and Cowork.",
-    "version": "3.1.0",
+    "version": "3.2.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -144,8 +144,8 @@
     {
       "name": "notion-memory",
       "source": "./plugins/notion-memory",
-      "description": "Long-term memory for Claude using Notion \u2014 saves preferences, project context, decisions, and session summaries across sessions",
-      "version": "1.1.0",
+      "description": "Long-term memory for Claude across sessions via Notion \u2014 plus the 4 official Anthropic Notion skills (knowledge-capture, meeting-intelligence, research-documentation, spec-to-implementation) bundled in",
+      "version": "2.0.0",
       "platforms": [
         "claude-code",
         "cowork"
@@ -162,7 +162,12 @@
         "memory",
         "persistent",
         "context",
-        "cross-session"
+        "cross-session",
+        "knowledge-capture",
+        "meeting-intelligence",
+        "research",
+        "specs",
+        "anthropic-skills"
       ],
       "category": "productivity",
       "tags": [
@@ -171,8 +176,17 @@
         "persistent-storage",
         "cross-session",
         "preferences",
-        "free"
-      ]
+        "free",
+        "knowledge-capture",
+        "meeting-intelligence",
+        "research",
+        "specs",
+        "anthropic-skills"
+      ],
+      "sources": {
+        "anthropic_skills_announcement": "https://www.linkedin.com/posts/claude_claude-skills-in-notion-activity-7392288254068420608-atoy",
+        "anthropic_skills_origin": "https://notiondevs.notion.site/notion-skills-for-claude"
+      }
     },
     {
       "name": "mac-disk-cleaner",
@@ -994,150 +1008,6 @@
         "diagnostics",
         "free"
       ]
-    },
-    {
-      "name": "notion-knowledge-capture",
-      "source": "./plugins/notion-knowledge-capture",
-      "description": "Turn conversations into structured Notion docs \u2014 captures decisions, how-tos, FAQs, and learnings with proper linking",
-      "version": "1.0.0",
-      "platforms": [
-        "claude-code",
-        "cowork"
-      ],
-      "author": {
-        "name": "Anthropic (Notion Skills) \u2014 packaged by MSApps",
-        "email": "michal@msapps.mobi"
-      },
-      "homepage": "https://notiondevs.notion.site/notion-skills-for-claude",
-      "repository": "https://github.com/MSApps-Mobile/claude-plugins",
-      "license": "MIT",
-      "keywords": [
-        "notion",
-        "documentation",
-        "knowledge",
-        "wiki",
-        "anthropic-skill"
-      ],
-      "category": "productivity",
-      "tags": [
-        "notion",
-        "wiki",
-        "documentation",
-        "knowledge-management",
-        "anthropic"
-      ],
-      "sources": {
-        "announcement": "https://www.linkedin.com/posts/claude_claude-skills-in-notion-activity-7392288254068420608-atoy",
-        "skill_origin": "https://notiondevs.notion.site/notion-skills-for-claude"
-      }
-    },
-    {
-      "name": "notion-meeting-intelligence",
-      "source": "./plugins/notion-meeting-intelligence",
-      "description": "Prep for meetings \u2014 gathers Notion context, enriches with research, creates internal pre-read + external agenda",
-      "version": "1.0.0",
-      "platforms": [
-        "claude-code",
-        "cowork"
-      ],
-      "author": {
-        "name": "Anthropic (Notion Skills) \u2014 packaged by MSApps",
-        "email": "michal@msapps.mobi"
-      },
-      "homepage": "https://notiondevs.notion.site/notion-skills-for-claude",
-      "repository": "https://github.com/MSApps-Mobile/claude-plugins",
-      "license": "MIT",
-      "keywords": [
-        "notion",
-        "meetings",
-        "agenda",
-        "pre-read",
-        "anthropic-skill"
-      ],
-      "category": "productivity",
-      "tags": [
-        "notion",
-        "meetings",
-        "agenda",
-        "productivity",
-        "anthropic"
-      ],
-      "sources": {
-        "announcement": "https://www.linkedin.com/posts/claude_claude-skills-in-notion-activity-7392288254068420608-atoy",
-        "skill_origin": "https://notiondevs.notion.site/notion-skills-for-claude"
-      }
-    },
-    {
-      "name": "notion-research-documentation",
-      "source": "./plugins/notion-research-documentation",
-      "description": "Search your Notion workspace, synthesize findings, and produce comprehensive research docs with citations",
-      "version": "1.0.0",
-      "platforms": [
-        "claude-code",
-        "cowork"
-      ],
-      "author": {
-        "name": "Anthropic (Notion Skills) \u2014 packaged by MSApps",
-        "email": "michal@msapps.mobi"
-      },
-      "homepage": "https://notiondevs.notion.site/notion-skills-for-claude",
-      "repository": "https://github.com/MSApps-Mobile/claude-plugins",
-      "license": "MIT",
-      "keywords": [
-        "notion",
-        "research",
-        "documentation",
-        "citations",
-        "anthropic-skill"
-      ],
-      "category": "productivity",
-      "tags": [
-        "notion",
-        "research",
-        "synthesis",
-        "reports",
-        "anthropic"
-      ],
-      "sources": {
-        "announcement": "https://www.linkedin.com/posts/claude_claude-skills-in-notion-activity-7392288254068420608-atoy",
-        "skill_origin": "https://notiondevs.notion.site/notion-skills-for-claude"
-      }
-    },
-    {
-      "name": "notion-spec-to-implementation",
-      "source": "./plugins/notion-spec-to-implementation",
-      "description": "Turn specs into Notion tasks Claude Code can implement \u2014 plans, acceptance criteria, progress tracking",
-      "version": "1.0.0",
-      "platforms": [
-        "claude-code",
-        "cowork"
-      ],
-      "author": {
-        "name": "Anthropic (Notion Skills) \u2014 packaged by MSApps",
-        "email": "michal@msapps.mobi"
-      },
-      "homepage": "https://notiondevs.notion.site/notion-skills-for-claude",
-      "repository": "https://github.com/MSApps-Mobile/claude-plugins",
-      "license": "MIT",
-      "keywords": [
-        "notion",
-        "specs",
-        "tasks",
-        "implementation",
-        "anthropic-skill"
-      ],
-      "category": "development",
-      "tags": [
-        "notion",
-        "planning",
-        "specs",
-        "development",
-        "anthropic"
-      ],
-      "sources": {
-        "announcement": "https://www.linkedin.com/posts/claude_claude-skills-in-notion-activity-7392288254068420608-atoy",
-        "skill_origin": "https://notiondevs.notion.site/notion-skills-for-claude"
-      }
     }
   ]
 }

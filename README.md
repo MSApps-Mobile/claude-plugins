@@ -60,7 +60,7 @@ We built **SOSA™ (Supervised Orchestrated Secured Agents)** to fix that — a 
 | [**toggl-time-tracker**](./plugins/toggl-time-tracker) | Track time with Toggl — start/stop timers, reports | `toggl-time-tracker@msapps-plugins` |
 | [**youtube-transcriber**](./plugins/youtube-transcriber) | Transcribe YouTube videos & playlists — no API key | `youtube-transcriber@msapps-plugins` |
 | [**session-backup**](./plugins/session-backup) | Daily backups of sessions, skills & configs to Drive | `session-backup@msapps-plugins` |
-| [**notion-memory**](./plugins/notion-memory) | Long-term memory for Claude across sessions via Notion | `notion-memory@msapps-plugins` |
+| [**notion-memory**](./plugins/notion-memory) | Long-term memory + the 4 official Anthropic Notion skills (knowledge-capture, meeting-intelligence, research-documentation, spec-to-implementation) bundled in | `notion-memory@msapps-plugins` |
 | [**mac-disk-cleaner**](./plugins/mac-disk-cleaner) | Reclaim disk space on macOS — clean caches, find bloat | `mac-disk-cleaner@msapps-plugins` |
 | [**whatsapp-mcp**](./plugins/whatsapp-mcp) | Connect Claude to WhatsApp — search, read, send | `whatsapp-mcp@msapps-plugins` |
 | [**apify-scraper**](./plugins/apify-scraper) | Full Apify web scraping — run Actors, manage datasets | `apify-scraper@msapps-plugins` |
@@ -93,20 +93,7 @@ We built **SOSA™ (Supervised Orchestrated Secured Agents)** to fix that — a 
 | [**swift-lsp**](./plugins/swift-lsp) | Real-time Swift code intelligence — diagnostics, go-to-definition, hover types via SourceKit-LSP | `swift-lsp@msapps-plugins` |
 | [**kotlin-lsp**](./plugins/kotlin-lsp) | Real-time Kotlin code intelligence — diagnostics, go-to-definition, hover types via kotlin-language-server | `kotlin-lsp@msapps-plugins` |
 
-> ### Notion Skills (from Anthropic)
-
-Four official Claude skills from the Anthropic Notion team — announced by Claude on [LinkedIn](https://www.linkedin.com/posts/claude_claude-skills-in-notion-activity-7392288254068420608-atoy) and distributed via [notiondevs.notion.site/notion-skills-for-claude](https://notiondevs.notion.site/notion-skills-for-claude). Re-packaged here as installable plugins; skill content is © Anthropic.
-
-| Plugin | What it does | Install |
-|--------|-------------|---------|
-| [**notion-knowledge-capture**](./plugins/notion-knowledge-capture) | Turn conversations into structured Notion docs — decisions, how-tos, FAQs, learnings | `notion-knowledge-capture@msapps-plugins` |
-| [**notion-meeting-intelligence**](./plugins/notion-meeting-intelligence) | Prep for meetings — internal pre-read + external agenda, all saved to Notion | `notion-meeting-intelligence@msapps-plugins` |
-| [**notion-research-documentation**](./plugins/notion-research-documentation) | Search your workspace, synthesize findings, produce research reports with citations | `notion-research-documentation@msapps-plugins` |
-| [**notion-spec-to-implementation**](./plugins/notion-spec-to-implementation) | Turn specs into Notion tasks Claude Code can implement — plan, track, ship | `notion-spec-to-implementation@msapps-plugins` |
-
-**Requires** the Notion connector (Claude Code MCP or Cowork Settings).
-
-**Mobile devs:** swift-lsp ships with Xcode — zero extra setup. kotlin-lsp installs via `brew install kotlin-language-server`.
+> **Mobile devs:** swift-lsp ships with Xcode — zero extra setup. kotlin-lsp installs via `brew install kotlin-language-server`.
 
 > **Pro tip:** Run `sosa-compliance-checker` on all your installed plugins — not just ours. It catches hardcoded API keys, missing confirmation gates, unpinned packages, and prompt injection vulnerabilities in *any* plugin.
 
