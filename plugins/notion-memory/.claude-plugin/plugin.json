@@ -1,7 +1,7 @@
 {
   "name": "notion-memory",
-  "description": "Long-term memory for Claude across sessions via Notion \u2014 plus the 4 official Anthropic Notion skills (knowledge-capture, meeting-intelligence, research-documentation, spec-to-implementation) bundled in",
-  "version": "2.0.0",
+  "description": "Long-term memory for Claude across sessions via Notion — plus the 4 official Anthropic Notion skills (knowledge-capture, meeting-intelligence, research-documentation, spec-to-implementation) bundled in",
+  "version": "2.0.1",
   "author": {
     "name": "MSApps",
     "url": "https://msapps.mobi"
