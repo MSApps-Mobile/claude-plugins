@@ -1,0 +1,40 @@
+{
+  "name": "notion-spec-to-implementation",
+  "description": "Turns product or tech specs into concrete Notion tasks that Claude Code can implement — breaks down spec pages into detailed implementation plans with clear tasks, acceptance criteria, and progress tracking.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Anthropic (Notion Skills)",
+    "url": "https://notiondevs.notion.site/notion-skills-for-claude"
+  },
+  "packaged_by": {
+    "name": "MSApps",
+    "url": "https://msapps.mobi"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/MSApps-Mobile/claude-plugins/tree/main/plugins/notion-spec-to-implementation",
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "keywords": [
+    "notion",
+    "specs",
+    "implementation",
+    "tasks",
+    "planning",
+    "anthropic-skill"
+  ],
+  "platforms": [
+    "claude-code",
+    "cowork"
+  ],
+  "sources": {
+    "announcement": "https://www.linkedin.com/posts/claude_claude-skills-in-notion-activity-7392288254068420608-atoy",
+    "skill_origin": "https://notiondevs.notion.site/notion-skills-for-claude"
+  },
+  "requires": {
+    "connectors": [
+      "notion"
+    ]
+  },
+  "topics": [
+    "notion-skills"
+  ]
+}
