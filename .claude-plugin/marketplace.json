@@ -5,15 +5,15 @@
     "email": "michal@msapps.mobi"
   },
   "metadata": {
-    "description": "Free Claude plugins by MSApps \u2014 Google Drive upload, Toggl time tracking, YouTube transcription, Notion memory, session backups, SOSA governance, and more. Works in both Claude Code and Cowork.",
-    "version": "3.2.0",
+    "description": "Free Claude plugins by MSApps — Google Drive upload, Toggl time tracking, YouTube transcription, Notion memory, session backups, SOSA governance, CLAUDE.md composer, and more. Works in both Claude Code and Cowork.",
+    "version": "3.3.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
     {
       "name": "google-drive-upload",
       "source": "./plugins/google-drive-upload",
-      "description": "Upload files from Claude directly to Google Drive \u2014 unlimited uploads, completely free",
+      "description": "Upload files from Claude directly to Google Drive — unlimited uploads, completely free",
       "version": "1.2.0",
       "platforms": [
         "claude-code",
@@ -44,7 +44,7 @@
     {
       "name": "toggl-time-tracker",
       "source": "./plugins/toggl-time-tracker",
-      "description": "Track time and pull reports from Toggl Track \u2014 start/stop timers, log hours, weekly summaries",
+      "description": "Track time and pull reports from Toggl Track — start/stop timers, log hours, weekly summaries",
       "version": "1.1.0",
       "platforms": [
         "claude-code",
@@ -111,7 +111,7 @@
     {
       "name": "youtube-transcriber",
       "source": "./plugins/youtube-transcriber",
-      "description": "Transcribe any YouTube video or entire playlists \u2014 no API key required, supports any language",
+      "description": "Transcribe any YouTube video or entire playlists — no API key required, supports any language",
       "version": "1.1.0",
       "platforms": [
         "claude-code",
@@ -144,7 +144,7 @@
     {
       "name": "notion-memory",
       "source": "./plugins/notion-memory",
-      "description": "Long-term memory for Claude across sessions via Notion \u2014 plus the 4 official Anthropic Notion skills (knowledge-capture, meeting-intelligence, research-documentation, spec-to-implementation) bundled in",
+      "description": "Long-term memory for Claude across sessions via Notion — plus the 4 official Anthropic Notion skills (knowledge-capture, meeting-intelligence, research-documentation, spec-to-implementation) bundled in",
       "version": "2.0.0",
       "platforms": [
         "claude-code",
@@ -260,7 +260,7 @@
     {
       "name": "apify-scraper",
       "source": "./plugins/apify-scraper",
-      "description": "Full Apify web scraping platform integration \u2014 run Actors, manage datasets, key-value stores, schedules, webhooks, and tasks from within Claude",
+      "description": "Full Apify web scraping platform integration — run Actors, manage datasets, key-value stores, schedules, webhooks, and tasks from within Claude",
       "version": "0.1.0",
       "platforms": [
         "claude-code",
@@ -294,7 +294,7 @@
     {
       "name": "apollo",
       "source": "./plugins/apollo",
-      "description": "Prospect, enrich leads, and load outreach sequences with Apollo.io \u2014 one-click MCP server integration with skills for enrichment, prospecting, and sequence loading",
+      "description": "Prospect, enrich leads, and load outreach sequences with Apollo.io — one-click MCP server integration with skills for enrichment, prospecting, and sequence loading",
       "version": "0.1.0",
       "platforms": [
         "claude-code",
@@ -328,7 +328,7 @@
     {
       "name": "fix-chrome-connection",
       "source": "./plugins/fix-chrome-connection",
-      "description": "Diagnoses and repairs broken Claude in Chrome MCP connections in seconds \u2014 auto-detects stale extension service workers and fixes them without manual steps",
+      "description": "Diagnoses and repairs broken Claude in Chrome MCP connections in seconds — auto-detects stale extension service workers and fixes them without manual steps",
       "version": "0.1.0",
       "platforms": [
         "claude-code",
@@ -362,7 +362,7 @@
     {
       "name": "linkedin-scraper",
       "source": "./plugins/linkedin-scraper",
-      "description": "Token-efficient LinkedIn data access \u2014 scrape profiles, companies, and jobs via structured MCP, 5-10x cheaper than browser-based approaches",
+      "description": "Token-efficient LinkedIn data access — scrape profiles, companies, and jobs via structured MCP, 5-10x cheaper than browser-based approaches",
       "version": "0.1.0",
       "platforms": [
         "claude-code",
@@ -430,7 +430,7 @@
     {
       "name": "whatsapp-mcp",
       "source": "./plugins/whatsapp-mcp",
-      "description": "Connect Claude to WhatsApp \u2014 search messages, read conversations, send texts and media, manage business outreach with persistent conversation memory",
+      "description": "Connect Claude to WhatsApp — search messages, read conversations, send texts and media, manage business outreach with persistent conversation memory",
       "version": "0.1.0",
       "platforms": [
         "claude-code",
@@ -463,7 +463,7 @@
     {
       "name": "wordpress-mcp",
       "source": "./plugins/wordpress-mcp",
-      "description": "Manage WordPress sites directly from Claude \u2014 content, users, settings, and WooCommerce via the official WordPress MCP Adapter",
+      "description": "Manage WordPress sites directly from Claude — content, users, settings, and WooCommerce via the official WordPress MCP Adapter",
       "version": "0.1.0",
       "platforms": [
         "claude-code",
@@ -496,7 +496,7 @@
     {
       "name": "x-content-intelligence",
       "source": "./plugins/x-content-intelligence",
-      "description": "Scrape X (Twitter) for community insights and generate matched content \u2014 analyze trends, engagement patterns, and create posts via Apify",
+      "description": "Scrape X (Twitter) for community insights and generate matched content — analyze trends, engagement patterns, and create posts via Apify",
       "version": "0.1.0",
       "platforms": [
         "claude-code",
@@ -564,7 +564,7 @@
     {
       "name": "digital-presence",
       "source": "./plugins/digital-presence",
-      "description": "Manage and optimize online presence across all major social platforms \u2014 unified dashboard for content, analytics, and engagement",
+      "description": "Manage and optimize online presence across all major social platforms — unified dashboard for content, analytics, and engagement",
       "version": "1.0.0",
       "platforms": [
         "claude-code",
@@ -597,7 +597,7 @@
     {
       "name": "gcloud-cli-health-check",
       "source": "./plugins/gcloud-cli-health-check",
-      "description": "Comprehensive Google Cloud CLI validation \u2014 checks installation, authentication, project config, enabled APIs, billing, and Cloud Run availability",
+      "description": "Comprehensive Google Cloud CLI validation — checks installation, authentication, project config, enabled APIs, billing, and Cloud Run availability",
       "version": "1.0.0",
       "platforms": [
         "claude-code",
@@ -666,7 +666,7 @@
     {
       "name": "rtl-chat",
       "source": "./plugins/rtl-chat",
-      "description": "Right-to-left text formatting with inline processing \u2014 ensures proper display of Hebrew, Arabic, and other RTL scripts in Claude conversations",
+      "description": "Right-to-left text formatting with inline processing — ensures proper display of Hebrew, Arabic, and other RTL scripts in Claude conversations",
       "version": "0.1.0",
       "platforms": [
         "claude-code",
@@ -700,7 +700,7 @@
     {
       "name": "skill-campfire",
       "source": "./plugins/skill-campfire",
-      "description": "Turn installed Cowork skills into living characters who hang out, joke, argue, and bond around a virtual campfire \u2014 SOSA-compliant orchestration layer for creative skill interaction",
+      "description": "Turn installed Cowork skills into living characters who hang out, joke, argue, and bond around a virtual campfire — SOSA-compliant orchestration layer for creative skill interaction",
       "version": "0.1.0",
       "platforms": [
         "claude-code",
@@ -734,7 +734,7 @@
     {
       "name": "sosa-compliance-checker",
       "source": "./plugins/sosa-compliance-checker",
-      "description": "Compliance auditor for Claude plugins, skills, and coding agents \u2014 evaluates against SOSA principles (Supervised, Orchestrated, Secured, Agents) with governance features",
+      "description": "Compliance auditor for Claude plugins, skills, and coding agents — evaluates against SOSA principles (Supervised, Orchestrated, Secured, Agents) with governance features",
       "version": "0.2.0",
       "platforms": [
         "claude-code",
@@ -770,7 +770,7 @@
     {
       "name": "sosa-governor",
       "source": "./plugins/sosa-governor",
-      "description": "SOSA governance for Claude Code \u2014 classifies MCP tool calls by impact level, enforces approval gates, tracks token budgets, and maintains audit logs",
+      "description": "SOSA governance for Claude Code — classifies MCP tool calls by impact level, enforces approval gates, tracks token budgets, and maintains audit logs",
       "version": "0.1.0",
       "platforms": [
         "claude-code",
@@ -805,7 +805,7 @@
     {
       "name": "sosa-orchestrator",
       "source": "./plugins/sosa-orchestrator",
-      "description": "Token-aware task prioritization and budget management for Claude sessions \u2014 ranks tasks by importance vs. cost and tracks consumption in real time",
+      "description": "Token-aware task prioritization and budget management for Claude sessions — ranks tasks by importance vs. cost and tracks consumption in real time",
       "version": "1.0.0",
       "platforms": [
         "claude-code",
@@ -840,7 +840,7 @@
     {
       "name": "token-efficiency-audit",
       "source": "./plugins/token-efficiency-audit",
-      "description": "Audits and optimizes token usage across skills, scheduled tasks, plugins, and MCP connectors \u2014 SOSA Supervised pillar enforcement for efficiency requirements",
+      "description": "Audits and optimizes token usage across skills, scheduled tasks, plugins, and MCP connectors — SOSA Supervised pillar enforcement for efficiency requirements",
       "version": "1.0.0",
       "platforms": [
         "claude-code",
@@ -875,7 +875,7 @@
     {
       "name": "zoho-mail-health",
       "source": "./plugins/zoho-mail-health",
-      "description": "Daily Zoho Mail health check \u2014 verifies accounts are reachable, reads recent inbox messages, sends test emails, and produces a status report",
+      "description": "Daily Zoho Mail health check — verifies accounts are reachable, reads recent inbox messages, sends test emails, and produces a status report",
       "version": "0.1.0",
       "platforms": [
         "claude-code",
@@ -909,7 +909,7 @@
     {
       "name": "cowork-mem",
       "source": "./plugins/cowork-mem",
-      "description": "Persistent memory across Cowork sessions \u2014 automatically recalls past decisions, file changes, insights, and errors so you never lose context between sessions. SQLite + FTS5, token-efficient 3-layer retrieval.",
+      "description": "Persistent memory across Cowork sessions — automatically recalls past decisions, file changes, insights, and errors so you never lose context between sessions. SQLite + FTS5, token-efficient 3-layer retrieval.",
       "version": "0.1.0",
       "platforms": [
         "claude-code",
@@ -943,7 +943,7 @@
     {
       "name": "swift-lsp",
       "source": "./plugins/swift-lsp",
-      "description": "Real-time Swift code intelligence for Claude \u2014 instant diagnostics, go-to-definition, find references, and type info via SourceKit-LSP",
+      "description": "Real-time Swift code intelligence for Claude — instant diagnostics, go-to-definition, find references, and type info via SourceKit-LSP",
       "version": "1.0.0",
       "platforms": [
         "claude-code"
@@ -978,7 +978,7 @@
     {
       "name": "kotlin-lsp",
       "source": "./plugins/kotlin-lsp",
-      "description": "Real-time Kotlin code intelligence for Claude \u2014 instant diagnostics, go-to-definition, find references, and type info via kotlin-language-server",
+      "description": "Real-time Kotlin code intelligence for Claude — instant diagnostics, go-to-definition, find references, and type info via kotlin-language-server",
       "version": "1.0.0",
       "platforms": [
         "claude-code"
@@ -1008,6 +1008,48 @@
         "diagnostics",
         "free"
       ]
+    },
+    {
+      "name": "claude-md-composer",
+      "source": "./plugins/claude-md-composer",
+      "description": "Audit, compose, and refactor CLAUDE.md files — keep memory files under 200 lines, flip negative rules, split across the 4-level hierarchy. Inspired by Kjramsy's 'CLAUDE.md eating your token budget' post.",
+      "version": "1.0.0",
+      "platforms": [
+        "claude-code",
+        "cowork"
+      ],
+      "author": {
+        "name": "MSApps",
+        "email": "michal@msapps.mobi"
+      },
+      "homepage": "https://msapps.mobi/plugins",
+      "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+      "license": "MIT",
+      "keywords": [
+        "claude-md",
+        "CLAUDE.md",
+        "memory",
+        "token-optimization",
+        "audit",
+        "composer",
+        "refactor",
+        "recipe-book",
+        "200-line-rule",
+        "hierarchy"
+      ],
+      "category": "devtools",
+      "tags": [
+        "claude-md",
+        "token-optimization",
+        "audit",
+        "composer",
+        "memory",
+        "free"
+      ],
+      "sources": {
+        "inspiration": "https://medium.com/@kjramsy/your-claude-md-is-eating-your-token-budget-heres-how-to-fix-it-b8d6c4d1c986",
+        "inspiration_author": "Kjramsy (Medium, Jan 2026)"
+      }
     }
   ]
 }

@@ -92,6 +92,7 @@ We built **SOSA™ (Supervised Orchestrated Secured Agents)** to fix that — a 
 |--------|-------------|---------|
 | [**swift-lsp**](./plugins/swift-lsp) | Real-time Swift code intelligence — diagnostics, go-to-definition, hover types via SourceKit-LSP | `swift-lsp@msapps-plugins` |
 | [**kotlin-lsp**](./plugins/kotlin-lsp) | Real-time Kotlin code intelligence — diagnostics, go-to-definition, hover types via kotlin-language-server | `kotlin-lsp@msapps-plugins` |
+| [**claude-md-composer**](./plugins/claude-md-composer) | Audit, compose, and refactor CLAUDE.md files — keeps memory under 200 lines, flips negative rules, splits across the 4-level hierarchy ([inspiration](https://medium.com/@kjramsy/your-claude-md-is-eating-your-token-budget-heres-how-to-fix-it-b8d6c4d1c986)) | `claude-md-composer@msapps-plugins` |
 
 > **Mobile devs:** swift-lsp ships with Xcode — zero extra setup. kotlin-lsp installs via `brew install kotlin-language-server`.
 
