@@ -1,6 +1,6 @@
 {
   "name": "claude-md-composer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Audit, compose, and refactor CLAUDE.md files using the 'recipe book, not filing cabinet' pattern — keep memory files scannable, token-lean, and organized across the 4-level hierarchy (enterprise → project → user → local).",
   "author": "MSApps",
   "homepage": "https://github.com/MSApps-Mobile/claude-plugins/tree/main/plugins/claude-md-composer",
