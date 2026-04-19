@@ -48,6 +48,11 @@ tail -50 ~/Library/Logs/Claude/main.log | grep -iE "chrome|extension|bridge" | g
 
 > **⚠️ Scheduled task log noise:** When `fix-chrome-connection` runs as a scheduled task, `main.log` is flooded with `LocalAgentModeSessions.getSessionsForScheduledTask: scheduledTaskId=fix-chrome-connection` entries — these contain "chrome" so a plain `grep -i chrome` returns only those. Always pipe through `| grep -v getSessionsFor`.
 
+> **✅ Healthy scheduled-task early-exit (added 2026-04-19):** In a scheduled-task session, if the log excerpt cleanly shows the sequence `ensureConnected … connected=true, authenticated=true, wsState=1` → `Already connected and authenticated` → `No extensions connected, waiting up to 10000ms for peer_connected` → `No extensions found after waiting` → `Error calling tool: [Claude in Chrome] No Chrome extension connected after discovery` with ~10s elapsed between the first and last lines, **Chrome is healthy**. This is the documented scheduled-task pairing issue (not a stale socket — stale-socket failures are ~70ms, not 10s). Verify with `Control_Chrome.list_tabs` (should succeed), then **report healthy and exit — do NOT touch `0.sock`, do NOT restart Chrome, do NOT re-pair.** Quick one-liner to confirm:
+> ```bash
+> tail -200 ~/Library/Logs/Claude/main.log | grep -v "getSessionsFor" | grep -E "ensureConnected|waiting up to 10000|No extensions found|No Chrome extension connected" | tail -8
+> ```
+
 | Log message | Meaning | Go to |
 |---|---|---|
 | `"No Chrome extension connected after discovery"` + live session | Session mismatch or account switch | Step 3 (session fix) or Step 6 (re-auth) |
@@ -80,6 +85,8 @@ If the bridge URL shows `chrome/{UUID-A}` but extension `accountUuid` is `UUID-B
 **Symptom:** `connected=true, authenticated=true, wsState=1` but every tool call fails in ~70ms.
 
 **Root cause:** Chrome restart creates a new `{pid}.sock` file but doesn't update `0.sock`. Claude Desktop looks specifically for `0.sock`.
+
+> **Note (observed 2026-04-19):** On recent Claude Desktop builds, `0.sock` may be **absent entirely** while the bridge still reports `connected=true, authenticated=true, wsState=1` and live sessions work fine. The absence of `0.sock` by itself is NOT proof of a stale-socket failure — only the **~70ms tool-call timing** signature is. If tool calls time out at ~10s instead (peer_connected timeout), the issue is pairing, not the socket — go back to Step 2's decision table.
 
 ```bash
 DIR="/tmp/claude-mcp-browser-bridge-$(whoami)"
