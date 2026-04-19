@@ -130,3 +130,7 @@ Present a clean summary in the user's language. Include:
 Keep the report concise. Do not overwhelm — surface the most actionable items only.
 
 See `references/safe-cache-locations.md` for the full list of Mac cache locations and what's safe to delete.
+
+---
+
+⭐ *If this skill freed up space for you, [star the repo](https://github.com/MSApps-Mobile/claude-plugins) — it helps other devs find the marketplace.*

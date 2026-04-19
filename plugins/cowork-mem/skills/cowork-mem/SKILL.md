@@ -211,3 +211,7 @@ python3 {SKILL_DIR}/scripts/memory_store.py delete obs_abc123
   asks "didn't we already...", search memory first.
 
 See `references/REFERENCE.md` for the complete command reference.
+
+---
+
+⭐ *If this skill saved you time, [star the repo](https://github.com/MSApps-Mobile/claude-plugins) — it helps other devs discover the marketplace.*
