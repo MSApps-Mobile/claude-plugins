@@ -49,10 +49,18 @@ jobs:
     runs-on: ubuntu-latest
     needs: detect
     if: needs.detect.outputs.has_changes == 'true'
+    # Serialize all plugin releases against main so concurrent matrix cells
+    # (and back-to-back workflow runs) don't race on `git push` of the
+    # version-bump commit. Without this, the first job wins and the rest
+    # fail with non-fast-forward. See incident 2026-04-19 (run 24620806243).
+    concurrency:
+      group: plugin-release-main
+      cancel-in-progress: false
     strategy:
       matrix:
         plugin: ${{ fromJson(needs.detect.outputs.plugins) }}
       fail-fast: false  # release other plugins even if one fails
+      max-parallel: 1   # defense-in-depth: serialize within a single run too
 
     steps:
       - uses: actions/checkout@v4
@@ -84,22 +92,19 @@ jobs:
           echo "✓ Plugin structure valid"
 
       # ── Bump patch version ─────────────────────────────────────
+      # Modifies plugin.json in place. NOT committed yet — we package and
+      # generate notes against the uncommitted bump first so any failure
+      # there can be discarded cleanly without leaving a bump commit on
+      # main that has no matching tag or .plugin artifact.
       - name: Bump version
         id: bump
         run: |
           chmod +x scripts/bump-version.sh
           bash scripts/bump-version.sh ${{ matrix.plugin }} patch
 
-      # ── Commit version bump ────────────────────────────────────
-      - name: Commit version bump
-        run: |
-          PLUGIN="${{ matrix.plugin }}"
-          NEW_VERSION="${{ steps.bump.outputs.new_version }}"
-          git add "plugins/$PLUGIN/.claude-plugin/plugin.json"
-          git commit -m "chore(release): bump $PLUGIN to v$NEW_VERSION [skip ci]"
-          git push
-
       # ── Package the plugin ─────────────────────────────────────
+      # Runs BEFORE the git push so a packaging failure doesn't leave
+      # a version bump on main with no matching release.
       - name: Package plugin
         id: package
         run: |
@@ -142,7 +147,36 @@ jobs:
           } > /tmp/release_notes.md
           echo "notes_file=/tmp/release_notes.md" >> $GITHUB_OUTPUT
 
+      # ── Commit version bump ────────────────────────────────────
+      # Runs AFTER packaging + notes succeed, so a failure up to this
+      # point leaves no commit on main (the dirty plugin.json gets
+      # discarded with the runner). Even with the job-level concurrency
+      # gate, a human push to main could land between our checkout and
+      # our push; rebase-retry keeps the release robust.
+      - name: Commit version bump
+        run: |
+          PLUGIN="${{ matrix.plugin }}"
+          NEW_VERSION="${{ steps.bump.outputs.new_version }}"
+          git add "plugins/$PLUGIN/.claude-plugin/plugin.json"
+          git commit -m "chore(release): bump $PLUGIN to v$NEW_VERSION [skip ci]"
+
+          for attempt in 1 2 3 4 5; do
+            if git push; then
+              echo "✓ push succeeded on attempt $attempt"
+              break
+            fi
+            echo "push attempt $attempt rejected — rebasing onto latest main and retrying..."
+            git pull --rebase origin main
+            if [[ $attempt -eq 5 ]]; then
+              echo "::error::git push failed after 5 attempts"
+              exit 1
+            fi
+            sleep $((attempt * 2))
+          done
+
       # ── Create GitHub Release ──────────────────────────────────
+      # Last step that mutates remote state. Creates the tag on the bump
+      # commit we just pushed and uploads the .plugin artifact.
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -155,10 +189,37 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Summary
+      - name: Success summary
+        if: success()
         run: |
           echo "### ✅ Released ${{ matrix.plugin }} v${{ steps.bump.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Previous version:** ${{ steps.bump.outputs.old_version }}" >> $GITHUB_STEP_SUMMARY
           echo "- **New version:** ${{ steps.bump.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Package:** \`${{ matrix.plugin }}-${{ steps.bump.outputs.new_version }}.plugin\`" >> $GITHUB_STEP_SUMMARY
+
+      # Prints a ready-to-paste recovery command when any prior step failed.
+      # Cuts MTTR and makes the failure mode self-documenting on every run.
+      - name: Failure summary
+        if: failure()
+        run: |
+          PLUGIN="${{ matrix.plugin }}"
+          NEW_VERSION="${{ steps.bump.outputs.new_version }}"
+          echo "### ❌ Release failed for $PLUGIN" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Retrigger the release:** push any trivial change inside \`plugins/$PLUGIN/\`." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "git checkout main && git pull" >> $GITHUB_STEP_SUMMARY
+          echo "echo '' >> plugins/$PLUGIN/README.md" >> $GITHUB_STEP_SUMMARY
+          echo "git commit -am 'chore: retrigger release for $PLUGIN'" >> $GITHUB_STEP_SUMMARY
+          echo "git push origin main" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [[ -n "$NEW_VERSION" ]]; then
+            echo "**If the bump commit landed but the tag/release didn't:**" >> $GITHUB_STEP_SUMMARY
+            echo '```bash' >> $GITHUB_STEP_SUMMARY
+            echo "git tag $PLUGIN-v$NEW_VERSION" >> $GITHUB_STEP_SUMMARY
+            echo "git push origin $PLUGIN-v$NEW_VERSION" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
