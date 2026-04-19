@@ -1,7 +1,7 @@
 <p align="center">
   <a href="https://github.com/MSApps-Mobile/claude-plugins/stargazers"><img src="https://img.shields.io/github/stars/MSApps-Mobile/claude-plugins?style=social" alt="GitHub Stars"></a>
   <img src="https://img.shields.io/github/forks/MSApps-Mobile/claude-plugins?style=social" alt="GitHub Forks">
-  <img src="https://img.shields.io/badge/plugins-26-blue" alt="Plugins">
+  <img src="https://img.shields.io/badge/plugins-27-blue" alt="Plugins">
   <img src="https://img.shields.io/badge/SOSA%E2%84%A2-compliant-brightgreen" alt="SOSA Compliant">
   <img src="https://img.shields.io/badge/Claude_Code-compatible-8A2BE2" alt="Claude Code">
   <img src="https://img.shields.io/badge/Cowork-compatible-8A2BE2" alt="Cowork">
@@ -17,7 +17,7 @@
 
 > **If you find these plugins useful, please ⭐ star this repo** — it helps other developers discover the marketplace and motivates us to keep building!
 
-**The largest open-source plugin marketplace for Claude.** 26 production-ready plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (CLI) and [Cowork](https://claude.ai) (desktop app) — built on the SOSA™ security framework.
+**The largest open-source plugin marketplace for Claude.** 27 production-ready plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (CLI) and [Cowork](https://claude.ai) (desktop app) — built on the SOSA™ security framework.
 
 > Upload to Google Drive. Track time in Toggl. Transcribe YouTube videos. Send WhatsApp messages. Manage WordPress. Prospect with Apollo. Clean your Mac. All from a single Claude conversation.
 
