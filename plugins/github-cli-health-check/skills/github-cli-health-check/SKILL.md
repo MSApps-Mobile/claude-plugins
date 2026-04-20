@@ -1,171 +1,162 @@
 ---
 name: github-cli-health-check
 description: >
-  Run a GitHub CLI (gh) health check inside the sandbox VM — verify installation,
-  authentication, list repos, and check API rate limit.
-  Use this skill when the user says "GitHub health check", "check gh CLI", "is GitHub working",
-  "gh auth check", "check my GitHub", "GitHub CLI health check", "test gh", "verify GitHub access",
-  or any request to verify that the GitHub CLI is authenticated and operational.
-  Also triggered by a scheduled task named "github-cli-health-check".
+  Run a GitHub CLI (gh) health check — verify installation, authentication,
+  list repos, and check API rate limit. Runtime-aware: on the cloud Routine
+  path it uses native `gh`; in Cowork it routes through Desktop Commander to
+  the host Mac's `gh`; locally it uses whichever `gh` is on PATH.
+  Use this skill when the user says "GitHub health check", "check gh CLI",
+  "is GitHub working", "gh auth check", "check my GitHub", "GitHub CLI
+  health check", "test gh", "verify GitHub access", or any request to verify
+  that the GitHub CLI is authenticated and operational. Also triggered by a
+  scheduled task named "github-cli-health-check".
 metadata:
-  version: "2.1.0"
+  version: "3.0.0"
   updated: "2026-04-20"
 ---
 
-This skill may run in an automated/scheduled context with no user present. Execute all steps autonomously without asking clarifying questions. Only take write actions if explicitly requested; when in doubt, produce a report.
+This skill may run unattended on a schedule. Execute every step autonomously,
+do not ask questions, and always produce the markdown report — even if checks
+fail. Read-only only: never mutate GitHub state, never echo the raw token.
 
-## Primary path — sandbox VM Bash
+## Two live paths — pick at runtime
 
-All `gh` commands run via the **Bash tool** (the sandbox VM). Having `gh` inside the VM is a requirement, not optional — the scheduled task depends on it. If anything is missing (binary, network, token), the auto-fix loop installs / configures it and retries.
+This skill runs in one of three contexts. Detect which you're in and use the
+matching execution path. **Both scheduled paths run daily and are redundant
+on purpose** — if one fails, the other catches it.
 
-Desktop Commander is an **emergency fallback only**. If you end up on the fallback path, mark it as an anomaly in the report so the VM infrastructure gets fixed.
+| Context                                     | Execution path            | How to detect                                                            |
+|---------------------------------------------|---------------------------|--------------------------------------------------------------------------|
+| Routine (Claude Code cloud, scheduled)      | Native `gh` in the cloud  | Running from a Routine session; `gh` on PATH; cloud-provided `GITHUB_TOKEN`. |
+| Cowork scheduled task (Mac, unattended)     | Desktop Commander → Mac gh | `mcp__Desktop_Commander__start_process` is available.                    |
+| Interactive local session                   | Whichever `gh` works      | User is present; try VM Bash first, fall back to DC if proxy blocks it.  |
+
+Routines live under `plugins/github-cli-health-check/routines/` in this repo —
+see `routines/README.md` for registration. The Routine has its own prompt
+file (`routines/prompt.md`); this SKILL.md is what the Cowork scheduled task
+and interactive sessions load.
 
 ## Known infrastructure block (tracked upstream)
 
-As of 2026-04-20, the Cowork sandbox proxy blocks `api.github.com` (and `raw.githubusercontent.com`, `release-assets.githubusercontent.com`, `codeload.github.com`, `proxy.golang.org`). Signature: `403 X-Proxy-Error: blocked-by-allowlist`. Project-level `sandbox.network.allowedDomains` has no effect. `sudo` is also broken in the VM. **No VM-side install of `gh` can function** until the allowlist is fixed — `gh` itself talks to `api.github.com`.
+The Cowork sandbox proxy blocks `api.github.com` (and
+`raw.githubusercontent.com`, `release-assets.githubusercontent.com`,
+`codeload.github.com`). Signature: `403 X-Proxy-Error: blocked-by-allowlist`.
+Project-level `sandbox.network.allowedDomains` has no effect; `sudo` is
+broken; there is no VM-side install that makes `gh` work in Cowork today.
 
 Tracked upstream: https://github.com/anthropics/claude-code/issues/37970
 
-**Until the upstream issue is resolved, the runbook is:**
-1. Do NOT spend time re-probing the allowlist or trying fresh install recipes — the block is policy-level and documented.
-2. Run the full health check via Desktop Commander (emergency fallback path).
-3. In every report, add a "Blocked by upstream" note linking #37970 and flagging that the VM primary path is unavailable.
-4. When #37970 closes, delete this section and return to VM-first.
+Until #37970 closes, do **not** spend time re-probing the allowlist or
+reinstalling `gh` from inside the Cowork VM. Use Desktop Commander for the
+Cowork path; use the Routine for the cloud path. When #37970 closes, add
+the VM Bash path back as a third option and keep the other two as fallbacks.
 
-## Step 1 — Verify gh is installed in the VM
+## Execution path A — Routine / cloud (primary, when applicable)
 
-```bash
-which gh && gh --version
-```
+Only runs this way when invoked by the cloud Routine. The Routine has its own
+prompt at `routines/prompt.md` — this SKILL.md isn't normally loaded in that
+context, but if it is, mirror the Routine's steps: `gh auth status`,
+`gh repo list --limit 5 --json …`, `gh api rate_limit`, print report.
 
-If missing → auto-fix Step 1 (install in VM). Do not fall back to Desktop Commander yet.
+Skip to path B/C below if not in a Routine.
 
-## Step 2 — Check authentication
+## Execution path B — Cowork scheduled task (fallback via Desktop Commander)
 
-```bash
-gh auth status
-```
+All `gh` commands run via `mcp__Desktop_Commander__start_process` against the
+user's Mac. `gh` is at `/opt/homebrew/bin/gh`, authenticated through the Mac
+keyring. Do **not** try sandbox Bash — the proxy blocks `api.github.com`.
 
-Token is expected in the `GH_TOKEN` env var inside the VM (set via the host's Cowork/agent environment-variable settings). If the token is missing or invalid → auto-fix Step 2.
-
-## Step 3 — List repositories (access test)
+### Steps (via Desktop Commander)
 
 ```bash
-gh repo list --limit 5 --json name,visibility,description,updatedAt,primaryLanguage
+/opt/homebrew/bin/gh --version
+/opt/homebrew/bin/gh auth status
+/opt/homebrew/bin/gh repo list --limit 5 --json name,visibility,description,updatedAt,primaryLanguage
+/opt/homebrew/bin/gh api rate_limit
 ```
 
-Mark Repos as ❌ if this fails. Keep private repo details in the saved report only — avoid echoing repo names back to the user unless they ask.
+### Save the report
 
-## Step 4 — Check API rate limit
+Via Desktop Commander (this is the host filesystem):
 
 ```bash
-gh api rate_limit
-```
-
-Extract `resources.core.{limit,remaining,reset}`. Warn at < 100 remaining.
-
-## Step 5 — Save report
-
-Reports **always** save to a fixed folder on the host (outside any git repo), written via Desktop Commander:
-
-```
-$HOME/Claude/Scheduled/github-cli-health-check/github-health-check-YYYY-MM-DD.md
-```
-
-Fallback to `$HOME/Documents/Claude/Scheduled/github-cli-health-check/` if that's where the host's Claude workspace lives. Create the folder if missing:
-
-```bash
-# via Desktop Commander against the host — not sandbox Bash
 mkdir -p "$HOME/Claude/Scheduled/github-cli-health-check" 2>/dev/null || \
 mkdir -p "$HOME/Documents/Claude/Scheduled/github-cli-health-check"
 ```
 
-Never save to the cowork workspace, a git repo, or `/tmp/` — those either leak to public remotes or vanish between runs.
+Write the report as `github-health-check-YYYY-MM-DD.md` in whichever of those
+directories exists. Never save inside a git repo and never to the Cowork
+workspace — it vanishes between sessions and leaks to public remotes.
 
-### Report template
+## Execution path C — Interactive local session
+
+User is present. Try the VM path first for transparency; if it returns
+`403 blocked-by-allowlist`, note it and fall through to Desktop Commander.
+Same four `gh` commands, same report format. Write the report wherever the
+user is working — the workspace directory is fine here.
+
+## Report template (identical across all paths, only the header tag changes)
 
 ```markdown
-# GitHub CLI Health Check — YYYY-MM-DD
+# GitHub CLI Health Check — YYYY-MM-DD (Cowork / DC)
 
 ## Summary Table
 
-| Check | Status |
-|-------|:------:|
-| VM gh installation | ✅/❌ |
-| Authentication | ✅/❌ |
-| Repo Access | ✅/❌ |
-| API Rate Limit | ✅/⚠️/❌ |
-| Path (VM primary) | ✅ normal / ⚠️ fallback to Desktop Commander |
+| Check            | Status |
+|------------------|:------:|
+| Runtime          | ✅ / ⚠️ |
+| gh installed     | ✅ / ❌ |
+| Authentication   | ✅ / ❌ |
+| Repo Access      | ✅ / ❌ |
+| API Rate Limit   | ✅ / ⚠️ / ❌ |
 
 ## Details
-- Version: gh X.Y.Z (in VM)
+
+### Runtime
+- Path used: Routine / Cowork+DC / Local
+- gh version: X.Y.Z at /path/to/gh
+
+### Authentication
 - Account: <username>
+- Host: github.com
 - Scopes: <list>
-- Recent repos: 5 pulled, N private / M public
-- Rate limit: X / 5000, resets HH:MM UTC
+- Token source: Mac keyring / GH_TOKEN env / OAuth
+
+### Recent Repos (last 5)
+| Repo | Visibility | Language | Updated |
+|------|-----------|----------|---------|
+
+### API Rate Limit
+- Core: X remaining of 5000, resets HH:MM UTC
+- GraphQL / Search / Code search summaries
 
 ## Notes
-- Any issues or anomalies (especially if fallback to Desktop Commander was used — record why)
+- Cross-reference: today's Routine report at claude.ai/code/routines
+- Upstream: https://github.com/anthropics/claude-code/issues/37970
+- Anomalies, token scope changes, or anything a future agent needs to know
 ```
-
-## AUTO-FIX LOOP (VM-first)
-
-Fix-in-place before escalating. Max 3 attempts per step; always save the final report even on partial failure.
-
-### Fix Step 1 — `gh` missing in VM
-
-Detect arch and install. Try in order:
-
-```bash
-# a) apt (if sudo available — Debian/Ubuntu sandbox)
-sudo apt-get update -q && sudo apt-get install -y gh
-
-# b) tarball download (no sudo, no apt)
-ARCH=$(uname -m); case "$ARCH" in
-  aarch64|arm64) GHARCH=arm64 ;;
-  x86_64)        GHARCH=amd64 ;;
-esac
-GHVER=2.89.0
-curl -fsSL -o /tmp/gh.tgz "https://github.com/cli/cli/releases/download/v${GHVER}/gh_${GHVER}_linux_${GHARCH}.tar.gz"
-tar -xzf /tmp/gh.tgz -C /tmp/
-ln -sf "/tmp/gh_${GHVER}_linux_${GHARCH}/bin/gh" /usr/local/bin/gh 2>/dev/null || \
-  export PATH="/tmp/gh_${GHVER}_linux_${GHARCH}/bin:$PATH"
-```
-
-### Fix Step 2 — Missing or invalid token
-
-1. Check env: `env | grep -E '^(GH_TOKEN|GITHUB_TOKEN)='`. If set but invalid → surface "token expired; regenerate on github.com and update the VM env vars".
-2. If neither set → record the fix-it step in the report:
-   > `GH_TOKEN` not in VM environment. Set it via the host's agent/Cowork environment-variable settings with a PAT scoped appropriately for the checks you want, then restart the session.
-3. Attempt unauthenticated rate-limit check as partial data: `curl -s https://api.github.com/rate_limit` (returns 60/hr, unauthenticated).
-
-### Fix Step 3 — Network to github.com blocked
-
-```bash
-curl -s -o /dev/null -w "%{http_code}\n" --max-time 8 https://api.github.com/
-```
-If HTTP 000 / instant reject → the sandbox proxy is blocking GitHub. Record the anomaly: "VM sandbox proxy blocks api.github.com; request allowlisting from the platform." Then fall through to the emergency Desktop Commander path so the check still produces a report.
-
-### Emergency fallback — Desktop Commander
-
-Only if all three VM fixes failed. Run the same commands via `mcp__Desktop_Commander__start_process` against the host machine's `gh` (typically `/opt/homebrew/bin/gh` on macOS, `/usr/bin/gh` on Linux). In the report set "Path" to `⚠️ fallback` and explain which VM fix(es) failed so the infrastructure gap is visible.
 
 ## Autonomy rules
 
-- Install `gh` in the VM (apt or tarball): ✅ always allowed — it's a required dependency
-- Set env vars in the VM: ❌ cannot — user must set them via host settings; the skill reports the gap
-- Run `gh` read-only commands (auth status, repo list, rate limit): ✅ always allowed
-- Save report to `~/Claude/Scheduled/github-cli-health-check/`: ✅ always allowed
-- Update this SKILL.md based on new lessons learned: ✅ always allowed
-- Modify any GitHub repo / config / push code: ❌ never without explicit user confirmation
-- Echo private repo names or token values back to the user: ❌ avoid unless asked
+- ✅ Read-only `gh` commands (auth status, repo list, rate limit)
+- ✅ Write the report to the host's scheduled-reports folder (path B)
+- ✅ Update this SKILL.md when a new lesson is learned
+- ❌ Any mutation of GitHub state (push, PR, issue, release, token rotate)
+- ❌ Echo the raw token value anywhere
+- ❌ Save reports inside a git repo or inside the Cowork workspace
 
-## Learned Fixes
+## Learned fixes
 
-- **VM `gh` is the required primary path.** Desktop Commander is fallback only and each use must be flagged as an anomaly so the infra gap is visible.
-- **Reports always save to `~/Claude/Scheduled/github-cli-health-check/`** (or `~/Documents/Claude/Scheduled/...` if that's where the host's Claude workspace lives). Single source of truth, outside any git repo.
-- **Auto-install `gh` in the VM** via apt first, tarball second, before escalating.
-- **Token belongs in the VM env** (`GH_TOKEN`). If missing, report the fix-it step clearly; don't silently fall back.
-- **Sandbox proxy blocking github.com is an infra gap, not a design.** Raise it, don't paper over it.
-- **Never log the token value** — `gh auth status` masks it; don't un-mask it.
-- **VM `api.github.com` block is a policy bug, not transient.** Tracked in https://github.com/anthropics/claude-code/issues/37970 — don't re-diagnose; link the issue in the report and fall back to Desktop Commander until upstream closes it.
+- **Dual-path is the design, not a workaround.** Routine + Cowork+DC together
+  catch single-path failures. The skill version reflects this: v3.0.0 made
+  Routine a peer of the Cowork path rather than an emergency fallback.
+- **The Cowork VM Bash path is structurally dead** until #37970 closes. Don't
+  re-diagnose every run — link the issue and move on.
+- **Reports live outside git.** `$HOME/Claude/Scheduled/github-cli-health-check/`
+  or `$HOME/Documents/Claude/Scheduled/...` on the Mac. Never the workspace.
+- **Mac `gh` is at `/opt/homebrew/bin/gh`**, auth via keyring. No env vars
+  needed from Desktop Commander; the keyring provides the token.
+- **Cloud `gh`** gets `GITHUB_TOKEN` from the Claude GitHub App and the
+  Routine's `setup.sh` re-exports it as `GH_TOKEN` so plain `gh` works.
+- **Chrome MCP can fall back further** (unauthenticated rate_limit → 60/hr)
+  if both `gh` paths die simultaneously. That's last-resort only.

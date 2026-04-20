@@ -1,7 +1,7 @@
 {
   "name": "github-cli-health-check",
-  "version": "0.9.1",
-  "description": "GitHub CLI health check — verifies gh is installed, authenticated, can list repos, and has sufficient API rate limit. Produces a structured ✅/❌ report.",
+  "version": "0.10.0",
+  "description": "Dual-path daily GitHub CLI health check. Runs as both a Claude Code cloud Routine (native gh access) and a Cowork scheduled task via Desktop Commander (Mac host gh) — redundant on purpose so either path catches a failure in the other. Works around Cowork sandbox api.github.com block (claude-code#37970).",
   "author": {
     "name": "MSApps"
   },

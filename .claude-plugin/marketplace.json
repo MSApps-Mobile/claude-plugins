@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Free Claude plugins by MSApps — Google Drive upload, Toggl time tracking, YouTube transcription, Notion memory, session backups, SOSA governance, CLAUDE.md composer, and more. Works in both Claude Code and Cowork.",
-    "version": "3.3.0",
+    "version": "3.4.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -632,8 +632,8 @@
     {
       "name": "github-cli-health-check",
       "source": "./plugins/github-cli-health-check",
-      "description": "Verifies GitHub CLI installation and authentication in the sandbox VM (primary path), with Desktop Commander as emergency fallback. Auto-installs gh in the VM if missing. Saves reports to ~/Claude/Scheduled/github-cli-health-check/ — outside any git repo. VM path blocked by Cowork allowlist issue claude-code#37970 until resolved upstream.",
-      "version": "0.9.0",
+      "description": "Dual-path daily GitHub CLI health check. Ships as a Claude Code cloud Routine (cloud gh, native api.github.com access) + a Cowork scheduled task via Desktop Commander (Mac host gh) — redundant by design so a failure on either side is still caught by the other. Works around the Cowork sandbox api.github.com block tracked in claude-code#37970.",
+      "version": "0.10.0",
       "platforms": [
         "claude-code",
         "cowork"
