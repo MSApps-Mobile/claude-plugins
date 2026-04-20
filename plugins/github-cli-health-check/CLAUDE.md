@@ -45,7 +45,7 @@ gh api rate_limit
 ## Output
 
 Report file: `github-health-check-YYYY-MM-DD.md`
-Saved to workspace outputs folder.
+Saved to `~/Claude/Scheduled/github-cli-health-check/` (or `~/Documents/Claude/Scheduled/github-cli-health-check/` if the user keeps their Claude workspace under Documents). Never save to the workspace/cowork outputs folder — the Scheduled folder is the single source of truth and is outside any git repo.
 
 ## Version History
 
@@ -57,3 +57,4 @@ Saved to workspace outputs folder.
 | 0.4.0 | 2026-04-02 | Clarified sandbox limitations: no network/sudo, gh cannot be installed in Bash sandbox |
 | 0.5.0 | 2026-04-03 | Auto-detect tool: try Bash first, attempt apt install, fall back to Desktop Commander |
 | 0.6.0 | 2026-04-06 | Removed org-specific references — plugin is now fully generic |
+| 0.7.0 | 2026-04-20 | Reports now always save to `~/Claude/Scheduled/github-cli-health-check/` (outside any git repo); scrubbed usernames, token scopes, and any host-specific paths from docs and SKILL.md |

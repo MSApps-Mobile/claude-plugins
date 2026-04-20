@@ -1,6 +1,6 @@
 {
   "name": "github-cli-health-check",
-  "version": "0.2.0",
+  "version": "0.7.0",
   "description": "GitHub CLI health check \u2014 verifies gh is installed, authenticated, can list repos, and has sufficient API rate limit. Produces a structured \u2705/\u274c report.",
   "author": {
     "name": "MSApps"
