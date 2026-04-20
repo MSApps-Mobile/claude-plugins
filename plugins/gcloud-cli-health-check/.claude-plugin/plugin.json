@@ -1,6 +1,6 @@
 {
   "name": "gcloud-cli-health-check",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Google Cloud CLI health check — verifies gcloud is installed, authenticated with the expected account, correct project + region are active, critical APIs are enabled, billing is linked, and Cloud Run services are live across primary + secondary projects. Produces a structured ✅/⚠️/❌ report. Runs via Desktop Commander so it actually executes on the user's Mac instead of failing in the sandbox.",
   "author": {
     "name": "MSApps"
