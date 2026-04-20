@@ -30,11 +30,11 @@ Call `tabs_context_mcp` with `createIfEmpty: false`.
 Call `tabs_context_mcp` with `createIfEmpty: true`.
 
 - Succeeds → report success, jump to Self-Reflection.
-- Returns **"Tabs can only be moved to and from normal windows"** → run:
+- Returns **"Tabs can only be moved to and from normal windows"** _or_ **"Grouping is not supported by tabs in this window"** → run:
   ```bash
   osascript -e 'tell application "Google Chrome" to make new window'
   ```
-  Then retry `createIfEmpty: true`. (See Known Issue: "normal windows" error.)
+  Then retry `createIfEmpty: true`. Both errors share the same root cause and fix — even when AppleScript reports every existing window as `mode=normal`, a *fresh* window is still required. (See Known Issue: "normal windows" / "Grouping not supported" error.)
 
 ---
 
@@ -213,8 +213,12 @@ After each run, output:
 
 ## Known Issues
 
-### "Tabs can only be moved to and from normal windows"
-Chrome has popup windows open (OAuth/login popups). Fix: `osascript -e 'tell application "Google Chrome" to make new window'`
+### "Tabs can only be moved to and from normal windows" / "Grouping is not supported by tabs in this window"
+Chrome extension tries to put the new MCP tab into a tab-group, but the current windows don't accept grouping. Observed in two forms:
+- **"Tabs can only be moved to and from normal windows"** — classic case, Chrome has popup windows open (OAuth/login popups).
+- **"Grouping is not supported by tabs in this window"** (observed 2026-04-20) — same root cause, but surfaces even when `osascript -e 'tell application "Google Chrome" to get mode of every window'` reports every window as `normal`. AppleScript's `mode` doesn't always line up with Chrome's internal window-type check (app-mode PWAs, DevTools-detached windows, some profile states).
+
+Fix for both: `osascript -e 'tell application "Google Chrome" to make new window'` — a fresh window reliably accepts grouping. Retry `tabs_context_mcp` with `createIfEmpty: true` immediately after.
 
 ### Stale 0.sock
 Chrome restart creates new `{pid}.sock` but doesn't update `0.sock`. Claude Desktop looks for `0.sock` specifically. Fix: update symlink (Step 2b).
