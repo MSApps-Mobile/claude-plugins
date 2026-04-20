@@ -1,0 +1,29 @@
+{
+  "name": "agents-md-optimizer",
+  "version": "1.0.0",
+  "description": "Audit bloated agent-instruction files (CLAUDE.md, AGENTS.md, and their variants) and rewrite them lean, or author a new one from scratch following the 200-line recipe-book principle. Detects anti-patterns like embedded API docs, negative rules, tutorials, and preemptive file preloads.",
+  "author": {
+    "name": "MSApps"
+  },
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "license": "MIT",
+  "keywords": [
+    "claude-md",
+    "agents-md",
+    "context-optimization",
+    "token-efficiency",
+    "agent-instructions",
+    "prompt-engineering",
+    "msapps"
+  ],
+  "topics": [
+    "sosa-agents"
+  ],
+  "sosa": {
+    "compliant": true,
+    "level": 2,
+    "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md"
+  },
+  "privacy_policy": "https://opsagents.agency/privacy",
+  "terms_of_service": "https://opsagents.agency/terms"
+}
