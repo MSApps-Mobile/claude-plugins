@@ -632,8 +632,8 @@
     {
       "name": "github-cli-health-check",
       "source": "./plugins/github-cli-health-check",
-      "description": "Dual-path daily GitHub CLI health check. Ships as a Claude Code cloud Routine (cloud gh, native api.github.com access) + a Cowork scheduled task via Desktop Commander (Mac host gh) — redundant by design so a failure on either side is still caught by the other. Works around the Cowork sandbox api.github.com block tracked in claude-code#37970.",
-      "version": "0.10.0",
+      "description": "Dual-path manual GitHub CLI health check. Ships as a Claude Code cloud Routine (cloud gh, native api.github.com access) + a Cowork manual task via Desktop Commander (Mac host gh) — redundant by design so a failure on either side is still caught by the other. Works around the Cowork sandbox api.github.com block tracked in claude-code#37970.",
+      "version": "0.10.1",
       "platforms": [
         "claude-code",
         "cowork"

@@ -1,9 +1,10 @@
 # GitHub CLI Health Check — Routine (cloud) setup
 
-This directory packages the **cloud-side** half of the dual-path daily health
-check. It runs on Anthropic-managed Claude Code cloud infrastructure
-([docs](https://code.claude.com/docs/en/routines)) and is redundant with the
-Cowork scheduled task that runs via Desktop Commander on the Mac.
+This directory packages the **cloud-side** half of the dual-path health check.
+It runs on Anthropic-managed Claude Code cloud infrastructure
+([docs](https://code.claude.com/docs/en/routines)), triggered manually
+(no schedule), and is redundant with the Cowork manual task that runs via
+Desktop Commander on the Mac.
 
 Why both? The Cowork VM sandbox currently blocks `api.github.com`
 ([claude-code#37970](https://github.com/anthropics/claude-code/issues/37970)).
@@ -11,9 +12,10 @@ While that upstream issue is open:
 
 - The **Routine** (this directory) runs on cloud infra that *has* GitHub access
   — this path works today.
-- The **Cowork** scheduled task stays wired up via Desktop Commander (Mac gh) —
-  this path also works today.
-- Running both means a failure on either side still produces a usable report.
+- The **Cowork** task stays wired up via Desktop Commander (Mac gh) — also
+  works today.
+- Both are **manual-only** — invoke whichever is convenient. A failure on
+  one side is still caught by the other when you run both.
 
 ## Files
 
@@ -48,38 +50,61 @@ alongside this release). Run `claude --version` to check, or upgrade via
        `GH_TOKEN` for `gh`.
 6. **Connectors**: leave empty unless you want the report mirrored somewhere
    (e.g., Slack / Notion). The session transcript is the canonical report.
-7. **Trigger**: **Schedule** → **Daily** → `08:00` local time.
-   (The Cowork fallback runs later in the day so the two reports don't collide.)
-8. Click **Create**, then **Run now** to verify on first go.
+7. **Trigger**: **API** — gives the Routine an on-demand `/fire` endpoint
+   *and* the "Run now" button in the web UI. **Do not add a Schedule trigger**
+   — you want manual-only.
+   - After saving, click **Generate token** in the API trigger modal and
+     copy the token immediately (it's shown once). Store it somewhere safe —
+     a password manager, your shell's secret store, or a local env var like
+     `GITHUB_HEALTH_CHECK_TOKEN` in your `~/.zshrc`.
+8. Click **Create**, then **Run now** on the Routine's detail page to verify
+   it works. The "Run now" button doesn't need the API token — only external
+   callers do.
 
 ### Option B — Register from the CLI
 
-From any Claude Code session on your Mac:
+CLI `/schedule` is biased toward scheduled triggers, so the web UI is the
+cleaner path for a manual-only Routine. If you prefer CLI anyway, create a
+minimal Routine with `/schedule` and then edit it on the web to remove the
+schedule and add an API trigger.
 
-```bash
-/schedule daily GitHub CLI health check at 08:00
-```
+To interact with an existing Routine later: `/schedule list`,
+`/schedule update`, `/schedule run <name>` (triggers a run without hitting
+the API endpoint).
 
-Claude walks you through the form conversationally. Paste the prompt when
-asked, select the `MSApps-Mobile/claude-plugins` repo, and either select an
-existing `github-cli-health-check` environment or create one with the setup
-script above.
+## Triggering a run
 
-To edit later: `/schedule list`, `/schedule update`, `/schedule run`.
+Three ways to run the Routine on-demand:
+
+1. **Web UI**: open <https://claude.ai/code/routines>, click the Routine, hit
+   **Run now**. Session appears in the sidebar.
+2. **CLI**: `/schedule run github-cli-health-check` from any Claude Code
+   session on your Mac.
+3. **API** (curl / script / alerting tool):
+
+   ```bash
+   curl -X POST "$ROUTINE_FIRE_URL" \
+     -H "Authorization: Bearer $GITHUB_HEALTH_CHECK_TOKEN" \
+     -H "anthropic-beta: experimental-cc-routine-2026-04-01" \
+     -H "anthropic-version: 2023-06-01" \
+     -H "Content-Type: application/json" \
+     -d '{"text": "ad-hoc health check"}'
+   ```
+
+   `$ROUTINE_FIRE_URL` is the URL shown in the API trigger modal; the token
+   is the one you generated at registration time.
 
 ## Verifying it works
 
-After the first scheduled run:
+After a run:
 
-1. Open <https://claude.ai/code/routines>, click the Routine, and open the
-   latest session.
+1. Open the session (either from the response URL or the routine detail page).
 2. The last reply should be a single markdown code block titled
    `# GitHub CLI Health Check — YYYY-MM-DD (Routine / cloud)` with the
    summary table and all four checks green.
 3. If any check is ❌, the report body explains why. Cross-reference against
-   the Cowork report for the same day (on the Mac at
-   `~/Claude/Scheduled/github-cli-health-check/` or similar, per the
-   SKILL.md instructions).
+   a Cowork run of the same check on your Mac, which writes its report to
+   `~/Claude/Scheduled/github-cli-health-check/` per SKILL.md.
 
 ## When #37970 closes
 
@@ -91,7 +116,8 @@ lowest-overhead path and doesn't depend on the Mac being awake.
 ## Troubleshooting
 
 - **"Daily cap reached"**: Pro plan gives 5 runs/day, Max 15, Team/Enterprise
-  up to 25. A single daily health check is well inside all tiers.
+  up to 25. Manual-only usage is well inside all tiers — this only bites if
+  you hammer the `/fire` endpoint.
 - **gh not on PATH after setup**: the setup script tries system-wide install
   first (needs `sudo`), then user-local under `$HOME/.local/bin`. Check the
   setup script's stdout in the session log. If both failed, grant sudo in the

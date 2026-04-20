@@ -15,21 +15,22 @@ metadata:
   updated: "2026-04-20"
 ---
 
-This skill may run unattended on a schedule. Execute every step autonomously,
-do not ask questions, and always produce the markdown report — even if checks
-fail. Read-only only: never mutate GitHub state, never echo the raw token.
+This skill runs on-demand (no automatic schedule). Execute every step
+autonomously regardless — do not ask questions, and always produce the
+markdown report even if checks fail. Read-only only: never mutate GitHub
+state, never echo the raw token.
 
 ## Two live paths — pick at runtime
 
 This skill runs in one of three contexts. Detect which you're in and use the
-matching execution path. **Both scheduled paths run daily and are redundant
-on purpose** — if one fails, the other catches it.
+matching execution path. **Both paths are manual-only and redundant** — run
+whichever is convenient; run both if the first looks off.
 
-| Context                                     | Execution path            | How to detect                                                            |
-|---------------------------------------------|---------------------------|--------------------------------------------------------------------------|
-| Routine (Claude Code cloud, scheduled)      | Native `gh` in the cloud  | Running from a Routine session; `gh` on PATH; cloud-provided `GITHUB_TOKEN`. |
-| Cowork scheduled task (Mac, unattended)     | Desktop Commander → Mac gh | `mcp__Desktop_Commander__start_process` is available.                    |
-| Interactive local session                   | Whichever `gh` works      | User is present; try VM Bash first, fall back to DC if proxy blocks it.  |
+| Context                                   | Execution path             | How to detect                                                            |
+|-------------------------------------------|----------------------------|--------------------------------------------------------------------------|
+| Routine (Claude Code cloud, on-demand)    | Native `gh` in the cloud   | Running from a Routine session; `gh` on PATH; cloud-provided `GITHUB_TOKEN`. |
+| Cowork task (Mac, on-demand)              | Desktop Commander → Mac gh | `mcp__Desktop_Commander__start_process` is available.                    |
+| Interactive local session                 | Whichever `gh` works       | User is present; try VM Bash first, fall back to DC if proxy blocks it.  |
 
 Routines live under `plugins/github-cli-health-check/routines/` in this repo —
 see `routines/README.md` for registration. The Routine has its own prompt
@@ -43,6 +44,19 @@ The Cowork sandbox proxy blocks `api.github.com` (and
 `codeload.github.com`). Signature: `403 X-Proxy-Error: blocked-by-allowlist`.
 Project-level `sandbox.network.allowedDomains` has no effect; `sudo` is
 broken; there is no VM-side install that makes `gh` work in Cowork today.
+
+**But `git` itself works from the VM.** Plain `git` over HTTPS to
+`github.com` is on the allowlist, so `git clone`, `git fetch`, `git pull`,
+and **`git push`** all succeed directly from the Cowork VM. Only
+`api.github.com` (REST + GraphQL) is blocked. Practical rule:
+
+- ✅ VM Bash is fine for: `git add`, `git commit`, `git push`, cloning,
+  fetching, tagging — anything that talks only to `github.com`.
+- ❌ VM Bash fails for: `gh auth`, `gh repo list`, `gh pr create`,
+  `gh api`, `gh issue`, any MCP/plugin that hits GitHub's REST API.
+
+So don't bounce through Desktop Commander for pushes — just push from the
+VM. Only route through DC when you actually need `gh` / REST / GraphQL.
 
 Tracked upstream: https://github.com/anthropics/claude-code/issues/37970
 
