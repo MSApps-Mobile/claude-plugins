@@ -1,85 +1,74 @@
 ---
 name: github-cli-health-check
 description: >
-  Run a GitHub CLI (gh) health check — verify authentication, list repos, and check API rate limit.
+  Run a GitHub CLI (gh) health check inside the sandbox VM — verify installation,
+  authentication, list repos, and check API rate limit.
   Use this skill when the user says "GitHub health check", "check gh CLI", "is GitHub working",
   "gh auth check", "check my GitHub", "GitHub CLI health check", "test gh", "verify GitHub access",
   or any request to verify that the GitHub CLI is authenticated and operational.
   Also triggered by a scheduled task named "github-cli-health-check".
 metadata:
-  version: "1.4.0"
+  version: "2.0.0"
   updated: "2026-04-20"
 ---
 
-This skill may run in an automated/scheduled context with no user present. Execute all steps autonomously without asking clarifying questions. For write actions (send, post, create, update, delete), only take them if explicitly requested. When in doubt, produce a report of what you found.
+This skill may run in an automated/scheduled context with no user present. Execute all steps autonomously without asking clarifying questions. Only take write actions if explicitly requested; when in doubt, produce a report.
 
-Run a GitHub CLI (gh) health check. All `gh` commands MUST be run via **Desktop Commander** (`mcp__Desktop_Commander__start_process`), NOT via the sandbox Bash tool. The Bash tool runs in a sandboxed Linux environment where GitHub is typically blocked by proxy. Desktop Commander runs on the user's real machine where `gh` is installed (usually at `/opt/homebrew/bin/gh` on macOS or `/usr/bin/gh` on Linux).
+## Primary path — sandbox VM Bash
 
-## Step 1 — Verify gh is installed
+All `gh` commands run via the **Bash tool** (the sandbox VM). Having `gh` inside the VM is a requirement, not optional — the scheduled task depends on it. If anything is missing (binary, network, token), the auto-fix loop installs / configures it and retries.
 
-Run via Desktop Commander:
+Desktop Commander is an **emergency fallback only**. If you end up on the fallback path, mark it as an anomaly in the report so the VM infrastructure gets fixed.
+
+## Step 1 — Verify gh is installed in the VM
+
 ```bash
-gh --version
+which gh && gh --version
 ```
 
-If the binary exists → proceed. If missing → fall back to Chrome-based check (see AUTO-FIX LOOP).
+If missing → auto-fix Step 1 (install in VM). Do not fall back to Desktop Commander yet.
 
 ## Step 2 — Check authentication
 
-Run via Desktop Commander:
 ```bash
 gh auth status
 ```
 
-Parse the output to determine:
-- Which GitHub account is authenticated
-- What scopes/permissions are available
-- Whether the token is valid or expired
+Token is expected in the `GH_TOKEN` env var inside the VM (set via the host's Cowork/agent environment-variable settings). If the token is missing or invalid → auto-fix Step 2.
 
-If auth fails, mark Auth as ❌ and skip repo/rate-limit steps. Document reason in report.
+## Step 3 — List repositories (access test)
 
-## Step 3 — List repositories (quick access test)
-
-Run via Desktop Commander:
 ```bash
 gh repo list --limit 5 --json name,visibility,description,updatedAt,primaryLanguage
 ```
 
-Record the repo metadata returned. If the call fails, mark Repos as ❌.
-
-> **Privacy note:** the list of repo names that comes back is personal to the authenticated user. Include counts and visibility breakdown in the saved report if you like, but avoid echoing full repo names back to the user unless they've asked.
+Mark Repos as ❌ if this fails. Keep private repo details in the saved report only — avoid echoing repo names back to the user unless they ask.
 
 ## Step 4 — Check API rate limit
 
-Run via Desktop Commander:
 ```bash
 gh api rate_limit
 ```
 
-Parse the JSON output and extract:
-- `resources.core.limit` — total allowed requests per hour
-- `resources.core.remaining` — requests left
-- `resources.core.reset` — reset timestamp (convert to human-readable UTC)
-
-If remaining is below 100, flag as ⚠️ warning. If the call fails, mark Rate Limit as ❌.
+Extract `resources.core.{limit,remaining,reset}`. Warn at < 100 remaining.
 
 ## Step 5 — Save report
 
-**ALWAYS** save the generated report to a fixed, predictable folder on the user's machine:
+Reports **always** save to a fixed folder on the host (outside any git repo), written via Desktop Commander:
 
 ```
 $HOME/Claude/Scheduled/github-cli-health-check/github-health-check-YYYY-MM-DD.md
 ```
 
-On most setups this resolves to `~/Claude/Scheduled/github-cli-health-check/`. If the user keeps their Claude workspace under `~/Documents/Claude/` instead, use `$HOME/Documents/Claude/Scheduled/github-cli-health-check/` — detect which one exists, create it if neither does.
+Fallback to `$HOME/Documents/Claude/Scheduled/github-cli-health-check/` if that's where the host's Claude workspace lives. Create the folder if missing:
 
-Create the folder before writing:
 ```bash
+# via Desktop Commander against the host — not sandbox Bash
 mkdir -p "$HOME/Claude/Scheduled/github-cli-health-check" 2>/dev/null || \
 mkdir -p "$HOME/Documents/Claude/Scheduled/github-cli-health-check"
 ```
 
-Never save the report inside the workspace folder, a git repo, or anywhere that could be pushed to a public remote. This folder is the single source of truth for health-check history.
+Never save to the cowork workspace, a git repo, or `/tmp/` — those either leak to public remotes or vanish between runs.
 
 ### Report template
 
@@ -90,92 +79,80 @@ Never save the report inside the workspace folder, a git repo, or anywhere that 
 
 | Check | Status |
 |-------|:------:|
-| Installation | ✅/❌ |
+| VM gh installation | ✅/❌ |
 | Authentication | ✅/❌ |
 | Repo Access | ✅/❌ |
 | API Rate Limit | ✅/⚠️/❌ |
+| Path (VM primary) | ✅ normal / ⚠️ fallback to Desktop Commander |
 
 ## Details
-
-### Installation
-- Version: gh X.Y.Z
-- Binary: <path>
-
-### Authentication
+- Version: gh X.Y.Z (in VM)
 - Account: <username>
-- Scopes: <list of scopes>
-- Token: stored in keyring / env var
-
-### Recent Repos (last 5)
-| Repo | Visibility | Language | Updated |
-|------|-----------|----------|---------|
-| <name> | PUBLIC/PRIVATE | <lang> | <date> |
-
-### API Rate Limit
-- Limit: 5,000 / hr (authenticated) or 60 / hr (unauthenticated)
-- Remaining: X
-- Used: X
-- Resets at: HH:MM UTC
+- Scopes: <list>
+- Recent repos: 5 pulled, N private / M public
+- Rate limit: X / 5000, resets HH:MM UTC
 
 ## Notes
-- Any issues, anomalies, or observations
+- Any issues or anomalies (especially if fallback to Desktop Commander was used — record why)
 ```
 
-Present a short summary to the user after saving the report, and link to the file.
+## AUTO-FIX LOOP (VM-first)
 
-## AUTO-FIX LOOP
+Fix-in-place before escalating. Max 3 attempts per step; always save the final report even on partial failure.
 
-If any step fails, attempt these fixes automatically before giving up:
+### Fix Step 1 — `gh` missing in VM
 
-1. **If Desktop Commander not available or `gh` not found:**
-   - Try `which gh` via Desktop Commander to find the binary
-   - Try `brew install gh` (macOS) or `apt-get install gh` (Debian/Ubuntu) via Desktop Commander if gh is missing
-   - If Desktop Commander unavailable → fall back to Chrome-based check (see below)
-   - Do NOT use sandbox Bash — GitHub is typically blocked by proxy in the sandbox
+Detect arch and install. Try in order:
 
-2. **If auth fails:** gh uses the system keyring on most platforms — the token should be available. If not:
-   - Run `gh auth login` via Desktop Commander (may require user interaction)
-   - Document the issue in the report and note that the user must run `gh auth login` on their machine
+```bash
+# a) apt (if sudo available — Debian/Ubuntu sandbox)
+sudo apt-get update -q && sudo apt-get install -y gh
 
-3. **If rate limit check fails but auth succeeded:** retry once after 5 seconds.
-
-4. **If the report folder doesn't exist:** create it with `mkdir -p` before writing.
-
-Maximum 3 fix attempts per step. Always save the final report regardless of pass/fail count.
-
-## CHROME-BASED FALLBACK (when Desktop Commander unavailable)
-
-When Desktop Commander is not available, use Chrome MCP:
-
-**Auth check:** Navigate to `https://github.com`, read `meta[name="user-login"]` via JavaScript.
-
-**Repo listing:** Navigate to `https://github.com/<username>?tab=repositories`, use `get_page_text`.
-
-**Rate limit (unauthenticated):**
-```javascript
-(async () => {
-  const resp = await fetch('https://api.github.com/rate_limit', {
-    headers: { 'Accept': 'application/vnd.github.v3+json' }
-  });
-  return JSON.stringify(await resp.json());
-})()
+# b) tarball download (no sudo, no apt)
+ARCH=$(uname -m); case "$ARCH" in
+  aarch64|arm64) GHARCH=arm64 ;;
+  x86_64)        GHARCH=amd64 ;;
+esac
+GHVER=2.89.0
+curl -fsSL -o /tmp/gh.tgz "https://github.com/cli/cli/releases/download/v${GHVER}/gh_${GHVER}_linux_${GHARCH}.tar.gz"
+tar -xzf /tmp/gh.tgz -C /tmp/
+ln -sf "/tmp/gh_${GHVER}_linux_${GHARCH}/bin/gh" /usr/local/bin/gh 2>/dev/null || \
+  export PATH="/tmp/gh_${GHVER}_linux_${GHARCH}/bin:$PATH"
 ```
-Note: Chrome fetch to `api.github.com` is unauthenticated (CORS) and shows 60/hr. Run this from a neutral page (not github.com itself — CORS override interferes).
+
+### Fix Step 2 — Missing or invalid token
+
+1. Check env: `env | grep -E '^(GH_TOKEN|GITHUB_TOKEN)='`. If set but invalid → surface "token expired; regenerate on github.com and update the VM env vars".
+2. If neither set → record the fix-it step in the report:
+   > `GH_TOKEN` not in VM environment. Set it via the host's agent/Cowork environment-variable settings with a PAT scoped appropriately for the checks you want, then restart the session.
+3. Attempt unauthenticated rate-limit check as partial data: `curl -s https://api.github.com/rate_limit` (returns 60/hr, unauthenticated).
+
+### Fix Step 3 — Network to github.com blocked
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" --max-time 8 https://api.github.com/
+```
+If HTTP 000 / instant reject → the sandbox proxy is blocking GitHub. Record the anomaly: "VM sandbox proxy blocks api.github.com; request allowlisting from the platform." Then fall through to the emergency Desktop Commander path so the check still produces a report.
+
+### Emergency fallback — Desktop Commander
+
+Only if all three VM fixes failed. Run the same commands via `mcp__Desktop_Commander__start_process` against the host machine's `gh` (typically `/opt/homebrew/bin/gh` on macOS, `/usr/bin/gh` on Linux). In the report set "Path" to `⚠️ fallback` and explain which VM fix(es) failed so the infrastructure gap is visible.
 
 ## Autonomy rules
 
-- Run gh commands via Desktop Commander: ✅ always allowed (read-only)
-- Save report to `~/Claude/Scheduled/github-cli-health-check/` (or `~/Documents/Claude/...`): ✅ always allowed
+- Install `gh` in the VM (apt or tarball): ✅ always allowed — it's a required dependency
+- Set env vars in the VM: ❌ cannot — user must set them via host settings; the skill reports the gap
+- Run `gh` read-only commands (auth status, repo list, rate limit): ✅ always allowed
+- Save report to `~/Claude/Scheduled/github-cli-health-check/`: ✅ always allowed
 - Update this SKILL.md based on new lessons learned: ✅ always allowed
-- Modify any GitHub repo content or config: ❌ never without explicit user confirmation
+- Modify any GitHub repo / config / push code: ❌ never without explicit user confirmation
 - Echo private repo names or token values back to the user: ❌ avoid unless asked
 
 ## Learned Fixes
 
-- **Always save reports to `~/Claude/Scheduled/github-cli-health-check/`** (or `~/Documents/Claude/Scheduled/github-cli-health-check/` if the user keeps their Claude workspace under Documents). One fixed folder — never the cowork workspace, never a git repo, never `/mnt/...`.
-- **Use Desktop Commander, not sandbox Bash** — the sandbox proxy blocks github.com in most cowork/agent setups.
-- **Use `gh` from `$PATH`** via Desktop Commander — no need to hardcode an install path; let the user's shell find it.
-- **Auth via keyring** — no `GH_TOKEN` env var needed when running via Desktop Commander on a logged-in machine.
-- **Chrome fallback works** for auth + repo listing, but gives unauthenticated rate limit (60/hr vs 5000/hr).
-- **Chrome `fetch()` to `api.github.com` from github.com context fails** with CORS — use a neutral page.
-- **Never log the token value** — `gh auth status` masks it by default; don't un-mask it.
+- **VM `gh` is the required primary path.** Desktop Commander is fallback only and each use must be flagged as an anomaly so the infra gap is visible.
+- **Reports always save to `~/Claude/Scheduled/github-cli-health-check/`** (or `~/Documents/Claude/Scheduled/...` if that's where the host's Claude workspace lives). Single source of truth, outside any git repo.
+- **Auto-install `gh` in the VM** via apt first, tarball second, before escalating.
+- **Token belongs in the VM env** (`GH_TOKEN`). If missing, report the fix-it step clearly; don't silently fall back.
+- **Sandbox proxy blocking github.com is an infra gap, not a design.** Raise it, don't paper over it.
+- **Never log the token value** — `gh auth status` masks it; don't un-mask it.

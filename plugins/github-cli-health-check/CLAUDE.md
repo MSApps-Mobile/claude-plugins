@@ -4,34 +4,31 @@
 
 Scheduled health check for the GitHub CLI (`gh`). Verifies installation, authentication, repo access, and API rate limit. Saves a structured report to the workspace.
 
-## Critical: Tool Selection — Auto-detect
+## Tool selection — VM Bash is primary
 
-Use this decision flow at the start of every run:
+VM `gh` is a required dependency. Run every `gh` command via the sandbox Bash tool. If the VM is missing `gh`, a token, or GitHub network reachability, auto-fix in place. Only fall through to Desktop Commander when all three VM fixes have failed, and flag it as an anomaly.
 
-### Step 1 — Check Bash first
+### Step 1 — VM has gh?
 ```bash
-which gh
+which gh && gh --version
 ```
-- ✅ Found → use Bash for all gh commands
-- ❌ Not found → go to Step 2
+- ✅ Found → proceed
+- ❌ Not found → install via apt (`sudo apt-get install -y gh`) or tarball download from [gh releases](https://github.com/cli/cli/releases). If both fail, record the infra gap and fall through to Step 3.
 
-### Step 2 — Try to install gh in Bash
+### Step 2 — VM has a valid token?
 ```bash
-curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
-sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg && \
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null && \
-sudo apt-get update -q && sudo apt-get install -y gh
+env | grep -E '^(GH_TOKEN|GITHUB_TOKEN)=' && gh auth status
 ```
-- ✅ Installed → use Bash
-- ❌ Failed → go to Step 3 (sandbox has no network/sudo — this is expected)
+- ✅ Valid → proceed
+- ❌ Missing / invalid → report the fix-it step (set `GH_TOKEN` via host's agent env-var settings). Try unauthenticated `curl https://api.github.com/rate_limit` for partial data.
 
-### Step 3 — Fallback: Desktop Commander
-Use `mcp__Desktop_Commander__start_process` on the user's real Mac where `gh` is at `/opt/homebrew/bin/gh`.
+### Step 3 — Emergency fallback (Desktop Commander)
+Only when VM fixes have failed. Run via `mcp__Desktop_Commander__start_process` against the host machine's `gh` (on `$PATH`; typically `/opt/homebrew/bin/gh` on macOS). Flag `Path = ⚠️ fallback` in the report and note which VM fix failed.
 
-| Tool | Environment | Has `gh`? | Notes |
-|------|-------------|-----------|-------|
-| `Bash` | Claude sandbox (Linux/aarch64) | ⚠️ Maybe | Try first; install if missing; expect failure in sandbox |
-| `mcp__Desktop_Commander__start_process` | User's Mac (macOS) | ✅ Yes | Reliable fallback — gh @ `/opt/homebrew/bin/gh` |
+| Path | Environment | Expected? |
+|------|-------------|-----------|
+| `Bash` (VM) | Sandbox Linux | ✅ yes — primary |
+| `mcp__Desktop_Commander__start_process` | Host machine | ⚠️ fallback only, flag when used |
 
 ## Commands
 
@@ -58,3 +55,4 @@ Saved to `~/Claude/Scheduled/github-cli-health-check/` (or `~/Documents/Claude/S
 | 0.5.0 | 2026-04-03 | Auto-detect tool: try Bash first, attempt apt install, fall back to Desktop Commander |
 | 0.6.0 | 2026-04-06 | Removed org-specific references — plugin is now fully generic |
 | 0.7.0 | 2026-04-20 | Reports now always save to `~/Claude/Scheduled/github-cli-health-check/` (outside any git repo); scrubbed usernames, token scopes, and any host-specific paths from docs and SKILL.md |
+| 0.8.0 | 2026-04-20 | Flipped primary path: VM Bash is now the required primary, Desktop Commander demoted to emergency fallback (flagged as anomaly in report). Auto-fix installs `gh` in the VM via apt/tarball before escalating. Bumped SKILL.md to 2.0.0. |
