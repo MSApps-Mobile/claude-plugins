@@ -98,11 +98,14 @@ Claude App MCP server
 Cowork Session (paired via ~/Library/Application Support/Claude/bridge-state.json)
 ```
 
-### Critical session-pairing rule (discovered 2026-04-11)
+### Critical session-pairing rule (discovered 2026-04-11, refined 2026-04-20)
 - The extension pairs to whichever **Cowork session window is in focus** when you click Connect
 - `bridge-state.json` stores the `localSessionId` for the pairing
-- **Scheduled task sessions have their own sessionId** — Chrome CANNOT pair to them
-- `tabs_context_mcp` will ALWAYS fail in scheduled tasks — this is by design, not a bug
+- Scheduled task sessions have their own sessionId — pairing is less predictable there
+- `tabs_context_mcp` behavior in scheduled tasks:
+  - `createIfEmpty: false` → "No tab group exists for this session" (normal response, not an error)
+  - `createIfEmpty: true` → **CAN succeed** when the socket is healthy; creates a fresh tab group
+  - Not guaranteed — if it errors, fall back to `Control_Chrome` for the health signal
 - **Fix for live sessions:** focus the Cowork window, THEN click Connect in Chrome
 
 ### 0.sock symlink
@@ -115,15 +118,20 @@ Cowork Session (paired via ~/Library/Application Support/Claude/bridge-state.jso
 
 ## Scheduled Tasks
 
-`tabs_context_mcp` does NOT work in scheduled task sessions. Use `Control_Chrome` instead:
+`tabs_context_mcp` may or may not succeed in a scheduled task session — it depends on whether the extension happens to be paired to that session. Try it first; fall back to `Control_Chrome` only if it errors:
 
 ```bash
-mcp__Control_Chrome__list_tabs()  # Works in scheduled tasks
+mcp__Claude_in_Chrome__tabs_context_mcp(createIfEmpty=false)  # Try first
+mcp__Control_Chrome__list_tabs()                               # Fallback
 ```
 
 Health check logic for scheduled tasks:
-1. `Control_Chrome list_tabs` fails → Chrome not running → restart it
-2. `Control_Chrome` works + `tabs_context_mcp` fails → expected in scheduled tasks — report status only
+1. `tabs_context_mcp(createIfEmpty=false)` returns any response (even "no tab group") → Chrome paired and healthy
+2. `tabs_context_mcp(createIfEmpty=true)` succeeds → full confirmation
+3. Both error → try `Control_Chrome list_tabs`; if that also fails, Chrome isn't running — restart it
+4. `Control_Chrome` works but `tabs_context_mcp` errors → scheduled session isn't paired; report status only (no fix needed)
+
+Empirical note (2026-04-20 scheduled run): `createIfEmpty: true` successfully created a tab group from a scheduled task — the pairing worked. So don't assume failure by default.
 
 ---
 
