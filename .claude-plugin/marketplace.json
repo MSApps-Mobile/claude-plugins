@@ -633,7 +633,7 @@
       "name": "github-cli-health-check",
       "source": "./plugins/github-cli-health-check",
       "description": "Verifies GitHub CLI installation and authentication status, validates repository access, and confirms adequate API rate limit availability. Saves reports to a fixed folder outside any git repo (~/Claude/Scheduled/github-cli-health-check/).",
-      "version": "0.7.0",
+      "version": "0.7.1",
       "platforms": [
         "claude-code",
         "cowork"
