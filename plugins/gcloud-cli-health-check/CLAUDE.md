@@ -2,63 +2,91 @@
 
 ## Purpose
 
-Scheduled health check for the Google Cloud CLI (`gcloud`) on MSApps machines. Verifies installation, authentication, active project + region, billing, critical + optional APIs, IAM bindings for the active account, service accounts, and Cloud Run services across the primary (`opsagent-491114`) and secondary (`socialjetopsagent`) projects. Saves a structured report to the workspace outputs folder.
+Health check for the Google Cloud CLI (`gcloud`) and the `opsagent-prod` GCP
+project. Verifies installation, authentication, active project + region,
+billing, critical + optional APIs, IAM bindings, service accounts, and Cloud
+Run services across `me-west1` and `us-central1`. Saves a structured
+`✅/⚠️/❌` report to the workspace.
 
-## Critical: Always Use Desktop Commander
+## Three paths (two live, one blocked)
 
-The Bash tool runs in a Linux sandbox where gcloud is not installed AND the sandbox proxy returns `403 blocked-by-allowlist` for every Google endpoint needed to bootstrap it. There is no workaround inside the sandbox (no sudo, no network to Google). All gcloud commands must use `mcp__Desktop_Commander__start_process` to run on the user's real Mac where `gcloud` lives at `/opt/homebrew/bin/gcloud`.
+1. **GitHub Actions workflow (primary)** — runs on GitHub-hosted `ubuntu-latest`
+   runners. Authenticates to `opsagent-prod` via Workload Identity Federation
+   (WIF) — no SA keys, no personal tokens, no expiry. Triggered manually via
+   **Actions → GCloud CLI Health Check → Run workflow** or `gh workflow run`.
+   Report appears as a GitHub Actions workflow summary.
+
+2. **Cowork + Desktop Commander (fallback)** — runs as a manual Cowork task on
+   Michal's Mac. Routes every `gcloud` call through
+   `mcp__Desktop_Commander__start_process` to `/opt/homebrew/bin/gcloud`,
+   authenticated as `michal@opsagents.agency`. Requires Mac to be on and
+   personal token to be fresh (`gcloud auth login` when it expires).
+
+3. **VM Bash — NOT a live path** — the Cowork sandbox is fully blocked for all
+   gcloud operations:
+
+   ```
+   ❌ VM Bash: gcloud install  — no network to dl.google.com
+   ❌ VM Bash: gcloud auth     — no network to oauth2.googleapis.com / accounts.google.com
+   ❌ VM Bash: gcloud API calls — no network to *.googleapis.com / sts.googleapis.com
+   ```
+
+   Unlike `gh` (where `github.com` git operations still work from the VM),
+   gcloud requires Google endpoints at every step — install, auth, and API
+   calls. The Cowork proxy blocks all of them with `403 blocked-by-allowlist`.
+
+   **What would unblock it:** the Cowork proxy allowlist adding:
+   `dl.google.com`, `sdk.cloud.google.com`, `oauth2.googleapis.com`,
+   `accounts.google.com`, `*.googleapis.com`, `sts.googleapis.com`.
+   If/when that happens, the VM Bash path becomes viable:
+   install gcloud + `gcloud auth login --cred-file=wif-config.json` using
+   the WIF credential config (the pool and provider are already set up).
+
+## Critical: Desktop Commander for Cowork path
+
+All `gcloud` commands on the Cowork path use `mcp__Desktop_Commander__start_process`:
 
 ```bash
-# ✅ Correct
+# ✅ Correct (Cowork+DC path)
 mcp__Desktop_Commander__start_process("/opt/homebrew/bin/gcloud auth list")
 
-# ❌ Wrong — will always fail with "command not found" or 403 proxy block
+# ❌ Wrong — will always fail
 Bash("gcloud auth list")
 ```
 
-## Decision Flow
-
-### Step 1 — Check Desktop Commander availability
-If `mcp__Desktop_Commander__start_process` is available → use it for everything.
-
-### Step 2 — If Desktop Commander unavailable
-Do **not** try the Bash tool. It cannot work:
-- `gcloud` is not in the sandbox image
-- `apt install google-cloud-cli` fails — no sudo, no network to `packages.cloud.google.com`
-- Direct tarball download from `dl.google.com` fails — 403 blocked-by-allowlist
-- `pip install google-cloud-sdk` fails — the SDK is not on PyPI
-
-Write a report documenting the block and stop. Flag for manual run or suggest migrating the check to a GitHub Action with Workload Identity Federation.
-
 ## Key Commands
 
-All prefixed with `/opt/homebrew/bin/gcloud` when running via Desktop Commander.
+Both live paths use these commands (GitHub Actions runs them natively;
+Cowork+DC wraps them in Desktop Commander):
 
 ```bash
-gcloud --version
+gcloud version
 gcloud auth list
-gcloud auth print-access-token --account=michal@opsagents.agency
-gcloud auth application-default print-access-token
+gcloud auth print-access-token --account=<active-account>
+gcloud config list
+gcloud config configurations list
 gcloud config get-value project
 gcloud config get-value compute/region
-gcloud projects describe opsagent-491114
-gcloud billing projects describe opsagent-491114
-gcloud services list --enabled --project=opsagent-491114
-gcloud run services list --region=me-west1 --project=opsagent-491114
-gcloud run services list --region=us-central1 --project=opsagent-491114
-gcloud run services list --project=socialjetopsagent
-gcloud projects get-iam-policy opsagent-491114 --flatten=bindings[].members --filter=bindings.members:michal@opsagents.agency
-gcloud iam service-accounts list --project=opsagent-491114
-gcloud config configurations list
+gcloud projects describe opsagent-prod
+gcloud billing projects describe opsagent-prod
+gcloud services list --enabled --project=opsagent-prod
+gcloud run services list --region=me-west1 --project=opsagent-prod
+gcloud run services list --region=us-central1 --project=opsagent-prod
+gcloud projects get-iam-policy opsagent-prod \
+  --flatten=bindings[].members \
+  --filter=bindings.members:<active-account>
+gcloud iam service-accounts list --project=opsagent-prod
 ```
 
 ## Expected State
 
 | Check | Expected Value |
 |-------|---------------|
-| Binary | `/opt/homebrew/bin/gcloud` (macOS, Homebrew) |
-| Active account | `michal@opsagents.agency` |
-| Active project | `opsagent-491114` |
+| Binary (Mac) | `/opt/homebrew/bin/gcloud` |
+| Binary (GitHub Actions) | installed by `google-github-actions/setup-gcloud@v2` |
+| Active account (Mac path) | `michal@opsagents.agency` |
+| Active account (GHA path) | WIF principal (no SA email) |
+| Active project | `opsagent-prod` |
 | Region | `me-west1` |
 | Billing | enabled |
 | `run.googleapis.com` | enabled |
@@ -67,30 +95,52 @@ gcloud config configurations list
 | `secretmanager.googleapis.com` | enabled |
 | `cloudresourcemanager.googleapis.com` | enabled |
 | `iam.googleapis.com` | enabled |
+| `iamcredentials.googleapis.com` | enabled |
+
+## WIF Setup (already configured)
+
+| Resource | Value |
+|---|---|
+| Pool | `claude-routines` (ACTIVE) |
+| Provider | `github` (ACTIVE, issuer: `token.actions.githubusercontent.com`) |
+| Attribute condition | `assertion.repository=='MSApps-Mobile/claude-plugins'` |
+| IAM binding | `roles/viewer` on `opsagent-prod` for the WIF principal |
+
+The WIF pool is scoped to GitHub Actions workflows running from
+`MSApps-Mobile/claude-plugins`. It cannot be used from the Cowork VM (no
+OIDC token available there) or from Claude Code Routines (not GitHub Actions).
 
 ## Output
 
-Report file: `gcloud-health-check-YYYY-MM-DD.md`
-Saved to workspace outputs folder. Overwrites any same-day BLOCKED report.
+Report:
+- **GitHub Actions path**: workflow summary at
+  `github.com/MSApps-Mobile/claude-plugins/actions/workflows/gcloud-health-check.yml`
+- **Cowork+DC path**: `gcloud-health-check-YYYY-MM-DD.md` saved to workspace
 
 ## Version History
 
 | Version | Date | Change |
 |---------|------|--------|
-| 1.0.0 | 2026-04-06 | Initial — Desktop Commander only, correct billing command, account/project validation |
-| 1.1.0 | 2026-04-20 | Updated primary account to `michal@opsagents.agency` (from `msmobileapps@gmail.com`). Added region check (`me-west1`). Added critical APIs (cloudbuild, artifactregistry, secretmanager, resourcemanager, iam). Added multi-region + multi-project Cloud Run checks (me-west1, us-central1, socialjetopsagent). Added IAM role lookup for active user. Added service account enumeration. Added configurations list. Added auto-fix loop with reversible `gcloud config set` calls. Explicit documentation that the sandbox is unusable — no more "try Bash first" dead-end. |
+| 1.0.0 | 2026-04-06 | Initial — Desktop Commander only |
+| 1.1.0 | 2026-04-20 | Updated primary account to `michal@opsagents.agency`. Added region, critical APIs, multi-region Cloud Run, IAM, service accounts, configurations. Documented sandbox impossibility. |
+| 2.0.0 | 2026-04-20 | **Dual-path**: cloud Routine (primary) + Cowork+DC (fallback). New `routines/` directory. Updated primary project to `opsagent-prod` (migrated from `opsagent-491114`). SA key auth for Routine path (no personal token expiry). |
+| 3.0.0 | 2026-04-20 | **GitHub Actions as primary** — SA key approach replaced with WIF. New `.github/workflows/gcloud-health-check.yml`. WIF pool `claude-routines` + `roles/viewer` binding on `opsagent-prod`. Three-path documentation (GHA / Cowork+DC / VM Bash blocked). |
 
 ## Lessons Learned
 
 ### 2026-04-06 (v1.0.0)
-- **Sandbox has no gcloud** — confirmed on first run. Always use Desktop Commander.
-- **Wrong active account** — gcloud was set to `socialjetopsagents@gmail.com` instead of `msmobileapps@gmail.com`. Skill now flags account mismatches.
-- **Wrong active project** — was set to an auto-named project instead of `opsagent-491114`. Skill now flags project mismatches.
-- **`gcloud alpha billing accounts list` hangs** — prompts to install beta components. Use `gcloud billing projects describe` instead.
-- **Cloud Run services confirmed live** — `opsagent-ai-runtime` and `opsagent-dashboard` in us-central1.
+- **Sandbox has no gcloud** — always use Desktop Commander on Cowork path.
+- **Wrong active account** — skill now flags account mismatches.
+- **`gcloud alpha billing accounts list` hangs** — use `gcloud billing projects describe` instead.
 
 ### 2026-04-20 (v1.1.0)
-- **Two consecutive scheduled runs (2026-04-19, 2026-04-20) produced identical BLOCKED reports** — the scheduled task at `/sessions/<session>/mnt/gcloud-health-check/SKILL.md` had never been updated to match this plugin's Desktop Commander pattern. It was still calling gcloud via sandbox Bash. Fix: keep the scheduled-task SKILL.md in sync with this plugin's skill, or install this plugin directly into the Cowork session.
-- **Sandbox proxy hard-blocks Google** — full allowlist probe (dl.google.com, sdk.cloud.google.com, oauth2.googleapis.com, www.googleapis.com, accounts.google.com, packages.cloud.google.com, cloud.google.com) all returned `X-Proxy-Error: blocked-by-allowlist`. Do not retry install paths — they are architecturally impossible.
-- **Primary account is now `michal@opsagents.agency`**, not `msmobileapps@gmail.com`. `msmobileapps` remains the legacy billing owner but Michal operates from the opsagents.agency workspace.
-- **Added IAM + service-account + configuration checks** per the scheduled-task spec — they were missing from v1.0.0.
+- **Scheduled task SKILL.md drift** — two runs produced BLOCKED reports because the task SKILL.md was never updated. Keep task files in sync with the plugin.
+- **Primary account changed** to `michal@opsagents.agency` (from `msmobileapps@gmail.com`).
+- **Personal token expiry** — non-interactive scheduled runs fail silently when the personal gcloud token expires mid-session.
+
+### 2026-04-20 (v2.0.0 → v3.0.0)
+- **SA key creation blocked by org policy** (`constraints/iam.disableServiceAccountKeyCreation`) — correct security posture, do not disable.
+- **WIF for Routines doesn't work** — Claude Code Routines are not GitHub Actions and don't receive OIDC tokens from `token.actions.githubusercontent.com`.
+- **GitHub Actions IS the right runtime** — WIF pool was already configured, `roles/viewer` binding added, workflow pushed. GitHub Actions runners get OIDC tokens natively.
+- **New primary project `opsagent-prod`** — created 2026-04-15 under `opsagents.agency` org. `opsagent-491114` is now legacy (inaccessible from `michal@opsagents.agency`).
+- **VM Bash fully blocked** — unlike GitHub where git works from the VM, gcloud requires Google endpoints at every step (install + auth + API). All blocked by proxy.
