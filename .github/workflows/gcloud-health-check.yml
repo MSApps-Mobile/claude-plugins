@@ -1,0 +1,97 @@
+name: GCloud CLI Health Check
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write   # required for WIF OIDC token
+  contents: read
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Auth to GCP via WIF
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/523955774086/locations/global/workloadIdentityPools/claude-routines/providers/github
+          project_id: opsagent-prod
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Run health checks
+        run: |
+          DATE=$(date -u +%Y-%m-%d)
+          echo "## GCloud Health Check — $DATE" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "### Auth" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          gcloud auth list --format="table(account,status)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          echo "### Project" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          gcloud projects describe opsagent-prod --format="table(projectId,lifecycleState,createTime)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          echo "### Region" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          gcloud config get-value compute/region 2>&1 >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          echo "### Billing" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          gcloud billing projects describe opsagent-prod \
+            --format="table(billingEnabled,billingAccountName)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          echo "### Critical APIs" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          gcloud services list --enabled --project=opsagent-prod \
+            --filter="name:(run.googleapis.com OR cloudbuild.googleapis.com OR artifactregistry.googleapis.com OR secretmanager.googleapis.com OR cloudresourcemanager.googleapis.com OR iam.googleapis.com OR iamcredentials.googleapis.com)" \
+            --format="table(name,state)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          echo "### Optional APIs" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          gcloud services list --enabled --project=opsagent-prod \
+            --filter="name:(gmail.googleapis.com OR calendar-json.googleapis.com OR monitoring.googleapis.com OR logging.googleapis.com)" \
+            --format="table(name,state)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          echo "### Cloud Run — me-west1" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          gcloud run services list --region=me-west1 --project=opsagent-prod \
+            --format="table(metadata.name,status.conditions[0].type,status.conditions[0].status,status.conditions[0].lastTransitionTime)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          echo "### Cloud Run — us-central1" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          gcloud run services list --region=us-central1 --project=opsagent-prod \
+            --format="table(metadata.name,status.conditions[0].type,status.conditions[0].status,status.conditions[0].lastTransitionTime)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          echo "### IAM — WIF principal roles" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          gcloud projects get-iam-policy opsagent-prod \
+            --flatten="bindings[].members" \
+            --filter="bindings.members:principalSet://iam.googleapis.com/projects/523955774086/locations/global/workloadIdentityPools/claude-routines" \
+            --format="table(bindings.role,bindings.members)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          echo "### Service Accounts" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          gcloud iam service-accounts list --project=opsagent-prod \
+            --format="table(email,disabled)" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          echo "### Configurations" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          gcloud config configurations list >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "_Run by: $GITHUB_ACTOR | Triggered: $(date -u +%Y-%m-%dT%H:%M:%SZ)_" >> $GITHUB_STEP_SUMMARY
