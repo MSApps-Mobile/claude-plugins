@@ -8,7 +8,7 @@ description: >
   or any request to verify that the GitHub CLI is authenticated and operational.
   Also triggered by a scheduled task named "github-cli-health-check".
 metadata:
-  version: "2.0.0"
+  version: "2.1.0"
   updated: "2026-04-20"
 ---
 
@@ -19,6 +19,18 @@ This skill may run in an automated/scheduled context with no user present. Execu
 All `gh` commands run via the **Bash tool** (the sandbox VM). Having `gh` inside the VM is a requirement, not optional — the scheduled task depends on it. If anything is missing (binary, network, token), the auto-fix loop installs / configures it and retries.
 
 Desktop Commander is an **emergency fallback only**. If you end up on the fallback path, mark it as an anomaly in the report so the VM infrastructure gets fixed.
+
+## Known infrastructure block (tracked upstream)
+
+As of 2026-04-20, the Cowork sandbox proxy blocks `api.github.com` (and `raw.githubusercontent.com`, `release-assets.githubusercontent.com`, `codeload.github.com`, `proxy.golang.org`). Signature: `403 X-Proxy-Error: blocked-by-allowlist`. Project-level `sandbox.network.allowedDomains` has no effect. `sudo` is also broken in the VM. **No VM-side install of `gh` can function** until the allowlist is fixed — `gh` itself talks to `api.github.com`.
+
+Tracked upstream: https://github.com/anthropics/claude-code/issues/37970
+
+**Until the upstream issue is resolved, the runbook is:**
+1. Do NOT spend time re-probing the allowlist or trying fresh install recipes — the block is policy-level and documented.
+2. Run the full health check via Desktop Commander (emergency fallback path).
+3. In every report, add a "Blocked by upstream" note linking #37970 and flagging that the VM primary path is unavailable.
+4. When #37970 closes, delete this section and return to VM-first.
 
 ## Step 1 — Verify gh is installed in the VM
 
@@ -156,3 +168,4 @@ Only if all three VM fixes failed. Run the same commands via `mcp__Desktop_Comma
 - **Token belongs in the VM env** (`GH_TOKEN`). If missing, report the fix-it step clearly; don't silently fall back.
 - **Sandbox proxy blocking github.com is an infra gap, not a design.** Raise it, don't paper over it.
 - **Never log the token value** — `gh auth status` masks it; don't un-mask it.
+- **VM `api.github.com` block is a policy bug, not transient.** Tracked in https://github.com/anthropics/claude-code/issues/37970 — don't re-diagnose; link the issue in the report and fall back to Desktop Commander until upstream closes it.
