@@ -42,6 +42,15 @@ Run services across `me-west1` and `us-central1`. Saves a structured
    install gcloud + `gcloud auth login --cred-file=wif-config.json` using
    the WIF credential config (the pool and provider are already set up).
 
+   **Investigation result (2026-04-20):** Claude Desktop / Cowork settings were
+   checked (GitHub issues #30112 and #34690 reference an "Allow network egress"
+   domain allowlist setting). The Cowork settings panel on this account shows
+   **only Dispatch (Beta) toggle + Instructions textarea — no network egress
+   controls exist**. This feature is either Team/Enterprise-only or not yet
+   released on this plan. VM Bash is **permanently blocked** on the current
+   plan. Do not re-investigate — GitHub Actions (path 1) is the definitive
+   primary, and Cowork+DC (path 2) is the fallback.
+
 ## Critical: Desktop Commander for Cowork path
 
 All `gcloud` commands on the Cowork path use `mcp__Desktop_Commander__start_process`:
@@ -125,6 +134,7 @@ Report:
 | 1.1.0 | 2026-04-20 | Updated primary account to `michal@opsagents.agency`. Added region, critical APIs, multi-region Cloud Run, IAM, service accounts, configurations. Documented sandbox impossibility. |
 | 2.0.0 | 2026-04-20 | **Dual-path**: cloud Routine (primary) + Cowork+DC (fallback). New `routines/` directory. Updated primary project to `opsagent-prod` (migrated from `opsagent-491114`). SA key auth for Routine path (no personal token expiry). |
 | 3.0.0 | 2026-04-20 | **GitHub Actions as primary** — SA key approach replaced with WIF. New `.github/workflows/gcloud-health-check.yml`. WIF pool `claude-routines` + `roles/viewer` binding on `opsagent-prod`. Three-path documentation (GHA / Cowork+DC / VM Bash blocked). |
+| 3.1.0 | 2026-04-20 | **VM Bash permanently blocked confirmed** — Cowork settings checked; no network egress / domain allowlist controls exist on this plan. GitHub issues #30112/#34690 reference an Enterprise-only feature. GHA (primary) + Cowork+DC (fallback) are the only two live paths. |
 
 ## Lessons Learned
 
@@ -144,3 +154,7 @@ Report:
 - **GitHub Actions IS the right runtime** — WIF pool was already configured, `roles/viewer` binding added, workflow pushed. GitHub Actions runners get OIDC tokens natively.
 - **New primary project `opsagent-prod`** — created 2026-04-15 under `opsagents.agency` org. `opsagent-491114` is now legacy (inaccessible from `michal@opsagents.agency`).
 - **VM Bash fully blocked** — unlike GitHub where git works from the VM, gcloud requires Google endpoints at every step (install + auth + API). All blocked by proxy.
+
+### 2026-04-20 (v3.1.0)
+- **Network egress allowlist is not available on this plan** — Cowork settings panel shows only Dispatch + Instructions; no domain allowlist or "Allow network egress" toggle exists. GitHub issues #30112/#34690 suggest this is Enterprise-only. Do not spend time on VM Bash workarounds.
+- **GitHub Actions is the definitive answer** — WIF works natively, no credential expiry, no personal token management, runs on clean Ubuntu runners with full Google network access.
