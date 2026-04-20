@@ -1,7 +1,7 @@
 {
   "name": "gcloud-cli-health-check",
-  "version": "1.0.0",
-  "description": "Google Cloud CLI health check \u2014 verifies gcloud is installed, authenticated with the correct account, active project is set, critical APIs are enabled, billing is linked, and Cloud Run services are live. Produces a structured \u2705/\u274c report.",
+  "version": "1.1.0",
+  "description": "Google Cloud CLI health check — verifies gcloud is installed, authenticated with the expected account, correct project + region are active, critical APIs are enabled, billing is linked, and Cloud Run services are live across primary + secondary projects. Produces a structured \u2705/\u26a0\ufe0f/\u274c report. Runs via Desktop Commander so it actually executes on the user's Mac instead of failing in the sandbox.",
   "author": {
     "name": "MSApps"
   },
@@ -13,6 +13,9 @@
     "health-check",
     "monitoring",
     "cloud-run",
+    "billing",
+    "iam",
+    "desktop-commander",
     "msapps",
     "sosa-agents"
   ],
