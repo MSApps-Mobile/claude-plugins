@@ -135,6 +135,7 @@ Report:
 | 2.0.0 | 2026-04-20 | **Dual-path**: cloud Routine (primary) + Cowork+DC (fallback). New `routines/` directory. Updated primary project to `opsagent-prod` (migrated from `opsagent-491114`). SA key auth for Routine path (no personal token expiry). |
 | 3.0.0 | 2026-04-20 | **GitHub Actions as primary** — SA key approach replaced with WIF. New `.github/workflows/gcloud-health-check.yml`. WIF pool `claude-routines` + `roles/viewer` binding on `opsagent-prod`. Three-path documentation (GHA / Cowork+DC / VM Bash blocked). |
 | 3.1.0 | 2026-04-20 | **VM Bash permanently blocked confirmed** — Cowork settings checked; no network egress / domain allowlist controls exist on this plan. GitHub issues #30112/#34690 reference an Enterprise-only feature. GHA (primary) + Cowork+DC (fallback) are the only two live paths. |
+| 3.2.0 | 2026-04-21 | **Workspace SSO reauth + `config set` auto-fix workaround** — documented the `opsagents.agency` periodic refresh-token invalidation and the "switch-account → set → switch-back" workaround for `gcloud config set` when the primary token is blocked. Flagged `socialjetopsagent` as an active OpsAgent runtime project and marked `msmobileapps@gmail.com` stale for `opsagent-prod`. |
 
 ## Lessons Learned
 
@@ -158,3 +159,9 @@ Report:
 ### 2026-04-20 (v3.1.0)
 - **Network egress allowlist is not available on this plan** — Cowork settings panel shows only Dispatch + Instructions; no domain allowlist or "Allow network egress" toggle exists. GitHub issues #30112/#34690 suggest this is Enterprise-only. Do not spend time on VM Bash workarounds.
 - **GitHub Actions is the definitive answer** — WIF works natively, no credential expiry, no personal token management, runs on clean Ubuntu runners with full Google network access.
+
+### 2026-04-21 (v3.2.0)
+- **`opsagents.agency` Workspace SSO invalidates gcloud refresh tokens on a schedule.** Scheduled Cowork+DC runs fail silently with `ERROR: Reauthentication failed. cannot prompt during non-interactive execution.` when the Workspace session-control policy kicks in. Only interactive `gcloud auth login` (browser) repairs it. This is the **#1 reason the Cowork+DC fallback degrades between runs**. GHA path (WIF) does not have this problem — another reason GHA stays the primary.
+- **`gcloud config set <property>` requires a working refresh token on the active account** — even though it's a local-property write, it tries to refresh the active account's token on load and fails end-to-end if that token is blocked. **Auto-fix workaround, now standard:** temporarily switch to a working credentialed account (`gcloud config set account <other>`), set the property, switch the active account back. This unblocks region / project property fixes even when the primary token is dead.
+- **`msmobileapps@gmail.com` has no IAM on `opsagent-prod`** (403 permission denied on `projects describe`). The account architecture table called it "Legacy billing owner — same project, org-level" but that was true for `opsagent-491114`, not the new org-scoped `opsagent-prod`. Updated: on `opsagent-prod` it has no binding; stop treating it as a read fallback.
+- **`socialjetopsagent` is running three OpsAgent-core Cloud Run services** (`opsagent-core`, `opsagent-ai-runtime`, `opsagent-dashboard`) alongside the SocialJet + MyClaimPros stack — total 6 services. The project is an active OpsAgent runtime, not just "secondary / SocialJet ops." Decide whether to migrate these into `opsagent-prod` or document `socialjetopsagent` as a second prod project.
