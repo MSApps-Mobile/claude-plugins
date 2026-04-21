@@ -9,7 +9,6 @@
 
 <p align="center">
   <a href="https://github.com/MSApps-Mobile/claude-plugins/stargazers">
-    <img src="https://img.shields.io/badge/%E2%AD%90_Found_this_useful%3F-Star_on_GitHub-yellow?style=for-the-badge&logo=github" alt="Star on GitHub">
   </a>
 </p>
 
