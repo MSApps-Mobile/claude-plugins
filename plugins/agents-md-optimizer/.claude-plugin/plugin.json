@@ -1,6 +1,6 @@
 {
   "name": "agents-md-optimizer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Audit bloated agent-instruction files (CLAUDE.md, AGENTS.md, and their variants) and rewrite them lean, or author a new one from scratch following the 200-line recipe-book principle. Detects anti-patterns like embedded API docs, negative rules, tutorials, and preemptive file preloads.",
   "author": {
     "name": "MSApps"
