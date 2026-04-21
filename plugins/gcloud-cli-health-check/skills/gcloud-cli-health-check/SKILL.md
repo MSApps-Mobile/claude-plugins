@@ -1,215 +1,216 @@
 ---
 name: gcloud-cli-health-check
-description: >
-  Run a Google Cloud CLI (gcloud) health check — verify installation, authentication, active
-  project, recommended region, enabled APIs (run, cloudbuild, artifactregistry, secretmanager,
-  cloudresourcemanager, iam, plus gmail/calendar/monitoring/logging), API access token, billing,
-  IAM bindings, service accounts, and Cloud Run services across both primary and secondary
-  projects. Use this skill when the user says "gcloud health check", "check gcloud", "is gcloud
-  working", "GCP health check", "check Google Cloud", "gcloud CLI health check", "test gcloud
-  auth", "check Cloud Run", or any request to verify that the gcloud CLI is installed and
-  operational. Also triggered by the scheduled task named "gcloud-cli-health-check" (or the
-  legacy name "gcloud-health-check").
-metadata:
-  version: "1.1.0"
-  updated: "2026-04-20"
-  author: "MSApps"
+description: Read-only health check of a gcloud CLI setup — verify install, auth, active project, billing, enabled APIs, Artifact Registry, Cloud Run, Secret Manager, and budget. Use when the user says "run a gcloud health check", "check gcloud", "is GCP working", "verify my Google Cloud setup", "GCP health check", or any request to confirm the Google Cloud CLI is operational. Works against any GCP account — configure via env vars or the Configuration block below.
 ---
 
-This skill may run in an automated/scheduled context with no user present. Execute all steps autonomously without asking clarifying questions. For write actions (send, post, create, update, delete), only take them if explicitly requested. When in doubt, produce a report of what you found.
+# gcloud-cli-health-check
 
-## Critical: Use Desktop Commander — Not the Bash Tool
+Run a read-only, configurable health check of a `gcloud` CLI setup. Every check is parameterized — fill in the Configuration block (or export env vars) with your own GCP project, account, region, etc., and the skill adapts. Nothing is created, modified, or deleted.
 
-All `gcloud` commands MUST run via `mcp__Desktop_Commander__start_process`. The Bash tool runs in a sandboxed Linux environment where gcloud is not installed AND the sandbox proxy returns `403 blocked-by-allowlist` for every Google endpoint (dl.google.com, sdk.cloud.google.com, oauth2.googleapis.com, www.googleapis.com, accounts.google.com). The user's Mac has Google Cloud SDK installed at `/opt/homebrew/bin/gcloud` with auth already configured.
+---
 
-```
-✅ mcp__Desktop_Commander__start_process  →  runs on user's Mac  →  gcloud found, auth available
-❌ Bash tool                               →  runs in Linux sandbox →  gcloud not found, Google blocked
-```
+## Configuration
 
-If Desktop Commander is unavailable, do NOT try to install gcloud in the sandbox — it is impossible (no network access to Google, no sudo). Write a report documenting the block and stop.
+Before the first run, provide your environment. Precedence: **env vars** (`GCLOUD_HC_*`) take priority; if unset, fall back to the **inline defaults below**; if neither is set, read the current value from `gcloud config` where possible; otherwise skip the check and mark it `—` in the report.
 
-## Expected State
+| Variable | Env var | Example | Notes |
+|---|---|---|---|
+| Active account | `GCLOUD_HC_ACCOUNT` | `you@example.com` | Leave blank to accept whatever `gcloud config get account` returns. |
+| Project ID | `GCLOUD_HC_PROJECT` | `my-project-prod` | Required for most checks; default = `gcloud config get project`. |
+| Project Number | `GCLOUD_HC_PROJECT_NUMBER` | `123456789012` | Optional — only used for verification. |
+| Organization ID | `GCLOUD_HC_ORG_ID` | `987654321098` | Optional — skip org check if absent. |
+| Billing Account | `GCLOUD_HC_BILLING_ACCOUNT` | `012345-ABCDEF-123456` | Optional — skip billing-account verification if absent. |
+| Region | `GCLOUD_HC_REGION` | `us-central1` | Default for Cloud Run + Artifact Registry. |
+| Artifact Registry repo | `GCLOUD_HC_AR_REPO` | `my-docker-repo` | Optional — skip AR check if absent. |
+| Required APIs | `GCLOUD_HC_REQUIRED_APIS` | comma-separated list | See default list below. |
+| Budget display name | `GCLOUD_HC_BUDGET_NAME` | `Monthly-Budget` | Optional — skip budget check if absent. |
+| Budget amount | `GCLOUD_HC_BUDGET_AMOUNT` | `50` | Match the value configured in GCP. |
+| Budget currency | `GCLOUD_HC_BUDGET_CURRENCY` | `USD` | Currency is usually dictated by the billing account's locale — **do not flag a mismatch here as drift**; only flag if the user explicitly asked for a specific currency. |
+| Min gcloud version | `GCLOUD_HC_MIN_VERSION` | `450.0.0` | Default `450.0.0`. |
+| Trial expiry | `GCLOUD_HC_TRIAL_EXPIRY` | `2026-12-31` | Optional — warn if < 30 days. |
+| Expected Cloud Run services | `GCLOUD_HC_EXPECTED_SERVICES` | `svc-a,svc-b` | Optional — list of expected services. Missing ones flagged ⚠️. |
 
-| Thing | Expected value |
-|---|---|
-| gcloud binary | `/opt/homebrew/bin/gcloud` (macOS, Homebrew) |
-| Active account | `michal@opsagents.agency` (primary) |
-| Active project | `opsagent-491114` |
-| Compute region | `me-west1` (Israeli prod) |
-| Secondary project | `socialjetopsagent` (SocialJet Gmail/Calendar services) |
+**Default required APIs** (used when `GCLOUD_HC_REQUIRED_APIS` is unset):
+`run.googleapis.com, cloudbuild.googleapis.com, artifactregistry.googleapis.com, secretmanager.googleapis.com, iam.googleapis.com, compute.googleapis.com, monitoring.googleapis.com, logging.googleapis.com, billingbudgets.googleapis.com, cloudresourcemanager.googleapis.com`.
 
-Legacy accepted account: `msmobileapps@gmail.com` (same billing family — flag as ⚠️ informational, not ❌).
+**If required config for a check is missing**, skip it and mark the row `—` (N/A). Don't fail the whole run because the user hasn't configured an optional feature.
 
-## Step 1 — Verify gcloud is installed
+---
 
-```bash
-/opt/homebrew/bin/gcloud --version
-```
+## Where to run `gcloud`
 
-Fall back to `gcloud --version` if the explicit path is missing. If both fail → mark Installation ❌ and stop.
+Most Claude runtimes (including the Cowork/Claude Code sandbox) don't have `gcloud` installed and can't reach Google APIs (`dl.google.com`, `oauth2.googleapis.com`, `*.googleapis.com`) — any install or auth attempt from inside the sandbox will fail.
 
-## Step 2 — Check authentication
+Pick the first available path:
 
-```bash
-/opt/homebrew/bin/gcloud auth list
-/opt/homebrew/bin/gcloud auth print-access-token --account=michal@opsagents.agency | head -c 20
-/opt/homebrew/bin/gcloud auth application-default print-access-token | head -c 20
-```
+1. **Direct Bash** — if `which gcloud` returns a path and `gcloud auth list` succeeds, just use Bash.
+2. **Shell MCP to the host** — route every command through a shell MCP that runs on the user's actual machine (e.g. Desktop Commander on macOS, or any other shell tool that has `gcloud` on PATH and a valid credential).
+3. **GitHub Actions via Workload Identity Federation** — for truly headless/scheduled runs, set up a workflow that uses `google-github-actions/auth@v2` with WIF. This avoids storing service-account keys. (Out of scope for this skill; flag as a next step if you find yourself running this on a schedule.)
 
-Parse:
-- Active account (line starting with `*`).
-- `michal@opsagents.agency` present? User-token OK?
-- ADC token OK?
+If none are available, write a short BLOCKED report explaining why and stop. **Do not try to bootstrap gcloud inside a sandbox** — it will burn minutes and silently fail.
 
-If no accounts at all → mark Auth ❌. If wrong account active → mark ⚠️ and note. If ADC missing → mark ⚠️ (some SDKs need it).
+Typical gcloud paths:
+- macOS (Apple Silicon): `/opt/homebrew/bin/gcloud`
+- macOS (Intel) / Linux (brew): `/usr/local/bin/gcloud`
+- Linux (snap): `/snap/bin/gcloud`
+- Linux (apt, Google SDK package): `/usr/bin/gcloud`
 
-## Step 3 — Check active project and region
+---
 
-```bash
-/opt/homebrew/bin/gcloud config get-value project
-/opt/homebrew/bin/gcloud config get-value compute/region
-/opt/homebrew/bin/gcloud projects describe opsagent-491114 --format="value(lifecycleState,projectId,name)"
-```
+## Steps to execute
 
-- Project must be `opsagent-491114` and `lifecycleState=ACTIVE` → ✅
-- Region should be `me-west1` (warn ⚠️ if different, it still works)
-- Mismatch on project → ⚠️
+Run these read-only commands in order. For each, record what was returned and compare to the configured expectation.
 
-## Step 4 — Billing
+### 1. CLI presence & version
 
 ```bash
-/opt/homebrew/bin/gcloud billing projects describe opsagent-491114
+gcloud --version
 ```
 
-- `billingEnabled: true` → ✅
-- Missing / false → ⚠️ (Cloud Run free tier still applies but deploys require billing linked)
+Confirm the version is ≥ the configured minimum (default `450.0.0`). Note the installed components (core, bq, gsutil).
 
-Do NOT run `gcloud alpha billing accounts list` — it triggers an interactive prompt to install beta components and hangs in automated runs.
-
-## Step 5 — Enabled APIs (critical + optional)
+### 2. Auth state
 
 ```bash
-/opt/homebrew/bin/gcloud services list --enabled --project=opsagent-491114 --format="value(config.name)"
+gcloud auth list
+gcloud auth application-default print-access-token >/dev/null 2>&1 && echo OK || echo FAIL
 ```
 
-Critical (must be enabled — flag ❌ if missing):
-- `run.googleapis.com`
-- `cloudbuild.googleapis.com`
-- `artifactregistry.googleapis.com`
-- `secretmanager.googleapis.com`
-- `cloudresourcemanager.googleapis.com`
-- `iam.googleapis.com`
+- Confirm the configured account is `ACTIVE`. Other accounts are ⚠️ (not ❌) unless the user asked for them to be removed.
+- The ADC check should succeed. **Never print the token** — only report OK / FAIL.
 
-Optional (flag ⚠️ if missing):
-- `gmail.googleapis.com`
-- `calendar-json.googleapis.com`
-- `monitoring.googleapis.com`
-- `logging.googleapis.com`
-
-## Step 6 — Cloud Run services (multi-region, multi-project)
+### 3. Active configuration
 
 ```bash
-/opt/homebrew/bin/gcloud run services list --region=me-west1 --project=opsagent-491114
-/opt/homebrew/bin/gcloud run services list --region=us-central1 --project=opsagent-491114
-/opt/homebrew/bin/gcloud run services list --project=socialjetopsagent
+gcloud config list
+gcloud config configurations list
 ```
 
-Record: service name, region, URL, last deployed. If all three return zero services → ⚠️ (not yet deployed / expected in early stage). If any unexpected error → note it.
+Verify `account` and `project` match config. Note any additional named configurations so the user knows they exist.
 
-## Step 7 — IAM roles for michal@opsagents.agency
+### 4. Project & org reachability
 
 ```bash
-/opt/homebrew/bin/gcloud projects get-iam-policy opsagent-491114 \
-  --flatten="bindings[].members" \
-  --format="table(bindings.role)" \
-  --filter="bindings.members:michal@opsagents.agency"
+gcloud projects describe "$PROJECT" --format="value(projectNumber,lifecycleState,labels)"
+# If an org ID is configured:
+gcloud organizations list
 ```
 
-Record the roles. If `roles/owner` or `roles/editor` is present → ✅. If empty → ❌ (account has no access to project).
+- Project lifecycle must be `ACTIVE`.
+- If a project number is configured, verify it matches.
+- If an org ID is configured, confirm it appears in the org list.
 
-## Step 8 — Service accounts
+### 5. Billing linkage
 
 ```bash
-/opt/homebrew/bin/gcloud iam service-accounts list --project=opsagent-491114
+gcloud billing projects describe "$PROJECT"
 ```
 
-Record the list. Flag if the default Compute Engine SA still has broad permissions (security best practice: replace with scoped SAs + Workload Identity).
+Confirm `billingEnabled: true`. If a billing account ID is configured, confirm the linked account matches.
 
-## Step 9 — Configurations
+> ⚠️ Do **not** use `gcloud alpha billing accounts list` — it can prompt to install beta components, which hangs non-interactive runs.
+
+### 6. Enabled APIs
 
 ```bash
-/opt/homebrew/bin/gcloud config configurations list
+gcloud services list --enabled --project="$PROJECT" --format="value(config.name)"
 ```
 
-Record which configuration is active.
+Confirm every API in the required list is enabled. Each missing one is ❌ with a one-line fix: `gcloud services enable <api> --project="$PROJECT"` (report it — do not execute it; this skill is read-only).
 
-## Step 10 — Save report
+### 7. Artifact Registry repo (skip if not configured)
 
-Save as `gcloud-health-check-YYYY-MM-DD.md` in the workspace outputs folder (overwriting any prior `BLOCKED` report from the same day):
-
-```markdown
-# gcloud CLI Health Check — YYYY-MM-DD HH:MM
-
-**Account:** michal@opsagents.agency
-**Project:** opsagent-491114 (+ socialjetopsagent)
-**Runner:** Desktop Commander (user's Mac)
-**Overall:** ✅ / ⚠️ / ❌
-
-## Summary Table
-| Check | Status |
-|-------|:------:|
-| a. Installation | ✅/❌ |
-| b. Authentication (user + ADC) | ✅/⚠️/❌ |
-| c. Active Project + Region | ✅/⚠️/❌ |
-| d. Billing | ✅/⚠️/❌ |
-| e. Critical APIs | ✅/⚠️/❌ |
-| f. Optional APIs | ✅/⚠️ |
-| g. Cloud Run (me-west1 / us-central1 / socialjetopsagent) | ✅/⚠️/❌ |
-| h. IAM roles for michal | ✅/❌ |
-| i. Service accounts | ✅/⚠️ |
-| j. Configurations | ✅ |
-
-## Details
-(Each section with raw output, parsed findings, diffs vs expected state.)
-
-## Notes
-(Mismatches, unexpected errors, proposed fixes.)
+```bash
+gcloud artifacts repositories describe "$AR_REPO" --location="$REGION" --project="$PROJECT"
 ```
 
-## AUTO-FIX LOOP
+- Confirm `format` (usually `DOCKER`) and `location`.
+- Note the repo size. If it has grown significantly since the previous run, surface a watchlist item suggesting a lifecycle policy (e.g. delete untagged images older than 14 days, keep the last N tagged versions).
 
-If any step fails, attempt these fixes via Desktop Commander before giving up (max 3 attempts per step):
+### 8. Cloud Run services
 
-1. **gcloud not found at `/opt/homebrew/bin/gcloud`**:
-   - `which gcloud` to find an alternate path
-   - `brew install --cask google-cloud-sdk` (may prompt for password — document if it does)
-2. **Wrong active account**: `gcloud config set account michal@opsagents.agency`
-3. **Wrong active project**: `gcloud config set project opsagent-491114`
-4. **Region unset**: `gcloud config set compute/region me-west1`
-5. **ADC missing**: `gcloud auth application-default login` (requires interactive browser — flag as manual)
-6. **API disabled**: `gcloud services enable <api-name> --project=opsagent-491114`
-7. **Billing not linked**: flag as manual (requires billing account admin)
+```bash
+gcloud run services list --project="$PROJECT" --region="$REGION"
+```
 
-Always save the final report regardless of pass/fail count. Document every fix attempt.
+- Report every service found (name, URL, last deployed at, last deployed by).
+- If `GCLOUD_HC_EXPECTED_SERVICES` is set, any missing expected service is ⚠️.
+- Do **not** invent expectations — only flag based on what the user configured.
 
-## Account Architecture Reference
+### 9. Secret Manager
 
-| Account | Project | Role |
-|---------|---------|------|
-| michal@opsagents.agency | opsagent-491114 | Primary — OpsAgent core infra, Cloud Run, IAM |
-| msmobileapps@gmail.com | opsagent-491114 | Legacy billing owner — same project, org-level |
-| socialjetopsagents@gmail.com | socialjetopsagent | SocialJet ops — separate project |
+```bash
+gcloud secrets list --project="$PROJECT" --limit=50
+```
 
-## Cloud Run Free Tier (reference)
-- 2M requests/month free
-- 360,000 GB-seconds memory free
-- 180,000 vCPU-seconds free
-- Scales to zero — no idle cost
-- Billing must be linked (free tier still applies)
+Report count and names. **Never print values.** If the count is unexpectedly different from a previous run and the user keeps history, surface it; otherwise just report.
 
-## Autonomy Rules
-- Read auth/project/APIs/token/billing/IAM/Cloud Run/service accounts/configs: ✅ always allowed (read-only)
-- `gcloud config set` for account/project/region: ✅ allowed in auto-fix loop (reversible)
-- `gcloud services enable`: ✅ allowed in auto-fix loop (no cost, already-billed project)
-- Create/delete any resource, grant IAM, change billing: ❌ never without explicit user confirmation
+### 10. Budget (skip if not configured)
+
+```bash
+gcloud billing budgets list --billing-account="$BILLING_ACCOUNT"
+```
+
+- Find the budget whose `displayName` matches `GCLOUD_HC_BUDGET_NAME`.
+- Confirm `amount.specifiedAmount.units == GCLOUD_HC_BUDGET_AMOUNT`.
+- Confirm `thresholdRules` at 50%, 80%, 100% (or whatever the user has configured — if they've set custom thresholds, respect those).
+- **Currency**: a currency other than expected is usually set by the billing account's locale and is by design. Do not flag currency mismatch unless the user explicitly configured a currency.
+
+### 11. Free trial / credits (optional)
+
+If `GCLOUD_HC_TRIAL_EXPIRY` is set, compute days remaining and warn if < 30. Otherwise skip.
+
+---
+
+## Output format
+
+Produce a concise markdown report:
+
+1. **One-line header**: `✅` (all green), `⚠️` (non-critical drift / watchlist), or `❌` (at least one critical failure), followed by a one-sentence summary.
+2. **Per-check table**:
+
+   ```
+   | # | Check | Expected | Actual | Status |
+   ```
+
+3. **Action items** — one bullet per real problem. Include the exact command the user should run to fix it (but do not run it).
+4. **Watchlist** — non-blocking things to keep an eye on (growing Artifact Registry, secret count changes, expiring trial, etc.).
+5. **Suggested next steps** *(only if relevant)*: Workload Identity Federation for CI, Artifact Registry lifecycle rules, Secret Manager consolidation, deletion of stale/unused projects, budget alerts if none exist.
+
+Keep it under ~40 lines unless there are real problems to expand on.
+
+---
+
+## Constraints
+
+- **Read-only.** Never create, modify, or delete GCP resources. Every suggestion is reported as a command the user can run themselves.
+- **Never print** access tokens, ADC tokens, secret values, service-account keys, or billing account digits beyond what the user already configured.
+- **Skip, don't fail**, when optional config is missing — mark the row `—`.
+- **Don't bootstrap gcloud** inside a sandbox that blocks Google endpoints. Write a BLOCKED report and stop.
+- **Stay under budget**: the whole check should finish in a minute or two. If a command hangs, time it out and mark that row ⚠️ with the stderr.
+
+---
+
+## Common setup commands (reference for new users)
+
+```bash
+# Install (macOS / Homebrew)
+brew install --cask google-cloud-sdk
+
+# Install (Linux / Debian-based)
+# See https://cloud.google.com/sdk/docs/install
+
+# Authenticate (opens browser)
+gcloud auth login
+
+# Set ADC (opens browser; used by SDKs)
+gcloud auth application-default login
+
+# Pick a default project
+gcloud config set project <PROJECT_ID>
+
+# Pick a default region
+gcloud config set compute/region <REGION>
+```
+
+These are reference — the skill itself never runs them. If a user's `gcloud` isn't set up, the skill reports the gap and points them at the commands above.
