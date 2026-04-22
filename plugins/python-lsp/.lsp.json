@@ -1,0 +1,22 @@
+{
+  "python": {
+    "command": "pyright-langserver",
+    "args": ["--stdio"],
+    "extensionToLanguage": {
+      ".py": "python",
+      ".pyi": "python",
+      ".pyw": "python"
+    },
+    "restartOnCrash": true,
+    "maxRestarts": 3,
+    "startupTimeoutMs": 30000,
+    "shutdownTimeoutMs": 5000,
+    "initializationOptions": {
+      "pythonVersion": "3.11",
+      "typeCheckingMode": "basic",
+      "useLibraryCodeForTypes": true,
+      "reportMissingImports": true,
+      "reportMissingTypeStubs": false
+    }
+  }
+}
