@@ -1,0 +1,45 @@
+{
+  "name": "java-lsp",
+  "version": "1.0.0",
+  "description": "Real-time Java code intelligence for Claude — compile errors, go-to-definition, find references, and type info via Eclipse JDT Language Server (jdtls).",
+  "author": {
+    "name": "MSApps",
+    "email": "michal@msapps.mobi",
+    "url": "https://msapps.mobi"
+  },
+  "homepage": "https://msapps.mobi/plugins",
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "license": "MIT",
+  "privacy_policy": "https://opsagents.agency/privacy",
+  "terms_of_service": "https://opsagents.agency/terms",
+  "keywords": [
+    "java",
+    "jdtls",
+    "eclipse-jdt",
+    "android",
+    "maven",
+    "gradle",
+    "spring",
+    "lsp",
+    "code-intelligence",
+    "diagnostics",
+    "sosa-agents"
+  ],
+  "lspServers": "./.lsp.json",
+  "sosa": {
+    "compliant": true,
+    "level": 1,
+    "impact": "low",
+    "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md",
+    "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
+    "pillars": {
+      "supervised": "Fully autonomous — read-only code analysis, no external calls or side effects",
+      "orchestrated": "LSP protocol handles diagnostics, navigation, and hover automatically on file changes",
+      "secured": "No credentials, no network access beyond localhost LSP socket, no file writes",
+      "agents": "R=java-code-intelligence, T=jdtls, M=none, P=analyze-on-edit"
+    }
+  },
+  "topics": [
+    "sosa-agents"
+  ]
+}
