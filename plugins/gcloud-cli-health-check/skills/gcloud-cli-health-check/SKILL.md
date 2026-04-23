@@ -11,9 +11,16 @@ description: >
   operational. Also triggered by the scheduled task named "gcloud-cli-health-check" (or the
   legacy name "gcloud-health-check").
 metadata:
-  version: "1.1.0"
-  updated: "2026-04-20"
+  version: "1.2.0"
+  updated: "2026-04-23"
   author: "MSApps"
+  changelog: |
+    1.2.0 (2026-04-23): Expected primary project corrected from opsagent-491114 to
+    opsagent-prod (project# 523955774086). opsagent-491114 is on a different Google
+    account (msmobileapps@gmail.com legacy / AI Studio) and returns PERMISSION_DENIED
+    for michal@opsagents.agency. Account architecture table rewritten accordingly.
+    Secondary `socialjetopsagent` check now notes michal has no access — must use
+    socialjetopsagents@gmail.com. Added health-check-sa to known SAs.
 ---
 
 This skill may run in an automated/scheduled context with no user present. Execute all steps autonomously without asking clarifying questions. For write actions (send, post, create, update, delete), only take them if explicitly requested. When in doubt, produce a report of what you found.
@@ -35,11 +42,11 @@ If Desktop Commander is unavailable, do NOT try to install gcloud in the sandbox
 |---|---|
 | gcloud binary | `/opt/homebrew/bin/gcloud` (macOS, Homebrew) |
 | Active account | `michal@opsagents.agency` (primary) |
-| Active project | `opsagent-491114` |
+| Active project | `opsagent-prod` (project# `523955774086`, display: "OpsAgent Production") |
 | Compute region | `me-west1` (Israeli prod) |
-| Secondary project | `socialjetopsagent` (SocialJet Gmail/Calendar services) |
+| Secondary project | `socialjetopsagent` — **accessed as `socialjetopsagents@gmail.com`**, michal has no IAM on it |
 
-Legacy accepted account: `msmobileapps@gmail.com` (same billing family — flag as ⚠️ informational, not ❌).
+Legacy project (informational, not a failure): `opsagent-491114` exists on a different Google account (msmobileapps@gmail.com / AI Studio auto-created) and returns `PERMISSION_DENIED` when queried as michal. Do NOT include it in the primary sweep.
 
 ## Step 1 — Verify gcloud is installed
 
@@ -69,17 +76,17 @@ If no accounts at all → mark Auth ❌. If wrong account active → mark ⚠️
 ```bash
 /opt/homebrew/bin/gcloud config get-value project
 /opt/homebrew/bin/gcloud config get-value compute/region
-/opt/homebrew/bin/gcloud projects describe opsagent-491114 --format="value(lifecycleState,projectId,name)"
+/opt/homebrew/bin/gcloud projects describe opsagent-prod --format="value(lifecycleState,projectId,name)"
 ```
 
-- Project must be `opsagent-491114` and `lifecycleState=ACTIVE` → ✅
+- Project must be `opsagent-prod` and `lifecycleState=ACTIVE` → ✅
 - Region should be `me-west1` (warn ⚠️ if different, it still works)
 - Mismatch on project → ⚠️
 
 ## Step 4 — Billing
 
 ```bash
-/opt/homebrew/bin/gcloud billing projects describe opsagent-491114
+/opt/homebrew/bin/gcloud billing projects describe opsagent-prod
 ```
 
 - `billingEnabled: true` → ✅
@@ -90,7 +97,7 @@ Do NOT run `gcloud alpha billing accounts list` — it triggers an interactive p
 ## Step 5 — Enabled APIs (critical + optional)
 
 ```bash
-/opt/homebrew/bin/gcloud services list --enabled --project=opsagent-491114 --format="value(config.name)"
+/opt/homebrew/bin/gcloud services list --enabled --project=opsagent-prod --format="value(config.name)"
 ```
 
 Critical (must be enabled — flag ❌ if missing):
@@ -110,9 +117,10 @@ Optional (flag ⚠️ if missing):
 ## Step 6 — Cloud Run services (multi-region, multi-project)
 
 ```bash
-/opt/homebrew/bin/gcloud run services list --region=me-west1 --project=opsagent-491114
-/opt/homebrew/bin/gcloud run services list --region=us-central1 --project=opsagent-491114
-/opt/homebrew/bin/gcloud run services list --project=socialjetopsagent
+/opt/homebrew/bin/gcloud run services list --region=me-west1 --project=opsagent-prod
+/opt/homebrew/bin/gcloud run services list --region=us-central1 --project=opsagent-prod
+# socialjetopsagent is on a separate account — switch active account first, or skip if not needed:
+/opt/homebrew/bin/gcloud run services list --project=socialjetopsagent --account=socialjetopsagents@gmail.com
 ```
 
 Record: service name, region, URL, last deployed. If all three return zero services → ⚠️ (not yet deployed / expected in early stage). If any unexpected error → note it.
@@ -120,7 +128,7 @@ Record: service name, region, URL, last deployed. If all three return zero servi
 ## Step 7 — IAM roles for michal@opsagents.agency
 
 ```bash
-/opt/homebrew/bin/gcloud projects get-iam-policy opsagent-491114 \
+/opt/homebrew/bin/gcloud projects get-iam-policy opsagent-prod \
   --flatten="bindings[].members" \
   --format="table(bindings.role)" \
   --filter="bindings.members:michal@opsagents.agency"
@@ -131,7 +139,7 @@ Record the roles. If `roles/owner` or `roles/editor` is present → ✅. If empt
 ## Step 8 — Service accounts
 
 ```bash
-/opt/homebrew/bin/gcloud iam service-accounts list --project=opsagent-491114
+/opt/homebrew/bin/gcloud iam service-accounts list --project=opsagent-prod
 ```
 
 Record the list. Flag if the default Compute Engine SA still has broad permissions (security best practice: replace with scoped SAs + Workload Identity).
@@ -152,7 +160,7 @@ Save as `gcloud-health-check-YYYY-MM-DD.md` in the workspace outputs folder (ove
 # gcloud CLI Health Check — YYYY-MM-DD HH:MM
 
 **Account:** michal@opsagents.agency
-**Project:** opsagent-491114 (+ socialjetopsagent)
+**Project:** opsagent-prod (+ socialjetopsagent)
 **Runner:** Desktop Commander (user's Mac)
 **Overall:** ✅ / ⚠️ / ❌
 
@@ -185,10 +193,10 @@ If any step fails, attempt these fixes via Desktop Commander before giving up (m
    - `which gcloud` to find an alternate path
    - `brew install --cask google-cloud-sdk` (may prompt for password — document if it does)
 2. **Wrong active account**: `gcloud config set account michal@opsagents.agency`
-3. **Wrong active project**: `gcloud config set project opsagent-491114`
+3. **Wrong active project**: `gcloud config set project opsagent-prod`
 4. **Region unset**: `gcloud config set compute/region me-west1`
 5. **ADC missing**: `gcloud auth application-default login` (requires interactive browser — flag as manual)
-6. **API disabled**: `gcloud services enable <api-name> --project=opsagent-491114`
+6. **API disabled**: `gcloud services enable <api-name> --project=opsagent-prod`
 7. **Billing not linked**: flag as manual (requires billing account admin)
 
 Always save the final report regardless of pass/fail count. Document every fix attempt.
@@ -197,9 +205,9 @@ Always save the final report regardless of pass/fail count. Document every fix a
 
 | Account | Project | Role |
 |---------|---------|------|
-| michal@opsagents.agency | opsagent-491114 | Primary — OpsAgent core infra, Cloud Run, IAM |
-| msmobileapps@gmail.com | opsagent-491114 | Legacy billing owner — same project, org-level |
-| socialjetopsagents@gmail.com | socialjetopsagent | SocialJet ops — separate project |
+| michal@opsagents.agency | opsagent-prod (`523955774086`) | Primary — OpsAgent core infra, Cloud Run, IAM, billing linked |
+| msmobileapps@gmail.com | opsagent-491114 (legacy) | Separate project on personal Google account — AI Studio / older signup. michal has NO IAM here. Only inspect by switching active account. |
+| socialjetopsagents@gmail.com | socialjetopsagent | SocialJet ops — separate project, separate account. michal has NO IAM here. |
 
 ## Cloud Run Free Tier (reference)
 - 2M requests/month free
