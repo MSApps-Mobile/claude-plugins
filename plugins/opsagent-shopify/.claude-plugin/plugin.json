@@ -1,6 +1,6 @@
 {
   "name": "opsagent-shopify",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "MSApps OpsAgents Shopify plugin — full Admin API + Storefront MCP tools (products CRUD, files, orders, customers, themes, metafields), go-to-market guidance, and @opsagents/shopify-sdk typed contracts.",
   "author": {
     "name": "Michal Shatz / MSApps",
@@ -24,7 +24,9 @@
   "mcpServers": {
     "OpsAgent Shopify": {
       "command": "node",
-      "args": ["mcp-server/dist/server.js"],
+      "args": [
+        "mcp-server/dist/server.js"
+      ],
       "env": {
         "SHOPIFY_DEFAULT_SHOP": "",
         "SHOPIFY_STOREFRONT_TOKEN": "",
