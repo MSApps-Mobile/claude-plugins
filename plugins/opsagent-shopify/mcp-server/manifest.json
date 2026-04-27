@@ -1,0 +1,91 @@
+{
+  "dxt_version": "0.1",
+  "name": "opsagent-shopify-mcp",
+  "display_name": "OpsAgent Shopify",
+  "version": "0.2.0",
+  "description": "Full Shopify MCP server — Storefront API (catalog, cart, policies) + Admin API (products CRUD, files, orders, customers, themes, metafields). Multi-tenant.",
+  "long_description": "MSApps-built MCP server that gives Claude complete access to any Shopify store. Public catalog ops (search, cart) work with no token; Storefront GraphQL ops need a Storefront token; Admin API ops (products CRUD, file management, orders, customers, themes, metafields) need an Admin API access token. Multi-tenant: every tool accepts a `shop` argument.",
+  "author": {
+    "name": "Michal Shatz / MSApps",
+    "email": "michal@opsagents.agency"
+  },
+  "homepage": "https://github.com/MSApps-Mobile/claude-plugins",
+  "license": "MIT",
+  "keywords": ["shopify", "mcp", "storefront", "admin", "ecommerce", "msapps", "opsagent"],
+  "icon": "icon.png",
+  "server": {
+    "type": "node",
+    "entry_point": "dist/server.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/dist/server.js"],
+      "env": {
+        "SHOPIFY_DEFAULT_SHOP": "${user_config.shopify_default_shop}",
+        "SHOPIFY_STOREFRONT_TOKEN": "${user_config.shopify_storefront_token}",
+        "SHOPIFY_ADMIN_TOKEN": "${user_config.shopify_admin_token}",
+        "SHOPIFY_API_VERSION": "${user_config.shopify_api_version}"
+      }
+    }
+  },
+  "user_config": {
+    "shopify_default_shop": {
+      "type": "string",
+      "title": "Default shop",
+      "description": "Fallback shop domain when a tool call omits `shop`. Format: <handle>.myshopify.com.",
+      "required": false,
+      "default": ""
+    },
+    "shopify_storefront_token": {
+      "type": "string",
+      "title": "Storefront API token",
+      "description": "Storefront access token. Required for Storefront GraphQL tools (get_product, policies, collections).",
+      "required": false,
+      "sensitive": true,
+      "default": ""
+    },
+    "shopify_admin_token": {
+      "type": "string",
+      "title": "Admin API access token",
+      "description": "Admin API access token from Settings > Apps > Develop apps. Required for all shopify_admin_* tools.",
+      "required": false,
+      "sensitive": true,
+      "default": ""
+    },
+    "shopify_api_version": {
+      "type": "string",
+      "title": "API version",
+      "description": "Shopify API version for both Storefront and Admin.",
+      "required": false,
+      "default": "2025-04"
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": { "node": ">=20" }
+  },
+  "tools": [
+    { "name": "shopify_search_products", "description": "Search the public catalog (no token needed)." },
+    { "name": "shopify_get_product", "description": "Fetch a product by handle (Storefront)." },
+    { "name": "shopify_get_cart", "description": "Read a cart by ID." },
+    { "name": "shopify_update_cart", "description": "Create or mutate a cart." },
+    { "name": "shopify_get_policies", "description": "Fetch shop legal policies." },
+    { "name": "shopify_list_collections", "description": "List collections." },
+    { "name": "shopify_describe_theme", "description": "Describe shop + theme surface." },
+    { "name": "shopify_admin_list_products", "description": "List products with full admin details." },
+    { "name": "shopify_admin_get_product", "description": "Get product by GID (full admin data)." },
+    { "name": "shopify_admin_create_product", "description": "Create a new product." },
+    { "name": "shopify_admin_update_product", "description": "Update an existing product." },
+    { "name": "shopify_admin_delete_product", "description": "Delete a product (permanent)." },
+    { "name": "shopify_admin_list_files", "description": "List files in Shopify Files." },
+    { "name": "shopify_admin_upload_files", "description": "Upload files by URL to Shopify CDN." },
+    { "name": "shopify_admin_delete_files", "description": "Delete files from Shopify Files." },
+    { "name": "shopify_admin_list_orders", "description": "List orders with search." },
+    { "name": "shopify_admin_get_order", "description": "Get full order details." },
+    { "name": "shopify_admin_list_customers", "description": "List customers with search." },
+    { "name": "shopify_admin_list_themes", "description": "List all themes on the store." },
+    { "name": "shopify_admin_get_theme_files", "description": "Read theme file contents." },
+    { "name": "shopify_admin_set_metafields", "description": "Set metafields on any resource." },
+    { "name": "shopify_admin_shop_info", "description": "Detailed shop info (Admin)." }
+  ]
+}

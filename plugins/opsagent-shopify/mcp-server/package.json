@@ -1,0 +1,42 @@
+{
+  "name": "opsagent-shopify-mcp",
+  "version": "0.2.0",
+  "description": "MSApps multi-tenant Shopify MCP server — Storefront API (catalog, cart) + Admin API (products CRUD, files, orders, customers, themes, metafields) for AI agents (stdio transport).",
+  "type": "module",
+  "bin": {
+    "opsagent-shopify-mcp": "dist/server.js"
+  },
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "tsc --watch",
+    "inspect": "npx @modelcontextprotocol/inspector node dist/server.js",
+    "smoke": "bash scripts/smoke.sh",
+    "smoke:inspector": "node --experimental-strip-types tests/mcp/inspector.smoke.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "mcp",
+    "shopify",
+    "storefront",
+    "msapps",
+    "opsagent"
+  ],
+  "author": "MSApps / Michal Shatz",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0"
+  }
+}

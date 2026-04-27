@@ -1,0 +1,28 @@
+{
+  "name": "@opsagents/shopify-sdk",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Typed contracts and HTTP client for Shopify Admin + Storefront APIs. Public hire-readable SDK — the typed surface that OpsAgent apps, dashboards, and MCP servers consume.",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./types": "./src/types.js",
+    "./admin-client": "./src/admin-client.js",
+    "./storefront-client": "./src/storefront-client.js",
+    "./mcp-contracts": "./src/mcp-contracts.js"
+  },
+  "files": ["src", "README.md"],
+  "scripts": {
+    "test": "vitest run --dir .",
+    "test:watch": "vitest --dir ."
+  },
+  "keywords": ["opsagents", "shopify", "sdk", "admin-api", "storefront", "mcp", "typescript"],
+  "author": "MSApps / Michal Shatz <michal@opsagents.agency>",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  }
+}
