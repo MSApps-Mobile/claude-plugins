@@ -275,6 +275,38 @@ Check: `xattr -l /tmp/claude-mcp-browser-bridge-$(whoami)/`
 If `com.apple.quarantine` present: `xattr -rd com.apple.quarantine /tmp/claude-mcp-browser-bridge-$(whoami)/`
 Note: quarantine is NOT the cause of "No Chrome extension connected" — that's always an auth issue.
 
-### Chrome running but list_connected_browsers=[] (auth failure, not closed Chrome)
-When `list_connected_browsers` returns `[]` but Chrome IS running (confirmed via native host processes alive in `/tmp/claude-mcp-browser-bridge-{user}/`), the extension has started the native host but cannot authenticate to the bridge. Symptoms: native host sockets present for >1 hour, no `"Chrome extension connected to bridge"` in `main.log`, reconnect URL and pairing page don't resolve it automatically. This is an auth failure — **Step 6 (manual re-auth) is required**. Cannot be fixed in a scheduled task. Observed 2026-04-28.
+### Chrome running but list_connected_browsers=[] — two distinct causes
+
+When `list_connected_browsers` returns `[]` but Chrome IS running (native host process alive in `/tmp/claude-mcp-browser-bridge-{user}/`), there are **two different root causes** with different fixes:
+
+**Case A: Suspended service worker (fixable without user)**
+- LevelDB has `mcpConnected` AND account UUIDs match (bridge URL user == extension `accountUuid`)
+- `chrome-native-host.log` shows host started but no subsequent "Chrome disconnected" — it's just idle
+- Fix: navigate Chrome to reconnect URL, then apply 0.sock fix if missing:
+  ```bash
+  osascript -e 'tell application "Google Chrome" to set URL of active tab of front window to "https://clau.de/chrome/reconnect"'
+  sleep 6
+  tail -5 ~/Library/Logs/Claude/main.log | grep -i "Chrome extension connected"
+  ```
+  Then check/fix 0.sock symlink (Step 2b). Verify with `list_connected_browsers` — should return browser within ~10 seconds.
+  Observed 2026-04-29: reconnect URL woke the suspended service worker, restoring connection with no manual action.
+
+**Case B: Auth failure (requires Step 6 / manual re-auth)**
+- LevelDB does NOT have `mcpConnected`, OR only `oauthState` present, OR account UUIDs MISMATCH
+- Reconnect URL and pairing page don't resolve it
+- `chrome-native-host.log` shows repeated start/stop cycles (~2 min apart)
+- Native host sockets present for >1 hour, no `"Chrome extension connected to bridge"` in `main.log`
+- **Step 6 (manual re-auth) is required**. Cannot be fixed in a scheduled task. Observed 2026-04-28.
+
+**Diagnosis order:** Always check LevelDB + account UUID match BEFORE concluding Step 6 is needed.
+
+### pgrep truncation on macOS — use lsof instead
+On macOS, `pgrep "chrome-native-host"` returns nothing because pgrep matches the truncated process name `chrome-na` (15-char limit). To verify the native host is alive, use lsof on the socket files instead:
+```bash
+lsof /tmp/claude-mcp-browser-bridge-$(whoami)/*.sock 2>/dev/null | tail +2
+```
+Socket mtime showing a past date is normal if the native host hasn't been restarted — it doesn't mean the host is dead. Observed 2026-04-28.
+
+### tabs_context_mcp "No tab group exists for this session" = healthy
+In a scheduled-task session, calling `tabs_context_mcp` with `createIfEmpty: false` returns the literal string `"No tab group exists for this session. Use createIfEmpty: true to create one."` — this is the **healthy response**, not an error. The bridge is alive and reachable; there's simply no MCP tab group attached to this session yet. Stop the loop and report success. Confirmed 2026-04-29.
 
