@@ -77,7 +77,7 @@ check_plugin() {
   fi
 
   # Check for .env files committed
-  if find "$dir" -name ".env" -o -name ".env.*" 2>/dev/null | grep -q .; then
+  if find "$dir" \( -name ".env" -o -name ".env.*" \) ! -name "*.example" ! -name "*.sample" ! -name "*.template" 2>/dev/null | grep -q .; then
     log_fail "Secured: .env file found in plugin — credentials must not be committed"
   else
     log_pass "Secured: No .env files committed"
