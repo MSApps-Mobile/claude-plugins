@@ -19,7 +19,16 @@ Diagnose and repair a broken Claude-in-Chrome MCP connection. Work through steps
 
 ## Step 1: Test current connection
 
-> **⚠️ Scheduled task note:** If this skill is running as a **scheduled task**, `tabs_context_mcp` will ALWAYS fail (known limitation — scheduled sessions can't pair to the Chrome extension). Skip directly to verifying with `Control_Chrome` (`get_current_tab`). If that works, Chrome is healthy — report success.
+> **⚠️ Scheduled task note (updated 2026-05-01):** `tabs_context_mcp` **can work** in scheduled tasks — it does NOT always fail. Observed behavior:
+> - `createIfEmpty: false` → returns "No tab group exists for this session" (not an error — Chrome IS connected)
+> - `createIfEmpty: true` → **succeeds and creates a real tab group** IF Chrome has a normal window open
+> - `createIfEmpty: true` → returns "Grouping is not supported by tabs in this window" if Chrome has no normal window
+>
+> Fix for the "Grouping is not supported" error in scheduled tasks: use `Desktop_Commander.start_process` (NOT bash — bash runs in a sandboxed Linux VM without Mac access):
+> ```
+> mcp__Desktop_Commander__start_process: osascript -e 'tell application "Google Chrome" to make new window'
+> ```
+> Then retry `createIfEmpty: true` — it will succeed. This entire flow (detect → open window → retry) works **fully autonomously** in scheduled tasks.
 
 Call `tabs_context_mcp` with `createIfEmpty: false`.
 
