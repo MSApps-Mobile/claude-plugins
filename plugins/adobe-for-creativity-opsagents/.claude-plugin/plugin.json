@@ -1,0 +1,12 @@
+{
+  "name": "adobe-for-creativity",
+  "description": "Adobe Creative Cloud skills tuned for OpsAgents — OpsAgents Studio AI fashion content, OpsAgents/MSApps marketing assets, and Mama Sally / other Shopify clients. Edit batches, adapt for IG/TikTok/LinkedIn/YouTube, and resize to OpsAgents standard sizes. See CONTEXT.md for brand defaults.",
+  "version": "1.0.2-opsagents.1",
+  "author": {
+    "name": "Adobe (customized for OpsAgents by Michal)"
+  },
+  "repository": "https://github.com/adobe/skills",
+  "license": "Apache-2.0",
+  "keywords": ["adobe", "creative-cloud", "image-editing", "design", "opsagents", "msapps", "shopify"],
+  "skills": "./skills"
+}
