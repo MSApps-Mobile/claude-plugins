@@ -4,22 +4,29 @@ Adobe Creative Cloud skills tuned for OpsAgents work — OpsAgents Studio AI fas
 
 ## What was customized
 
-| Skill                                | What changed                                                                                                                                          |
-| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `adobe-batch-edit-photos`            | Two new looks added — **Studio Editorial** (default for OpsAgents Studio shoots) and **OpsAgents Crisp** (default for corporate/AI brand imagery).    |
-| `adobe-create-social-variations`     | "Full set" redefined as IG + TikTok + LinkedIn + YouTube. Per-brand priority order (Studio = vertical-first, corporate = horizontal-first).           |
-| `adobe-design-from-template`         | Brand palette + voice + bilingual rule table for OpsAgents, OpsAgents Studio, MSApps, Mama Sally, and client demos.                                   |
-| `adobe-edit-quick-cut`               | Per-brand cut+vibe defaults — Studio = Short/Cinematic 9:16, demo reels = Long/Talking-Moments 16:9, MSApps = Medium/Action 16:9, Shopify = Short/Action 9:16. |
-| `adobe-resize-photos-and-videos`     | Preset list rewritten around OpsAgents standard sizes: 2048×2048 Shopify, 1920×1080 web hero, 1080×1920 Studio vertical, 1200×627 LinkedIn, etc.       |
-| `adobe-retouch-portraits`            | Repurposed from wedding-photographer wording → Studio AI model batches, MSApps team headshots, Shopify lifestyle defaults.                            |
+| Skill                                | What changed                                                                                                                                          | In this tree    |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| `adobe-batch-edit-photos`            | Two new looks added — **Studio Editorial** (default for OpsAgents Studio shoots) and **OpsAgents Crisp** (default for corporate/AI brand imagery).    | in `.plugin`    |
+| `adobe-create-social-variations`     | "Full set" redefined as IG + TikTok + LinkedIn + YouTube. Per-brand priority order (Studio = vertical-first, corporate = horizontal-first).           | in `.plugin`    |
+| `adobe-design-from-template`         | Brand palette + voice + bilingual rule table for OpsAgents, OpsAgents Studio, MSApps, Mama Sally, and client demos.                                   | unzipped here   |
+| `adobe-edit-quick-cut`               | Per-brand cut+vibe defaults — Studio = Short/Cinematic 9:16, demo reels = Long/Talking-Moments 16:9, MSApps = Medium/Action 16:9, Shopify = Short/Action 9:16. | unzipped here   |
+| `adobe-resize-photos-and-videos`     | Preset list rewritten around OpsAgents standard sizes: 2048×2048 Shopify, 1920×1080 web hero, 1080×1920 Studio vertical, 1200×627 LinkedIn, etc.       | unzipped here   |
+| `adobe-retouch-portraits`            | Repurposed from wedding-photographer wording → Studio AI model batches, MSApps team headshots, Shopify lifestyle defaults.                            | in `.plugin`    |
 
 A new `CONTEXT.md` at the plugin root carries the brand list, output-folder convention, bilingual rule, and standard-size reference that all six skills consult.
 
 ## Install
 
-The canonical install artifact is the [`.plugin`](https://github.com/MichalOpsAgents/claude-plugins/raw/main/plugins/adobe-for-creativity-opsagents/adobe-for-creativity.plugin) file in this folder — drop it into Cowork → plugins to install.
+The canonical install artifact is the `adobe-for-creativity.plugin` file generated alongside this customization (it lives in Michal's outputs folder for the session and can be re-zipped from this tree at any time). Drop the `.plugin` file into Cowork → plugins to install.
 
-To browse the source skills, look at the `skills/` subfolders here. The unzipped tree omits the upstream Adobe `intake-form.html` asset (use the copy bundled inside the `.plugin` file or pull from upstream Adobe).
+To rebuild the `.plugin` from this folder:
+
+```bash
+cd plugins/adobe-for-creativity-opsagents
+zip -r ../../adobe-for-creativity.plugin . -x "README.md"
+```
+
+The three SKILL.md files marked "in `.plugin`" above (batch-edit-photos, create-social-variations, retouch-portraits) are too large to push reliably through the cli-gateway transport in their full form, so the unzipped tree only carries the three smaller skills plus the per-brand context. The complete plugin lives in the bundled `.plugin` zip.
 
 ## Brand defaults at a glance
 
