@@ -1,3 +1,8 @@
+---
+name: token-efficiency-audit
+description: Run a comprehensive token-efficiency audit on Claude usage patterns — identify input/output token waste, context-window inefficiency, low cache-hit rates, and surface 11 standard optimization patterns (O6a-O6e). Use when the user wants to audit token spend, profile prompt cost, or align with SOSA Level 3+ token-economy requirements.
+---
+
 # Token Efficiency Audit Skill
 
 ## Overview

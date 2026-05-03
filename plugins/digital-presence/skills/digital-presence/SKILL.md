@@ -1,3 +1,8 @@
+---
+name: digital-presence
+description: Manage and optimize online presence across LinkedIn, Instagram, X (Twitter), Facebook, YouTube, GitHub, and personal website. Use when the user wants to audit, plan, or coordinate posts and profile updates across multiple social/professional platforms — content calendars, profile consistency, link-in-bio updates, and cross-posting strategy.
+---
+
 # Digital Presence Manager
 
 ## Objective

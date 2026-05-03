@@ -2,7 +2,10 @@
   "name": "google-drive-upload",
   "description": "Upload files from Claude directly to Google Drive \u2014 completely free, unlimited uploads",
   "version": "1.2.0",
-  "author": "MSApps (https://msapps.mobi)",
+  "author": {
+    "name": "MSApps",
+    "url": "https://msapps.mobi"
+  },
   "license": "MIT",
   "privacy_policy": "https://opsagents.agency/privacy",
   "terms_of_service": "https://opsagents.agency/terms",

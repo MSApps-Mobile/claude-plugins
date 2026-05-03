@@ -76,8 +76,14 @@ check_plugin() {
     log_pass "Secured: No hardcoded secrets detected"
   fi
 
-  # Check for .env files committed
-  if find "$dir" -name ".env" -o -name ".env.*" 2>/dev/null | grep -q .; then
+  # Check for .env files committed.
+  # NOTE: .env.example / .env.sample / .env.template are TEMPLATES, not
+  # secrets — they document required env vars and ship deliberately. Only
+  # flag concrete .env files (and weird variants like .env.local that
+  # could leak per-developer state).
+  if find "$dir" \
+       \( -name ".env" -o -name ".env.local" -o -name ".env.production" -o -name ".env.staging" -o -name ".env.development" \) \
+       2>/dev/null | grep -q .; then
     log_fail "Secured: .env file found in plugin — credentials must not be committed"
   else
     log_pass "Secured: No .env files committed"
