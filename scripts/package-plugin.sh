@@ -1,9 +1,9 @@
 #!/bin/bash
 # ╔═══════════════════════════════════════════════════╗
-# ║  package-plugin.sh                                 !║
-#!║  Packages a plugin's .claude-plugin/ directory   !║
-#!║  into a distributable .plugin zip file           !║
-#!╚════════════════════════════════════════════════════╝
+# ║  package-plugin.sh                                ║
+# ║  Packages a plugin's .claude-plugin/ directory    ║
+# ║  into a distributable .plugin zip file            ║
+# ╚════════════════════════════════════════════════════╝
 #
 # Usage: ./scripts/package-plugin.sh <plugin-name> [output-dir]
 #
@@ -22,7 +22,7 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 PLUGIN_DIR="$REPO_ROOT/plugins/$PLUGIN_NAME"
 CLAUDE_PLUGIN_DIR="$PLUGIN_DIR/.claude-plugin"
 
-# ── Validation ───────────────────────────────────────
+# ── Validation ──────────────────────────────────────
 if [[ ! -d "$PLUGIN_DIR" ]]; then
   echo "::error::Plugin directory not found: $PLUGIN_DIR"
   exit 1
@@ -39,7 +39,6 @@ if [[ ! -f "$CLAUDE_PLUGIN_DIR/plugin.json" ]]; then
 fi
 
 # ── Read version from plugin.json ───────────────────
-
 VERSION=$(python3 -c "import json; d=json.load(open('$CLAUDE_PLUGIN_DIR/plugin.json')); print(d['version'])" 2>/dev/null)
 if [[ -z "$VERSION" ]]; then
   echo "::error::Could not read version from plugin.json"
@@ -48,8 +47,6 @@ fi
 
 # ── Prepare output dir ──────────────────────────────
 mkdir -p "$OUTPUT_DIR"
-# Resolve to absolute path so it survives the cd below
-OUTPUT_DIR="$(cd "$OUTPUT_DIR" && pwd)"
 OUTPUT_FILE="$OUTPUT_DIR/$PLUGIN_NAME-$VERSION.plugin"
 
 # Remove any existing build for this version
@@ -58,13 +55,26 @@ rm -f "$OUTPUT_FILE"
 # ── Create the zip ──────────────────────────────────
 # We zip the CONTENTS of .claude-plugin/ so the archive root
 # contains plugin.json, skills/, agents/, etc. directly.
+#
+# OUTPUT_FILE can be absolute (CI passes /tmp/dist-test/...) or
+# relative (the default "dist"). Once we `cd` into the plugin dir
+# the relative path resolves incorrectly, and prefixing with $OLDPWD
+# breaks for absolute paths (zip sees /pwd//tmp/...). Resolve once,
+# up front, and pass the absolute path to zip.
+if [[ "$OUTPUT_FILE" = /* ]]; then
+  ZIP_TARGET="$OUTPUT_FILE"
+else
+  ZIP_TARGET="$PWD/$OUTPUT_FILE"
+fi
+
 cd "$CLAUDE_PLUGIN_DIR"
-zip -r "$OUTPUT_FILE" . \
+zip -r "$ZIP_TARGET" . \
   --exclude "*.DS_Store" \
   --exclude "__pycache__/*" \
   --exclude "*.pyc" \
   --exclude "node_modules/*" \
   --exclude ".git/*"
+cd "$OLDPWD"
 
 # ── Verify ──────────────────────────────────────────
 if [[ ! -f "$OUTPUT_FILE" ]]; then
