@@ -2,7 +2,10 @@
   "name": "mac-disk-cleaner",
   "description": "Free up disk space on Mac by clearing caches, finding large files, and getting smart storage recommendations. Works in any language.",
   "version": "0.2.1",
-  "author": "MSApps (https://msapps.mobi)",
+  "author": {
+    "name": "MSApps",
+    "url": "https://msapps.mobi"
+  },
   "license": "MIT",
   "privacy_policy": "https://opsagents.agency/privacy",
   "terms_of_service": "https://opsagents.agency/terms",
