@@ -1,6 +1,6 @@
 {
   "name": "token-efficiency-audit",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "SOSA Level 3 plugin that audits and optimizes token usage across skills, scheduled tasks, plugins, and MCP connectors. Enforces the Orchestrated pillar's efficiency requirements (O6).",
   "author": {
     "name": "MSApps",
@@ -16,7 +16,7 @@
     "impact": "high",
     "pillars": {
       "supervised": "Presents findings with token savings estimates; gets explicit approval before modifying skills or scheduled tasks",
-      "orchestrated": "Plan\u2192Act\u2192Verify execution loop; parallel data gathering; enforces O6 efficiency checks systemwide",
+      "orchestrated": "Plan→Act→Verify execution loop; parallel data gathering; enforces O6 efficiency checks systemwide",
       "secured": "Never touches credentials or .mcp.json; full audit trail in Notion; skill replacements delivered as .skill packages",
       "agents": "Role: token optimization. Tools: scheduled-tasks MCP, Notion, present_files. Memory: Notion audit reports. Planning: 10-pattern optimization catalog"
     },
