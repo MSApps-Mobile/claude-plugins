@@ -1,7 +1,7 @@
 {
   "name": "google-drive-upload",
-  "description": "Upload files from Claude directly to Google Drive \u2014 completely free, unlimited uploads",
-  "version": "1.2.0",
+  "description": "Upload files from Claude directly to Google Drive — completely free, unlimited uploads",
+  "version": "1.2.1",
   "author": {
     "name": "MSApps",
     "url": "https://msapps.mobi"
@@ -29,7 +29,7 @@
     "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
     "pillars": {
       "supervised": "User confirms file before upload",
-      "orchestrated": "Config read \u2192 file identify \u2192 upload \u2192 report",
+      "orchestrated": "Config read → file identify → upload → report",
       "secured": "Credentials in local config file, never in skill. Apps Script URL scoped to user account",
       "agents": "R=file-upload, T=Google-Apps-Script-API, M=config-file, P=encode-upload-verify"
     }
