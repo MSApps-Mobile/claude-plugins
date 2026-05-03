@@ -1,7 +1,7 @@
 {
   "name": "claude-md-composer",
-  "version": "1.0.1",
-  "description": "Audit, compose, and refactor CLAUDE.md files using the 'recipe book, not filing cabinet' pattern \u2014 keep memory files scannable, token-lean, and organized across the 4-level hierarchy (enterprise \u2192 project \u2192 user \u2192 local).",
+  "version": "1.0.2",
+  "description": "Audit, compose, and refactor CLAUDE.md files using the 'recipe book, not filing cabinet' pattern — keep memory files scannable, token-lean, and organized across the 4-level hierarchy (enterprise → project → user → local).",
   "author": {
     "name": "MSApps",
     "url": "https://msapps.mobi"
