@@ -166,7 +166,7 @@ done
 echo ""
 echo "🧠 SKILLS"
 echo "========="
-for skill_dir in plugins/*/; do
+for skill_dir in "$REPO_ROOT"/skills/*/; do
   [ -d "$skill_dir" ] && [ "$(basename "$skill_dir")" != "standalone" ] && check_skill "$skill_dir"
 done
 
