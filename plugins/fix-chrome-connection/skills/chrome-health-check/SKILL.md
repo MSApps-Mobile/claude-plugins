@@ -23,7 +23,27 @@ Call `tabs_context_mcp` with `createIfEmpty: false`.
 
 **If it returns "No Chrome extension connected after discovery":**
 → Report: "❌ Chrome extension not connected — diagnosing now…"
-→ Proceed to Step 2.
+→ Before assuming Chrome is closed, run Step 1b to distinguish "Chrome closed" from "extension not paired".
+→ Then proceed to Step 2.
+
+---
+
+## Step 1b: Distinguish closed vs. unpaired Chrome
+
+Even when `tabs_context_mcp` fails, Chrome may be running — the extension just isn't paired to this session. Run these two checks before escalating.
+
+### Check A: Control_Chrome tab list
+Call `mcp__Control_Chrome__list_tabs` (no args needed).
+
+- **Returns a list of tabs** → Chrome IS running. The extension is simply not paired to this session. Tell the user: "Chrome is open but the Claude extension isn't connected — please click the Claude extension icon in your Chrome toolbar and hit **Connect**." Stop here unless they need more help.
+- **Returns error or empty** → Chrome may actually be closed → proceed to Step 2.
+
+> ⚠️ **Important (observed 2026-05-03):** `Control_Chrome.list_tabs` and `open_url` succeed even with no Claude-in-Chrome connection. However, `get_page_content` and `execute_javascript` will still fail with "Google Chrome is not running." This is a known limitation of Control_Chrome's DOM layer — it does NOT mean Chrome is closed. Trust `list_tabs` for the liveness check.
+
+### Check B: Computer-use screenshot (visual backup)
+If computer-use is available, call `mcp__computer-use__request_access` for Google Chrome, then take a screenshot. Chrome will be granted as **read-tier** (visible but not clickable). A screenshot showing the Chrome window with tabs confirms Chrome is running regardless of tool errors.
+
+> Chrome is always read-only via computer-use (tier "read") — you can see the screen but cannot click or type. For actual browser interaction, the Claude-in-Chrome extension must be connected.
 
 ---
 

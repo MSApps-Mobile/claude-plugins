@@ -3,7 +3,7 @@
 # ║  package-plugin.sh                                ║
 # ║  Packages a plugin's .claude-plugin/ directory    ║
 # ║  into a distributable .plugin zip file            ║
-# ╚═══════════════════════════════════════════════════╝
+# ╚════════════════════════════════════════════════════╝
 #
 # Usage: ./scripts/package-plugin.sh <plugin-name> [output-dir]
 #
