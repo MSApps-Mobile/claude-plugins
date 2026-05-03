@@ -55,8 +55,20 @@ rm -f "$OUTPUT_FILE"
 # ── Create the zip ──────────────────────────────────
 # We zip the CONTENTS of .claude-plugin/ so the archive root
 # contains plugin.json, skills/, agents/, etc. directly.
+#
+# OUTPUT_FILE can be absolute (CI passes /tmp/dist-test/...) or
+# relative (the default "dist"). Once we `cd` into the plugin dir
+# the relative path resolves incorrectly, and prefixing with $OLDPWD
+# breaks for absolute paths (zip sees /pwd//tmp/...). Resolve once,
+# up front, and pass the absolute path to zip.
+if [[ "$OUTPUT_FILE" = /* ]]; then
+  ZIP_TARGET="$OUTPUT_FILE"
+else
+  ZIP_TARGET="$PWD/$OUTPUT_FILE"
+fi
+
 cd "$CLAUDE_PLUGIN_DIR"
-zip -r "$OLDPWD/$OUTPUT_FILE" . \
+zip -r "$ZIP_TARGET" . \
   --exclude "*.DS_Store" \
   --exclude "__pycache__/*" \
   --exclude "*.pyc" \
