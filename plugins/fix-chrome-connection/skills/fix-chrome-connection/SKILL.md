@@ -19,16 +19,7 @@ Diagnose and repair a broken Claude-in-Chrome MCP connection. Work through steps
 
 ## Step 1: Test current connection
 
-> **⚠️ Scheduled task note (updated 2026-05-01):** `tabs_context_mcp` **can work** in scheduled tasks — it does NOT always fail. Observed behavior:
-> - `createIfEmpty: false` → returns "No tab group exists for this session" (not an error — Chrome IS connected)
-> - `createIfEmpty: true` → **succeeds and creates a real tab group** IF Chrome has a normal window open
-> - `createIfEmpty: true` → returns "Grouping is not supported by tabs in this window" if Chrome has no normal window
->
-> Fix for the "Grouping is not supported" error in scheduled tasks: use `Desktop_Commander.start_process` (NOT bash — bash runs in a sandboxed Linux VM without Mac access):
-> ```
-> mcp__Desktop_Commander__start_process: osascript -e 'tell application "Google Chrome" to make new window'
-> ```
-> Then retry `createIfEmpty: true` — it will succeed. This entire flow (detect → open window → retry) works **fully autonomously** in scheduled tasks.
+> **⚠️ Scheduled task note:** If this skill is running as a **scheduled task**, `tabs_context_mcp` will ALWAYS fail (known limitation — scheduled sessions can't pair to the Chrome extension). Skip directly to verifying with `Control_Chrome` (`get_current_tab`). If that works, Chrome is healthy — report success.
 
 Call `tabs_context_mcp` with `createIfEmpty: false`.
 
@@ -278,6 +269,38 @@ open -a "Google Chrome"; sleep 6
 
 ### Manual OAuth URL always fails
 Never manually construct the OAuth URL. Open the pairing page (`pairing.html`) instead — it triggers `initiateOAuthFlow()` automatically.
+
+### Control_Chrome partial functionality when extension is disconnected (observed 2026-05-03)
+`mcp__Control_Chrome__list_tabs` and `mcp__Control_Chrome__open_url` succeed and return real data even when `list_connected_browsers` returns `[]` and `tabs_context_mcp` fails. This means Control_Chrome can confirm Chrome is alive and even navigate it to a URL. However, `get_page_content` and `execute_javascript` still fail with "Google Chrome is not running" — this is a known limitation of Control_Chrome's DOM access layer, which requires a deeper bridge that only the Claude-in-Chrome extension provides. Use `list_tabs` as the liveness check; don't trust `get_page_content` errors as evidence Chrome is closed.
+
+**Diagnostic sequence for scheduled tasks:**
+1. `tabs_context_mcp(createIfEmpty: false)` → if fails, don't panic
+2. `Control_Chrome.list_tabs` → if returns tabs, Chrome IS alive
+3. Take computer-use screenshot (Chrome = read tier) → visual confirmation
+4. Report Chrome alive but extension unpaired → ask user to click Connect
+
+### chrome-devtools MCP is a separate server from Claude-in-Chrome (observed 2026-05-03)
+The `/chrome-devtools` skill uses a completely different MCP server (`chrome-devtools-mcp`) with its own tools: `new_page`, `take_snapshot`, `navigate_page`, `evaluate_script`, `lighthouse_audit`, etc. These tools are **not** in the same namespace as `mcp__Claude_in_Chrome__*`. If `chrome-devtools-mcp` isn't running, none of its tools will appear in ToolSearch results at all — the entire server is absent from the deferred tool list. Do not confuse the two:
+- **Claude-in-Chrome** (`mcp__Claude_in_Chrome__*`): extension-based, requires pairing
+- **chrome-devtools-mcp** (`new_page`, `take_snapshot`, etc.): DevTools Protocol server, runs separately
+
+Both can be down independently. Check ToolSearch for `new_page` to confirm whether chrome-devtools-mcp is connected.
+
+### Control_Chrome partial functionality when extension is disconnected (observed 2026-05-03)
+`mcp__Control_Chrome__list_tabs` and `mcp__Control_Chrome__open_url` succeed and return real data even when `list_connected_browsers` returns `[]` and `tabs_context_mcp` fails. Use `list_tabs` as the Chrome liveness check. However, `get_page_content` and `execute_javascript` still fail with "Google Chrome is not running" — known limitation of Control_Chrome's DOM layer; does NOT mean Chrome is closed.
+
+**Scheduled task diagnostic sequence:**
+1. `tabs_context_mcp(createIfEmpty: false)` → if fails, don't panic
+2. `Control_Chrome.list_tabs` → if returns tabs, Chrome IS alive, extension just unpaired
+3. Computer-use screenshot (Chrome = read tier) → visual confirmation
+4. Report Chrome alive but extension unpaired → ask user to click Connect
+
+### chrome-devtools MCP is a completely separate server from Claude-in-Chrome (observed 2026-05-03)
+The `/chrome-devtools` skill uses a separate MCP server (`chrome-devtools-mcp`) with tools `new_page`, `take_snapshot`, `navigate_page`, `evaluate_script`, `lighthouse_audit`, etc. These are NOT in the `mcp__Claude_in_Chrome__*` namespace. If `chrome-devtools-mcp` isn't running, none of its tools appear in ToolSearch at all. Both can be down independently:
+- **Claude-in-Chrome** (`mcp__Claude_in_Chrome__*`): extension-based, requires pairing
+- **chrome-devtools-mcp** (`new_page`, `take_snapshot`, etc.): DevTools Protocol server, separate process
+
+Check ToolSearch for `new_page` to confirm whether chrome-devtools-mcp is connected.
 
 ### macOS quarantine on socket directory
 Check: `xattr -l /tmp/claude-mcp-browser-bridge-$(whoami)/`
