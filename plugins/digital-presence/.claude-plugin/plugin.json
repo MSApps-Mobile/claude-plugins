@@ -2,7 +2,10 @@
   "name": "digital-presence",
   "version": "1.0.0",
   "description": "Manage and optimize online presence across all major social platforms",
-  "author": "MSApps",
+  "author": {
+    "name": "MSApps",
+    "url": "https://msapps.mobi"
+  },
   "impact": "medium",
   "topics": [
     "sosa-agents"
