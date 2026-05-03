@@ -1,7 +1,7 @@
 <p align="center">
   <a href="https://github.com/MSApps-Mobile/claude-plugins/stargazers"><img src="https://img.shields.io/github/stars/MSApps-Mobile/claude-plugins?style=social" alt="GitHub Stars"></a>
   <img src="https://img.shields.io/github/forks/MSApps-Mobile/claude-plugins?style=social" alt="GitHub Forks">
-  <img src="https://img.shields.io/badge/plugins-27-blue" alt="Plugins">
+  <img src="https://img.shields.io/badge/plugins-29-blue" alt="Plugins">
   <img src="https://img.shields.io/badge/SOSA%E2%84%A2-compliant-brightgreen" alt="SOSA Compliant">
   <img src="https://img.shields.io/badge/Claude_Code-compatible-8A2BE2" alt="Claude Code">
   <img src="https://img.shields.io/badge/Cowork-compatible-8A2BE2" alt="Cowork">
@@ -16,7 +16,7 @@
 
 > **If you find these plugins useful, please ⭐ star this repo** — it helps other developers discover the marketplace and motivates us to keep building!
 
-**The largest open-source plugin marketplace for Claude.** 27 production-ready plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (CLI) and [Cowork](https://claude.ai) (desktop app) — built on the SOSA™ security framework.
+**The largest open-source plugin marketplace for Claude.** 29 production-ready plugins for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (CLI) and [Cowork](https://claude.ai) (desktop app) — built on the SOSA™ security framework.
 
 > Upload to Google Drive. Track time in Toggl. Transcribe YouTube videos. Send WhatsApp messages. Manage WordPress. Prospect with Apollo. Clean your Mac. All from a single Claude conversation.
 
@@ -76,6 +76,8 @@ We built **SOSA™ (Supervised Orchestrated Secured Agents)** to fix that — a 
 | [**zoho-mail-health**](./plugins/zoho-mail-health) | Daily health check for Zoho Mail accounts | `zoho-mail-health@msapps-plugins` |
 | [**gcloud-cli-health-check**](./plugins/gcloud-cli-health-check) | Scheduled health check for Google Cloud CLI (gcloud) | `gcloud-cli-health-check@msapps-plugins` |
 
+| [**opsagent-shopify**](./plugins/opsagent-shopify) | Shopify operating skills bundle — Storefront MCP, Symmetry theme install, Partner marketing assessment | `opsagent-shopify@msapps-plugins` |
+
 ### Security & Optimization Plugins
 
 | Plugin | What it does | Install |
@@ -92,6 +94,7 @@ We built **SOSA™ (Supervised Orchestrated Secured Agents)** to fix that — a 
 | [**swift-lsp**](./plugins/swift-lsp) | Real-time Swift code intelligence — diagnostics, go-to-definition, hover types via SourceKit-LSP | `swift-lsp@msapps-plugins` |
 | [**kotlin-lsp**](./plugins/kotlin-lsp) | Real-time Kotlin code intelligence — diagnostics, go-to-definition, hover types via kotlin-language-server | `kotlin-lsp@msapps-plugins` |
 | [**claude-md-composer**](./plugins/claude-md-composer) | Audit, compose, and refactor CLAUDE.md files — keeps memory under 200 lines, flips negative rules, splits across the 4-level hierarchy ([inspiration](https://medium.com/@kjramsy/your-claude-md-is-eating-your-token-budget-heres-how-to-fix-it-b8d6c4d1c986)) | `claude-md-composer@msapps-plugins` |
+| [**agents-md-optimizer**](./plugins/agents-md-optimizer) | Audit bloated CLAUDE.md / AGENTS.md files and rewrite them lean, or author a new one using the 200-line "recipe book" principle | `agents-md-optimizer@msapps-plugins` |
 
 > **Mobile devs:** swift-lsp ships with Xcode — zero extra setup. kotlin-lsp installs via `brew install kotlin-language-server`.
 
