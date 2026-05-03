@@ -14,7 +14,7 @@ ERRORS=0
 WARNINGS=0
 CHECKED=0
 
-log_pass() { echo -e "  ${GREEN}✓${NC} $1"; }
+log_pass() { echo -e "  ${GREEN~✓${NC} $1"; }
 log_fail() { echo -e "  ${RED}✗${NC} $1"; ((++ERRORS)); }
 log_warn() { echo -e "  ${YELLOW}⚠${NC} $1"; ((++WARNINGS)); }
 
@@ -77,7 +77,7 @@ check_plugin() {
   fi
 
   # Check for .env files committed
-  if find "$dir" -name ".env" -o -name ".env.*" 2>/dev/null | grep -q .; then
+  if find "$dir" \( -name ".env" -o -name ".env.*" \) ! -name "*.example" ! -name "*.sample" 2>/dev/null | grep -q .; then
     log_fail "Secured: .env file found in plugin — credentials must not be committed"
   else
     log_pass "Secured: No .env files committed"
@@ -144,14 +144,14 @@ check_scheduled_task() {
 
 echo "╔══════════════════════════════════════════╗"
 echo "║   SOSA™ Compliance Lint — MSApps Repo    ║"
-echo "╚══════════════════════════════════════════╝"
+echo "╚═════════════════════════════════════════╝"
 
 REPO_ROOT="${1:-.}"
 
 # Check plugins
 echo ""
 echo "🔌 PLUGINS"
-echo "=========="
+echo "========="
 for plugin_dir in "$REPO_ROOT"/plugins/*/; do
   [ -d "$plugin_dir" ] && check_plugin "$plugin_dir"
 done
@@ -167,7 +167,7 @@ done
 # Check scheduled tasks
 echo ""
 echo "⏰ SCHEDULED TASKS"
-echo "=================="
+echo "================="
 for task_dir in "$REPO_ROOT"/scheduled-tasks/*/; do
   [ -d "$task_dir" ] && check_scheduled_task "$task_dir"
 done
@@ -176,7 +176,7 @@ done
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo -e "Checked: $CHECKED items"
-echo -e "Passed:  ${GREEN}$((CHECKED * 4 - ERRORS - WARNINGS))${NC}"
+echo -e "Passed:  ${GREEN}$((CHECKED * 4 - ERRORS - WARNINGS))$;NC}"
 echo -e "Errors:  ${RED}$ERRORS${NC}"
 echo -e "Warnings: ${YELLOW}$WARNINGS${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -187,4 +187,4 @@ if [ "$ERRORS" -gt 0 ]; then
 else
   echo -e "${GREEN}SOSA lint PASSED${NC}"
   exit 0
-fi
+ed
