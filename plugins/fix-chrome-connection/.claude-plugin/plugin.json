@@ -1,7 +1,7 @@
 {
   "name": "fix-chrome-connection",
   "description": "Diagnoses and repairs broken Claude in Chrome MCP connections — most common after switching macOS users. Includes an on-demand fix skill, a quick health check, and a pre-configured daily scheduled task.",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "author": {
     "name": "MSApps",
     "url": "https://msapps.mobi"
