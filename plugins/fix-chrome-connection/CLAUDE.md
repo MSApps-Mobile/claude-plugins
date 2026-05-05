@@ -26,7 +26,7 @@ tabs_context_mcp(createIfEmpty=false) errors?
 │   │   └── Live session? → Account switch or session mismatch → Step 5 (manual re-auth)
 │   ├── connected=true + tool calls fail in ~70ms → Stale 0.sock → Step 2b
 │   └── No log entries → Chrome not running → restart Chrome
-└── NO (returns "no tab group") → Connection OK
+└── NO (returns "no tab group") → Connection Ok
     └── tabs_context_mcp(createIfEmpty=true)
         ├── SUCCEEDS → Done ✅
         └── "normal windows" error → osascript make new window → retry
@@ -90,11 +90,11 @@ Two separate Chrome connections — do NOT confuse them:
 ### Bridge architecture
 ```
 Chrome Extension
-      ↕ stdin/stdout (native messaging)
+       ↕ stdin/stdout (native messaging)
 chrome-native-host  (/Applications/Claude.app/Contents/Helpers/chrome-native-host)
-      ↕ Unix socket (/tmp/claude-mcp-browser-bridge-{user}/{pid}.sock)
+       ↕ Unix socket (/tmp/claude-mcp-browser-bridge-{user}/{pid}.sock)
 Claude App MCP server
-      ↕ WebSocket (wss://bridge.claudeusercontent.com/chrome/{userId})
+       ↕ WebSocket (wss://bridge.claudeusercontent.com/chrome/{userId})
 Cowork Session (paired via ~/Library/Application Support/Claude/bridge-state.json)
 ```
 
@@ -132,6 +132,7 @@ Health check logic for scheduled tasks:
 4. `Control_Chrome` works but `tabs_context_mcp` errors → scheduled session isn't paired; report status only (no fix needed)
 
 Empirical note (2026-04-20 scheduled run): `createIfEmpty: true` successfully created a tab group from a scheduled task — the pairing worked. So don't assume failure by default.
+Empirical note (2026-05-06 scheduled run): Confirmed healthy again. `createIfEmpty: false` → "No tab group exists" (normal), then `createIfEmpty: true` → success (groupId 370615011, tabId 1833329118). Behavior consistent across runs.
 
 ---
 
