@@ -59,8 +59,10 @@ Log messageMeaningGo to`"No Chrome extension connected after discovery"` + live 
 **Quick LevelDB diagnostic (extension bridge status):**
 
 ```bash
-strings ~/Library/Application\ Support/Google/Chrome/Default/Local\ Extension\ Settings/fcoeoabgfenejglbffodgkkbkcdhcgfn/*.ldb 2>/dev/null | grep -E "mcpConnected|Connected:"
+EXTDIR="$HOME/Library/Application Support/Google/Chrome/Default/Local Extension Settings/fcoeoabgfenejglbffodgkkbkcdhcgfn"
+strings "$EXTDIR/"*.ldb "$EXTDIR/"*.log 2>/dev/null | grep -E "mcpConnected|Connected:"
 ```
+> **Note:** LevelDB may have only `.log` (WAL) files when recently compacted — check both extensions.
 
 - `Connected: false`, no `mcpConnected: true` → auth failure → Step 6 (re-auth)
 - `mcpConnected: true` → bridge connected before, may be transient or stale socket → Step 2b
@@ -72,7 +74,8 @@ strings ~/Library/Application\ Support/Google/Chrome/Default/Local\ Extension\ S
 # Bridge userId Claude Desktop is using:
 grep "Connecting to bridge:" ~/Library/Logs/Claude/main.log | grep -v "getSessionsFor" | tail -1
 # Extension's stored accountUuid:
-strings ~/Library/Application\ Support/Google/Chrome/Default/Local\ Extension\ Settings/fcoeoabgfenejglbffodgkkbkcdhcgfn/*.ldb 2>/dev/null | grep -A1 "ountUuid" | head -3
+EXTDIR="$HOME/Library/Application Support/Google/Chrome/Default/Local Extension Settings/fcoeoabgfenejglbffodgkkbkcdhcgfn"
+strings "$EXTDIR/"*.ldb "$EXTDIR/"*.log 2>/dev/null | grep -A1 "ountUuid" | head -3
 ```
 
 If the bridge URL shows `chrome/{UUID-A}` but extension `accountUuid` is `UUID-B` → **account mismatch → Step 6 directly**.
