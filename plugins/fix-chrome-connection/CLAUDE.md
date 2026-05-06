@@ -113,6 +113,7 @@ Cowork Session (paired via ~/Library/Application Support/Claude/bridge-state.jso
 - Chrome restart creates a new `{pid}.sock` but does NOT update `0.sock`
 - Stale `0.sock` = `connected=true, authenticated=true` but every tool call fails in ~70ms
 - Fix: `ln -sf {newest.sock} 0.sock`
+- **Also applies within same day**: if Chrome restarts during the day, the new PID socket won't be symlinked. Scheduled task health checks should always verify and fix 0.sock proactively.
 
 ---
 
@@ -131,8 +132,11 @@ Health check logic for scheduled tasks:
 3. Both error → try `Control_Chrome list_tabs`; if that also fails, Chrome isn't running — restart it
 4. `Control_Chrome` works but `tabs_context_mcp` errors → scheduled session isn't paired; report status only (no fix needed)
 
+**Proactive 0.sock check in scheduled tasks:** Always check `ls -la /tmp/claude-mcp-browser-bridge-$(whoami)/` and fix the symlink if 0.sock points to a non-existent or older socket before running other checks.
+
 Empirical note (2026-04-20 scheduled run): `createIfEmpty: true` successfully created a tab group from a scheduled task — the pairing worked. So don't assume failure by default.
 Empirical note (2026-05-06 scheduled run): Confirmed healthy again. `createIfEmpty: false` → "No tab group exists" (normal), then `createIfEmpty: true` → success (groupId 370615011, tabId 1833329118). Behavior consistent across runs.
+Empirical note (2026-05-06 scheduled run, stale socket fix): Found `0.sock` pointing to `96148.sock` (May 5) while live native host was using `80081.sock` (May 6, 21:14). Fixed symlink autonomously → `createIfEmpty: true` succeeded (groupId 1857603860, tabId 1833331038). Stale 0.sock can occur after Chrome restarts even within the same day. Scheduled task health check should proactively check and fix this before other diagnostics.
 
 ---
 
