@@ -37,11 +37,17 @@ dont stop until fixed
 | Chrome extension (correct) | ms.apps@msapps.mobi |
 | Chrome extension (OLD/wrong) | msmobileapps@gmail.com |
 
+## Trello Board
+
+**Dedicated board:** https://trello.com/b/hX5om9cS/opsagents-chrome-runner (ID: `69fbf3cb9b01b031ac3ce445`)
+Log all health check runs and fixes to the **✅ Done** list on this board.
+
 ## Last Run
 
-- Date: 2026-05-10
-- Result: ✅ HEALTHY — chrome-devtools-mcp list_pages returned 2 pages; smoke test passed
-- Pages open: about:blank, https://cli-gateway-zadkrinzra-ey.a.run.app/health
-- Smoke test: example.com loaded 200 OK, "Example Domain" found, no critical errors
-- Note: 1 console error (404 on non-critical resource, likely favicon) — page fully functional
-- Method: chrome-devtools-mcp (not Control_Chrome bridge)
+- Date: 2026-05-11
+- Result: ✅ HEALTHY — Outcome C (Chrome healthy, chrome-devtools-mcp stuck state)
+- Tabs open: https://shell.cloud.google.com/ (Cloud Shell), https://claude.ai/
+- Smoke test: example.com opened → "Example Domain" title confirmed ✅
+- Note: chrome-devtools-mcp stuck with "The selected page has been closed" — stale page ref, unrecoverable mid-session. Resolved on Claude restart. NOT a Chrome failure.
+- Fix shipped: `fix-chrome-connection/SKILL.md` + `chrome-connections-health-check/SKILL.md` updated; GitHub commit `5d36ac2`
+- Method: Control_Chrome bridge (get_current_tab + list_tabs + open_url)
