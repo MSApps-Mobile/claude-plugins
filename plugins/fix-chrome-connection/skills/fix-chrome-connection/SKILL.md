@@ -345,3 +345,23 @@ Socket mtime showing a past date is normal if the native host hasn't been restar
 ### tabs_context_mcp "No tab group exists for this session" = healthy
 In a scheduled-task session, calling `tabs_context_mcp` with `createIfEmpty: false` returns the literal string `"No tab group exists for this session. Use createIfEmpty: true to create one."` — this is the **healthy response**, not an error. The bridge is alive and reachable; there's simply no MCP tab group attached to this session yet. Stop the loop and report success. Confirmed 2026-04-29.
 
+
+### chrome-devtools-mcp "The selected page has been closed" — stuck MCP state (observed 2026-05-11)
+
+`list_pages` and all other chrome-devtools-mcp tools fail with:
+> "The selected page has been closed. Call list_pages to see open pages."
+
+Root cause: chrome-devtools-mcp's MCP server process persists the last selected page reference
+in memory. When that page is closed between sessions, the server enters a stuck state where
+**every** call (including `list_pages` and `new_page`) returns this error. Unrecoverable within
+the session — resolves on full Claude Desktop restart.
+
+**This is NOT a Chrome failure.** `Control_Chrome.get_current_tab`, `list_tabs`, and `open_url`
+succeed normally when this happens.
+
+**Scheduled task health check:** If `list_pages` returns this error, use
+`Control_Chrome.get_current_tab` as the liveness check. If that returns valid tab data → Chrome
+IS healthy. Report as outcome C: "Chrome healthy, devtools MCP stuck (resolves on Claude restart)."
+
+Note: occurs even with `--isolated` configured — isolation prevents profile collisions but does
+not prevent the in-memory selected-page state from going stale.
