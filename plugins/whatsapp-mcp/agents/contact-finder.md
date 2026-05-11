@@ -24,7 +24,7 @@ Replace NAME with the contact's name (or partial name). If results found → don
 
 ### Tier 2: macOS AddressBook (fallback)
 ```bash
-sqlite3 "/Users/michalshatz/Library/Application Support/AddressBook/Sources/"*"/AddressBook-v22.abcddb" \
+sqlite3 "$HOME/Library/Application Support/AddressBook/Sources/"*"/AddressBook-v22.abcddb" \
   "SELECT c.ZFIRSTNAME, c.ZLASTNAME, p.ZFULLNUMBER FROM ZABCDRECORD c \
    JOIN ZABCDPHONENUMBER p ON c.Z_PK = p.ZOWNER \
    WHERE c.ZFIRSTNAME LIKE '%FIRST%' OR c.ZLASTNAME LIKE '%LAST%';" 2>/dev/null
