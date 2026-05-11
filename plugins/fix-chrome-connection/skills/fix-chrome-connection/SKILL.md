@@ -365,3 +365,31 @@ IS healthy. Report as outcome C: "Chrome healthy, devtools MCP stuck (resolves o
 
 Note: occurs even with `--isolated` configured — isolation prevents profile collisions but does
 not prevent the in-memory selected-page state from going stale.
+
+### Account mismatch — michal@opsagents.agency is current Claude Desktop account (observed 2026-05-11)
+
+When Claude Desktop switches to a new account (e.g. from `ms.apps@msapps.mobi` to `michal@opsagents.agency`), the Chrome extension's stored `accountUuid` in LevelDB stays on the old value. `list_connected_browsers` returns `[]`, reconnect URL and pairing page fail silently.
+
+**Diagnosis:** Check LevelDB accountUuid vs bridge URL userId:
+```bash
+# Bridge userId:
+grep "Connecting to bridge:" ~/Library/Logs/Claude/main.log | grep -v getSessionsFor | tail -1
+# Extension accountUuid:
+EXTDIR="$HOME/Library/Application Support/Google/Chrome/Default/Local Extension Settings/fcoeoabgfenejglbffodgkkbkcdhcgfn"
+strings "$EXTDIR/"*.ldb "$EXTDIR/"*.log 2>/dev/null | grep -E "accountUuid" | head -3
+```
+If they don't match → account mismatch → Step 6 (manual re-auth) is required.
+
+**Important — Chrome profile restriction:** `michal@opsagents.agency` Chrome profile is under Google Workspace and **cannot install Chrome extensions** (admin policy blocks it). The Claude extension must be installed in the `msmobileapps@gmail.com` Chrome profile. When re-authing:
+1. Switch to the `msmobileapps@gmail.com` Chrome profile
+2. Sign out of the Claude extension (Chrome toolbar → Claude icon → sign out)
+3. Sign back in with the **Claude** account `michal@opsagents.agency` (NOT the Chrome/Google account)
+4. Navigate Chrome to `https://clau.de/chrome/reconnect` to wake the service worker
+5. Verify: `list_connected_browsers` should return 1 browser within ~10s
+
+**Account mapping (current):**
+| Side | Account |
+|------|---------|
+| Claude Desktop | michal@opsagents.agency (UUID: 6af17bb7-f27e-43c0-af5c-06ea9de78689) |
+| Chrome profile with extension | msmobileapps@gmail.com (Default Chrome profile) |
+| Claude auth in extension | michal@opsagents.agency |
