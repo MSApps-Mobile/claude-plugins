@@ -44,10 +44,11 @@ Log all health check runs and fixes to the ** ✅ Done** list on this board.
 
 ## Last Run
 
-- Date: 2026-05-11 (scheduled run)
-- Result: - HEALTHY -- Outcome C (Chrome healthy, chrome-devtools-mcp stuck state)
-- Tabs open: Cloud Shell, claude.ai, Chrome Web Store, Azure Portal, Chrome Settings, Microsoft login (x2), example.com (smoke test)
-- Smoke test: example.com opened ₒ "Example Domain" title confirmed -
-- Note: chrome-devtools-mcp stuck with "The selected page has been closed" -- stale page ref, unrecoverable mid-session. Resolved on Claude restart. NOT a Chrome failure.
-- Method: Control_Chrome bridge (get_current_tab + list_tabs + open_url)
-- Trello: https://trello.com/c/zsWJw4V8
+- Date: 2026-05-11 (manual fix session)
+- Result: 🔇 FIXED — 0.sock absent after Chrome restart → symlink created → Control_Chrome restored
+- Root cause: Chrome restarted (PID 97385), created 97385.sock but no 0.sock symlink
+- Fix: `ln -sf /tmp/claude-mcp-browser-bridge-michalshatz/97385.sock /tmp/claude-mcp-browser-bridge-michalshatz/0.sock`
+- Acceptance: Control_Chrome.get_current_tab ₒ "Example Domain" -
+- Still stuck: chrome-devtools-mcp stale page ref -- resolves on Claude Desktop restart
+- Trello: https://trello.com/c/SQ1UBb5V
+- Side: azure-client-id + azure-tenant-id populated in GCP Secret Manager (OpsAgents B2Billing)
