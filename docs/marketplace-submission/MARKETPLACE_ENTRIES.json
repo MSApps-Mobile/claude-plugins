@@ -1,0 +1,76 @@
+{
+  "_comment": "Drop-in entries for anthropics/claude-plugins-official/.claude-plugin/marketplace.json. Each block is a complete entry — paste it into the JSON array, alphabetized by 'name'. Update 'sha' to the pinned commit on MSApps-Mobile/claude-plugins/main at submission time. Categories below mirror upstream usage (development, productivity, integrations). Adjust if upstream taxonomy changes.",
+
+  "cowork-mem": {
+    "name": "cowork-mem",
+    "description": "Persistent memory across Cowork sessions. Automatically recalls past decisions, file changes, insights, and errors so you never lose context between sessions. Inspired by claude-mem, rebuilt natively for Cowork. 7 skills covering recall, planning, exploration, search, knowledge Q&A, and timeline reporting.",
+    "author": {
+      "name": "MSApps",
+      "url": "https://msapps.mobi"
+    },
+    "category": "productivity",
+    "source": {
+      "source": "git-subdir",
+      "url": "https://github.com/MSApps-Mobile/claude-plugins.git",
+      "path": "plugins/cowork-mem",
+      "ref": "main",
+      "sha": "REPLACE_WITH_PINNED_SHA"
+    },
+    "homepage": "https://github.com/MSApps-Mobile/claude-plugins/tree/main/plugins/cowork-mem"
+  },
+
+  "notion-memory": {
+    "name": "notion-memory",
+    "description": "Long-term memory for Claude across sessions via Notion, plus the 4 official Anthropic Notion skills (knowledge-capture, meeting-intelligence, research-documentation, spec-to-implementation) bundled together. MSApps memory skill + Anthropic-authored skills, all attributed.",
+    "author": {
+      "name": "MSApps",
+      "url": "https://msapps.mobi"
+    },
+    "category": "productivity",
+    "source": {
+      "source": "git-subdir",
+      "url": "https://github.com/MSApps-Mobile/claude-plugins.git",
+      "path": "plugins/notion-memory",
+      "ref": "main",
+      "sha": "REPLACE_WITH_PINNED_SHA"
+    },
+    "homepage": "https://github.com/MSApps-Mobile/claude-plugins/tree/main/plugins/notion-memory"
+  },
+
+  "opsagent-shopify": {
+    "name": "opsagent-shopify",
+    "description": "Shopify operating toolkit for partners and merchants — Admin API + Storefront MCP tools (products, files, orders, customers, themes, metafields), theme-install playbooks, and Shopify Academy Partner Marketing guidance. Includes a TypeScript SDK with typed contracts.",
+    "author": {
+      "name": "Michal Shatz / MSApps",
+      "email": "michal@opsagents.agency",
+      "url": "https://opsagents.agency"
+    },
+    "category": "integrations",
+    "source": {
+      "source": "git-subdir",
+      "url": "https://github.com/MSApps-Mobile/claude-plugins.git",
+      "path": "plugins/opsagent-shopify",
+      "ref": "main",
+      "sha": "REPLACE_WITH_PINNED_SHA"
+    },
+    "homepage": "https://github.com/MSApps-Mobile/claude-plugins/tree/main/plugins/opsagent-shopify"
+  },
+
+  "whatsapp-mcp": {
+    "name": "whatsapp-mcp",
+    "description": "Connect Claude to WhatsApp — search messages, read conversations, send texts and media, and manage business outreach. Includes a Notion-backed conversation memory system that learns each contact's tone, language, and preferences over time. Works in any language.",
+    "author": {
+      "name": "MSApps",
+      "url": "https://msapps.mobi"
+    },
+    "category": "integrations",
+    "source": {
+      "source": "git-subdir",
+      "url": "https://github.com/MSApps-Mobile/claude-plugins.git",
+      "path": "plugins/whatsapp-mcp",
+      "ref": "main",
+      "sha": "REPLACE_WITH_PINNED_SHA"
+    },
+    "homepage": "https://github.com/MSApps-Mobile/claude-plugins/tree/main/plugins/whatsapp-mcp"
+  }
+}
