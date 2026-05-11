@@ -1,0 +1,38 @@
+{
+  "name": "obsidian-memory",
+  "description": "Long-term memory for Claude — remembers preferences, decisions, and project context across sessions using an Obsidian vault",
+  "version": "1.0.0",
+  "author": {
+    "name": "MSApps",
+    "url": "https://msapps.mobi"
+  },
+  "license": "MIT",
+  "keywords": [
+    "obsidian",
+    "memory",
+    "context",
+    "preferences",
+    "sessions",
+    "sosa-agents"
+  ],
+  "platforms": [
+    "claude-code",
+    "cowork"
+  ],
+  "sosa": {
+    "compliant": true,
+    "level": 2,
+    "impact": "medium",
+    "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md",
+    "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
+    "pillars": {
+      "supervised": "User controls what gets stored — all files are local Markdown",
+      "orchestrated": "Structured vault folders with cross-session retrieval",
+      "secured": "Local filesystem only, no external APIs, user owns all data",
+      "agents": "R=long-term-memory, T=filesystem, M=obsidian-vault, P=store-retrieve-update"
+    }
+  },
+  "topics": [
+    "sosa-agents"
+  ]
+}
