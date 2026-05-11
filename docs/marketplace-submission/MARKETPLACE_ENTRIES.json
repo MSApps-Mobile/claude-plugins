@@ -1,5 +1,5 @@
 {
-  "_comment": "Drop-in entries for anthropics/claude-plugins-official/.claude-plugin/marketplace.json. Each block is a complete entry — paste it into the JSON array, alphabetized by 'name'. Update 'sha' to the pinned commit on MSApps-Mobile/claude-plugins/main at submission time. Categories below mirror upstream usage (development, productivity, integrations). Adjust if upstream taxonomy changes.",
+  "_comment": "Drop-in entries for anthropics/claude-plugins-official/.claude-plugin/marketplace.json. Each block is a complete entry — paste it into the JSON array, alphabetized by 'name'. Three plugins (cowork-mem, notion-memory, whatsapp-mcp) are pinned to the current main HEAD and READY to submit. opsagent-shopify still has REPLACE_WITH_PINNED_SHA pending resolution of the mcp-server/dist/ build-artifact question (see AUDIT.md). Categories below mirror upstream usage (development, productivity, integrations).",
 
   "cowork-mem": {
     "name": "cowork-mem",
@@ -14,7 +14,7 @@
       "url": "https://github.com/MSApps-Mobile/claude-plugins.git",
       "path": "plugins/cowork-mem",
       "ref": "main",
-      "sha": "REPLACE_WITH_PINNED_SHA"
+      "sha": "0beee048204804c546d067ffc4713a998620057b"
     },
     "homepage": "https://github.com/MSApps-Mobile/claude-plugins/tree/main/plugins/cowork-mem"
   },
@@ -32,7 +32,7 @@
       "url": "https://github.com/MSApps-Mobile/claude-plugins.git",
       "path": "plugins/notion-memory",
       "ref": "main",
-      "sha": "REPLACE_WITH_PINNED_SHA"
+      "sha": "0beee048204804c546d067ffc4713a998620057b"
     },
     "homepage": "https://github.com/MSApps-Mobile/claude-plugins/tree/main/plugins/notion-memory"
   },
@@ -69,7 +69,7 @@
       "url": "https://github.com/MSApps-Mobile/claude-plugins.git",
       "path": "plugins/whatsapp-mcp",
       "ref": "main",
-      "sha": "REPLACE_WITH_PINNED_SHA"
+      "sha": "0beee048204804c546d067ffc4713a998620057b"
     },
     "homepage": "https://github.com/MSApps-Mobile/claude-plugins/tree/main/plugins/whatsapp-mcp"
   }
