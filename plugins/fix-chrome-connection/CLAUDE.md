@@ -138,16 +138,17 @@ Empirical note (2026-04-20 scheduled run): `createIfEmpty: true` successfully cr
 Empirical note (2026-05-06 scheduled run): Confirmed healthy again. `createIfEmpty: false` → "No tab group exists" (normal), then `createIfEmpty: true` → success (groupId 370615011, tabId 1833329118). Behavior consistent across runs.
 Empirical note (2026-05-06 scheduled run, stale socket fix): Found `0.sock` pointing to `96148.sock` (May 5) while live native host was using `80081.sock` (May 6, 21:14). Fixed symlink autonomously → `createIfEmpty: true` succeeded (groupId 1857603860, tabId 1833331038). Stale 0.sock can occur after Chrome restarts even within the same day. Scheduled task health check should proactively check and fix this before other diagnostics.
 Empirical note (2026-05-13 scheduled run, absent 0.sock): `0.sock` was completely absent (not stale — entirely missing). Native host `chrome-na` PID 13201 was alive on `13201.sock` (created May 12). `list_connected_browsers` confirmed bridge was connected. Created `0.sock → 13201.sock` → `createIfEmpty: true` succeeded immediately (groupId 1951892452, tabId 1833337193). Takeaway: 0.sock can disappear entirely (not just go stale) while the native host stays alive. Proactive symlink creation is always safe and necessary.
+Empirical note (2026-05-14 scheduled run, absent 0.sock again): Same pattern — `0.sock` entirely absent, only `1034.sock` present (created May 14 07:34). Native host `chrome-na` PID 1034 alive, LevelDB showed `mcpConnected`. Logs: `connected=true, authenticated=true, wsState=1`. Created `0.sock → 1034.sock` → `createIfEmpty: true` succeeded immediately (groupId 1149795781, tabId 1833338604). Pattern now seen on consecutive days: 0.sock absence is consistent behavior, not a one-off. The proactive 0.sock fix in scheduled runs is confirmed essential.
 
 ---
 
 ## Self-improvement rule
 
 After every run (successful or not), if you learned something:
-1. Update relevant files in `~/Documents/claude-plugins/plugins/fix-chrome-connection/`
+1. Update relevant files in `~/claude-plugins/plugins/fix-chrome-connection/`
 2. Run:
 ```bash
-cd ~/Documents/claude-plugins
+cd ~/claude-plugins
 git add plugins/fix-chrome-connection/
 git commit -m "fix-chrome-connection: self-improvement $(date '+%Y-%m-%d')"
 git pull --rebase origin main && git push origin main
