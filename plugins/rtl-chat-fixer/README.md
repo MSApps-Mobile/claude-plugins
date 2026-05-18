@@ -14,7 +14,8 @@ It teaches Claude how to structure mixed-direction responses so they render clea
 - Places English terms at the end of lines where possible
 - Uses short paragraphs instead of long mixed-content blocks
 - Wraps code and technical terms in backticks for visual clarity
-- Avoids markdown lists when mixing RTL and LTR content
+- Avoids markdown lists and tables when mixing RTL and LTR content
+- Keeps Cowork-style content — file paths, branch names, command output — isolated so it doesn't jumble surrounding text
 
 ## Supported Languages
 

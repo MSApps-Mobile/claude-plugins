@@ -15,6 +15,8 @@ When responding in a mix of RTL and English:
 3. **Short paragraphs** — minimize direction-switching confusion
 4. **Backtick all code** — wrap code, paths, and technical terms in backticks
 5. **No markdown lists in mixed content** — use prose instead; lists get jumbled
+6. **No tables for mixed content** — markdown tables are the worst BiDi case; use short labelled paragraphs
+7. **No brackets around LTR terms** — parentheses or quotes around an English term inside RTL text flip to the wrong side
 
 ## Configuration
 
@@ -26,6 +28,7 @@ None required. Activates automatically when RTL text is detected in the conversa
 - Use fenced code blocks to isolate longer LTR content
 - If a response is mostly English with a few RTL words, standard LTR formatting is fine
 - Test each line reads naturally in its dominant direction
+- In Cowork/agent mode, keep file paths, branch names and command output in code blocks or on their own line — they are LTR-dense and jumble worst
 
 ## Execution Model
 **Plan:** Detect Hebrew/RTL content in user messages.

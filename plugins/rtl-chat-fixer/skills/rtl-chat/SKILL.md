@@ -132,9 +132,72 @@ Keep in English when standard across all languages:
 
 API, SDK, CLI, npm, React, TypeScript, Python, etc. Package names, function names, file paths, commands.
 
+### Rule 7: Brackets around an LTR term are a hidden jumble source
+
+Parentheses, square brackets, and quotation marks placed directly around an English term inside an RTL line are one of the most common causes of "the punctuation moved" complaints. The bracket belongs to the LTR run, so the renderer often pushes the closing bracket — or both — to the wrong side of the line.
+
+Less readable:
+
+```
+מומלץ לעבוד עם הגרסה האחרונה (React 18) בפרויקט
+```
+
+More readable — lift the parenthetical onto its own line, or drop the brackets entirely:
+
+```
+מומלץ לעבוד עם הגרסה האחרונה של React
+
+הכוונה לגרסה 18
+```
+
+The same goes for a label ending in a colon right before an LTR term: put the command or term on the next line so the colon stays attached to the RTL text.
+
+### Rule 8: Don't use tables for mixed-direction content
+
+Markdown tables are the worst case for the BiDi algorithm. Each cell is its own tiny direction context, the column alignment fights the RTL reading order, and the header row can flip independently of the body rows. A table that mixes Hebrew or Arabic with English collapses into something genuinely unreadable.
+
+Present structured data as short labelled paragraphs instead:
+
+```
+ספרייה: React
+תפקיד: ניהול ממשק המשתמש
+
+ספרייה: Zustand
+תפקיד: ניהול הסטייט
+```
+
+A table is fine only when every cell is pure RTL, or every cell is pure LTR (for example a table of `npm` commands) — never a mix.
+
 ## Code Blocks
 
 Code blocks (fenced with ```) render correctly since they are always LTR. Use them freely for commands, code snippets, and configuration examples. They also provide a natural visual break in the text.
+
+## Headings
+
+A heading that mixes RTL and LTR scripts jumbles exactly like body text — and because headings are visually prominent, a broken one stands out more. Keep headings short and, where possible, pure RTL. If a heading needs an English term, prefer moving it into the paragraph below and leaving the heading itself in the RTL language.
+
+## Cowork and agent-mode situations
+
+In Cowork and other agent/desktop modes, replies to RTL-language users tend to be unusually LTR-dense: file paths, branch names, PR numbers, shell commands, git output, and progress summaries. That is precisely the content that jumbles worst, so it needs deliberate handling.
+
+Status and progress lines: keep each update on its own line, and keep that line either fully RTL or fully LTR. A line carrying one backticked path reads fine; a line like "עדכנתי את cookies.js, schema.js ו-config.js" stacks three LTR terms — split it across three lines.
+
+File paths, URLs, branch names, and PR references: always wrap them in backticks, and count each as one LTR term for the one-per-line rule. Better still, put the path on its own line beneath a short RTL label.
+
+Final summaries and reports: don't assemble them as one long bullet list of mixed-direction lines — that is the single worst pattern. Use short RTL paragraphs, and isolate every command or path in a fenced code block.
+
+Quoted terminal or command output: always place it in a fenced code block. It is pure LTR, and the block stops it from contaminating the surrounding RTL text.
+
+Good — a status update written for clean rendering:
+
+```
+סיימתי את העדכון של הסקיל
+
+הקובץ ששונה:
+plugins/rtl-chat-fixer/skills/rtl-chat/SKILL.md
+
+השינוי נדחף לענף main
+```
 
 ## What NOT To Do
 
@@ -144,6 +207,8 @@ Code blocks (fenced with ```) render correctly since they are always LTR. Use th
 - Do not force-translate tech terms — RTL-language speakers expect API, SDK, React etc. in English
 - Do not reverse text manually — never rearrange words to compensate for rendering
 - Do not use numbered lists with mixed content — they collapse into unreadable lines
+- Do not put mixed-direction data in markdown tables — they are the worst BiDi case (see Rule 8)
+- Do not wrap English terms in parentheses or brackets inside an RTL line — the brackets flip (see Rule 7)
 
 ## Response Language
 
