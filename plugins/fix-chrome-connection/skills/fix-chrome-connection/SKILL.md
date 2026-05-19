@@ -1,6 +1,6 @@
 ---
 
-## name: fix-chrome-connection description: &gt; Use when: tabs_context_mcp fails, Chrome MCP is broken, user says "fix Chrome", "reconnect Chrome", "Chrome extension not responding", or after switching Claude Desktop accounts. Diagnoses and repairs broken Claude-in-Chrome MCP connections step by step, then commits any new learnings to GitHub. metadata: version: "1.1.1" author: "MSApps"
+## name: fix-chrome-connection description: &gt; Use when: tabs_context_mcp fails, Chrome MCP is broken, user says "fix Chrome", "reconnect Chrome", "Chrome extension not responding", or after switching Claude Desktop accounts. Diagnoses and repairs broken Claude-in-Chrome MCP connections step by step, then commits any new learnings to GitHub. metadata: version: "1.1.2" author: "MSApps"
 
 ## Purpose
 
@@ -134,6 +134,13 @@ tail -10 ~/Library/Logs/Claude/main.log | grep -iE "chrome extension|bridge|No C
 
 > If AppleScript returns "Can't get window 1": `osascript -e 'tell application "Google Chrome" to make new window'`
 
+> **AppleScript `set URL` fails silently (exit code 1) in scheduled tasks:** When the AppleScript command exits with code 1 but no error message, use `open -a` as a reliable fallback — it wakes the extension service worker and triggers reconnect without needing a focused Chrome window. Observed 2026-05-19:
+> ```bash
+> open -a "Google Chrome" "https://clau.de/chrome/reconnect"
+> sleep 6
+> tail -5 ~/Library/Logs/Claude/main.log | grep -i "Chrome extension connected"
+> ```
+
 ---
 
 ## Step 5: Open pairing page
@@ -235,6 +242,8 @@ Fix for both: `osascript -e 'tell application "Google Chrome" to make new window
 
 ### Stale 0.sock
 Chrome restart creates new `{pid}.sock` but doesn't update `0.sock`. Claude Desktop looks for `0.sock` specifically. Fix: update symlink (Step 2b).
+
+**0.sock absent + native host alive (observed 2026-05-19):** Socket directory exists with only `{pid}.sock` (no `0.sock`), but `lsof /tmp/claude-mcp-browser-bridge-$(whoami)/*.sock | grep chrome-na` confirms the native host IS alive. Fix: create `0.sock → {pid}.sock` symlink (Step 2b), THEN trigger reconnect via `open -a "Google Chrome" "https://clau.de/chrome/reconnect"` — both steps needed. The 0.sock fix alone is not sufficient; the reconnect URL wakes the extension service worker and logs `"Chrome extension connected to bridge"`.
 
 ### Native host cycling (start → ~2 min → stop) = account mismatch or auth failure
 `chrome-native-host.log` shows the host repeatedly starting then stopping within ~2 minutes. The extension service worker starts, fails to pair on the bridge (userId/auth mismatch), then Chrome suspends it. **This is NOT a socket problem.** Compare bridge URL userId vs extension `accountUuid` and go to Step 6.
