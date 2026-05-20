@@ -78,17 +78,20 @@ Log all health check runs and fixes to the **✅ Done** list on this board.
 
 ## Last Run
 
-- Date: 2026-05-11 (account-mismatch fix)
-- Result: ✅ FIXED — extension re-authed from `michal@msapps.mobi` to `info@msapps.mobi`
-- Diagnostic that found it: `Control_Chrome.get_page_content` on the extension Options page (`chrome-extension://fcoeoabgfenejglbffodgkkbkcdhcgfn/options.html`) returned the extension's logged-in email at line 2 of the page text
-- Acceptance: `tabs_context_mcp(createIfEmpty:true)` returned `tabGroupId 523665234`, `tabId 1618993344`
-- Lesson added: account-mismatch diagnostic above — sandbox sessions can now check the extension email without macOS shell access
-- Trello: https://trello.com/c/4AEFBiHk
+- Date: 2026-05-20
+- Result: ✅ HEALTHY — no fix needed
+- Diagnostic: `list_connected_browsers` → 1 browser (deviceId: ec456ec2-7370-4922-a473-a221cb51a5bc)
+- Socket: `0.sock → 23415.sock` (symlink current), native host `chrome-na` PID 23415 alive
+- Log pattern: `connected=true, authenticated=true, wsState=1` → 10s wait → healthy scheduled-task exit
+- LevelDB: `mcpConnected` present — bridge was paired
+- `tabs_context_mcp(createIfEmpty:true)` → expected failure (scheduled task session — no pairing)
+- No fix applied, no new learnings
 
 ## Last Run (prior)
 
-- Date: 2026-05-11 (first session)
-- Result: 🔇 FIXED — 0.sock absent after Chrome restart → symlink created → Control_Chrome restored
-- Root cause: Chrome restarted (PID 97385), created 97385.sock but no 0.sock symlink
-- Fix: `ln -sf /tmp/claude-mcp-browser-bridge-michalshatz/97385.sock /tmp/claude-mcp-browser-bridge-michalshatz/0.sock`
-- Trello: https://trello.com/c/SQ1UBb5V
+- Date: 2026-05-11 (account-mismatch fix)
+- Result: ✅ FIXED — extension re-authed from `michal@msapps.mobi` to `info@msapps.mobi`
+- Diagnostic that found it: `Control_Chrome.get_page_content` on the extension Options page returned the extension's logged-in email at line 2 of the page text
+- Acceptance: `tabs_context_mcp(createIfEmpty:true)` returned `tabGroupId 523665234`, `tabId 1618993344`
+- Lesson added: account-mismatch diagnostic above — sandbox sessions can now check the extension email without macOS shell access
+- Trello: https://trello.com/c/4AEFBiHk
