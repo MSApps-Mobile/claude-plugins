@@ -20,6 +20,11 @@ dont stop until fixed (cap at 3 cycles in sandboxed sessions — see Outcome C b
   - Returns valid tab data → Chrome is healthy ✅
   - Fails → Chrome not responding → proceed with fix flow
 
+> NOTE (observed 2026-05-23): In some scheduled task sessions, `list_connected_browsers` returns the connected browser AND `tabs_context_mcp(createIfEmpty:true)` actually succeeds and creates a
+> tab group. This appears to depend on whether Chrome's cloud bridge is active vs. the local socket.
+> When socket dir `/tmp/claude-mcp-browser-bridge-{user}/` is absent, the cloud bridge is used and
+> MCP tools CAN work in scheduled sessions. Treat a successful `tabs_context_mcp` as a healthy signal.
+
 ## Account-mismatch diagnostic (NEW 2026-05-11 — definitive fix in sandbox)
 
 When `tabs_context_mcp` fails with `"Claude in Chrome is not connected"` AND `switch_browser` returns
@@ -49,19 +54,10 @@ User re-authed extension. Pairing succeeded on first retry — `tabGroupId 52366
 3. Pairing page: `chrome-extension://fcoeoabgfenejglbffodgkkbkcdhcgfn/pairing.html`
 4. Manual re-auth (Step 6 in fix skill) — last resort, requires user interaction
 
-## Outcome C — observed 2026-05-11 (manual restore session)
+## Outcome C — session pairing failure (sandboxed sessions)
 
-ONLY conclude Outcome C after the account-mismatch diagnostic above has matched. The signature is:
-extension email matches Cowork session email, but pairing still doesn't take. Sandboxed sessions
-cannot fix this — needs the user to focus a Cowork window then click Connect, or the macOS
-`0.sock` symlink fix.
-
-Steps that fail in this state:
-- `clau.de/chrome/reconnect` navigation via Control_Chrome.open_url
-- `switch_browser` (broadcast has no paired peers)
-- macOS-side fixes (`osascript`, `tail ~/Library/Logs/Claude/main.log`, `ln -sf 0.sock`) — Linux sandbox can't reach the Mac filesystem
-
-Correct handling: write `health-check-report.md` to the workspace and exit. Looping beyond ~3 cycles wastes tokens.
+When the account-mismatch diagnostic shows accounts MATCH but pairing still fails,
+conclude Outcome C (sandboxed session can't fix it). Needs user action.
 
 ## Known Accounts
 
@@ -73,25 +69,27 @@ Correct handling: write `health-check-report.md` to the workspace and exit. Loop
 
 ## Trello Board
 
-**Dedicated board:** https://trello.com/b/hX5om9CS/opsagents-chrome-runner (ID: `69fbf3cb9b01b031ac3ce445`)
+**Dedicated board:** https://trello.com/b/hX5om9CS/opsagents-chrome-runner (ID: c69fbf3cb9b01b031ac3ce445)
 Log all health check runs and fixes to the **✅ Done** list on this board.
 
 ## Last Run
 
-- Date: 2026-05-20
-- Result: ✅ HEALTHY — no fix needed
-- Diagnostic: `list_connected_browsers` → 1 browser (deviceId: ec456ec2-7370-4922-a473-a221cb51a5bc)
-- Socket: `0.sock → 23415.sock` (symlink current), native host `chrome-na` PID 23415 alive
-- Log pattern: `connected=true, authenticated=true, wsState=1` → 10s wait → healthy scheduled-task exit
-- LevelDB: `mcpConnected` present — bridge was paired
-- `tabs_context_mcp(createIfEmpty:true)` → expected failure (scheduled task session — no pairing)
-- No fix applied, no new learnings
+- Date: 2026-05-23
+- Result: ✅ HEALTHY -- no fix needed
+- Diagnostic: `list_connected_browsers` → 1 browser (deviceId: ec456ec2-7370-4922-a473-a221cb51a5bc, isLocal: true)
+- Socket: socket dir `/tmp/claude-mcp-browser-bridge-$(whoami)/` NOT present -- cloud bridge in use
+- `tabs_context_mcp(createIfEmpty:false)` → "No tab group exists" (Chrome connected)
+- `tabs_context_mcp(createIfEmpty:true)` → SUCCESS -- tabGroupId 202217902, tabId 1833342161
+- New learning: MCP tools CAN work in scheduled sessions when cloud bridge is active (no local socket)
+- No fix applied
 
 ## Last Run (prior)
 
-- Date: 2026-05-11 (account-mismatch fix)
-- Result: ✅ FIXED — extension re-authed from `michal@msapps.mobi` to `info@msapps.mobi`
-- Diagnostic that found it: `Control_Chrome.get_page_content` on the extension Options page returned the extension's logged-in email at line 2 of the page text
-- Acceptance: `tabs_context_mcp(createIfEmpty:true)` returned `tabGroupId 523665234`, `tabId 1618993344`
-- Lesson added: account-mismatch diagnostic above — sandbox sessions can now check the extension email without macOS shell access
-- Trello: https://trello.com/c/4AEFBiHk
+- Date: 2026-05-20
+- Result: ✅ HEALTHY - no fix needed
+- Diagnostic: `list_connected_browsers` → 1 browser (deviceId :ec456ec2-7370-4922-a473-a221cb51a5bc)
+- Socket: `0.sock → 23415.sock` (symlink current), native host `chrome-na` PID 23415 alive
+- Log pattern: `connected=true, authenticated=true, wsState=1` → 10s wait → healthy scheduled-task exit
+- LevelDB: `mcpConnected` present — bridge was paired
+- `tabs_context_mcp(createIfEmpty:true)` → expected failure (scheduled task session — pairing not possible)
+- No fix applied, no new learnings
