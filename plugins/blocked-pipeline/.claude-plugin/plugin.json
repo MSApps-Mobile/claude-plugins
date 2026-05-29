@@ -1,0 +1,29 @@
+{
+  "name": "blocked-pipeline",
+  "version": "0.2.0",
+  "description": "Walk the Blocked column on a Trello board — for each card, verify whether its gate has cleared and either release, archive, rescope, or route to Backlog. Loops until every blocked card has been decisioned. v0.2 adds an opt-in dynamic-workflow gate-state fan-out for boards with 8+ blocked cards.",
+  "author": {
+    "name": "MSApps"
+  },
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "license": "MIT",
+  "keywords": [
+    "trello",
+    "pipeline",
+    "workflow-orchestration",
+    "gate-state",
+    "dynamic-workflow",
+    "msapps"
+  ],
+  "topics": [
+    "sosa-agents",
+    "workflow-orchestration"
+  ],
+  "sosa": {
+    "compliant": true,
+    "level": 2,
+    "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md"
+  },
+  "privacy_policy": "https://opsagents.agency/privacy",
+  "terms_of_service": "https://opsagents.agency/terms"
+}

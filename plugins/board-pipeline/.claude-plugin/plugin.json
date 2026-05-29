@@ -1,0 +1,30 @@
+{
+  "name": "board-pipeline",
+  "version": "0.2.0",
+  "description": "Drain every To Do column on a Trello board by doing the work, pushing code, and moving each card to Code Review. Stops there. v0.2 adds an opt-in adversarial-review dynamic-workflow for stale-bug pre-checks when To Do has 10+ cards.",
+  "author": {
+    "name": "MSApps"
+  },
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "license": "MIT",
+  "keywords": [
+    "trello",
+    "pipeline",
+    "workflow-orchestration",
+    "code-review",
+    "dynamic-workflow",
+    "adversarial-review",
+    "msapps"
+  ],
+  "topics": [
+    "sosa-agents",
+    "workflow-orchestration"
+  ],
+  "sosa": {
+    "compliant": true,
+    "level": 2,
+    "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md"
+  },
+  "privacy_policy": "https://opsagents.agency/privacy",
+  "terms_of_service": "https://opsagents.agency/terms"
+}

@@ -1,0 +1,31 @@
+{
+  "name": "board-refinement",
+  "version": "0.2.0",
+  "description": "Production-grade Trello board refinement routine — four stages (PM+CTO plan + PRD gap audit, CTO deploy-gate verdict + staging spin-up, QA TDD audit + sanity test, pre-prod readiness verification). v0.2 adds opt-in adversarial-review dynamic-workflows at Stage 1 (PRD gap audit) and Stage 4 (pre-prod readiness gate).",
+  "author": {
+    "name": "MSApps"
+  },
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "license": "MIT",
+  "keywords": [
+    "trello",
+    "pipeline",
+    "workflow-orchestration",
+    "production-readiness",
+    "adversarial-review",
+    "dynamic-workflow",
+    "prd-audit",
+    "msapps"
+  ],
+  "topics": [
+    "sosa-agents",
+    "workflow-orchestration"
+  ],
+  "sosa": {
+    "compliant": true,
+    "level": 2,
+    "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md"
+  },
+  "privacy_policy": "https://opsagents.agency/privacy",
+  "terms_of_service": "https://opsagents.agency/terms"
+}

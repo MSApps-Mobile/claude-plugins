@@ -96,6 +96,17 @@ We built **SOSA™ (Supervised Orchestrated Secured Agents)** to fix that — a 
 | [**claude-md-composer**](./plugins/claude-md-composer) | Audit, compose, and refactor CLAUDE.md files — keeps memory under 200 lines, flips negative rules, splits across the 4-level hierarchy ([inspiration](https://medium.com/@kjramsy/your-claude-md-is-eating-your-token-budget-heres-how-to-fix-it-b8d6c4d1c986)) | `claude-md-composer@msapps-plugins` |
 | [**agents-md-optimizer**](./plugins/agents-md-optimizer) | Audit bloated CLAUDE.md / AGENTS.md files and rewrite them lean, or author a new one using the 200-line "recipe book" principle | `agents-md-optimizer@msapps-plugins` |
 
+### Workflow Orchestration
+
+> **v0.2 adds adversarial-review dynamic-workflow opt-ins per the [architecture doc](https://www.notion.so/Dynamic-Workflows-in-OpsAgents-Pipelines-Architecture-36f38b5dfb27815480cafb6011f94b0e).** Two independent agents iterate (one argues "ship", the other tries to refute) directly attacking rule-#20 / rule-#23 misses (missing env vars, wrong canonical name) before they reach deploy. Token spend per invocation is logged in the recap.
+
+| Plugin | What it does | Install |
+|--------|-------------|---------|
+| [**board-pipeline**](./plugins/board-pipeline) | Drain every To Do column on a Trello board — do the work, push code, move each card to Code Review. Stops there. | `board-pipeline@msapps-plugins` |
+| [**backend-pipeline**](./plugins/backend-pipeline) | Backend-flavored sweep: Blocked + In Progress + To Do → Code Review in one run, with the cli-dev safety stack pre-loaded for Cloud Run / Secret Manager work | `backend-pipeline@msapps-plugins` |
+| [**blocked-pipeline**](./plugins/blocked-pipeline) | Walk the Blocked column and decision every card — release / archive / rescope / route to Backlog | `blocked-pipeline@msapps-plugins` |
+| [**board-refinement**](./plugins/board-refinement) | Production-grade refinement — PRD gap audit, staging spin-up, QA TDD audit, pre-prod readiness verification. Carries the adversarial-review dynamic-workflow opt-ins | `board-refinement@msapps-plugins` |
+
 > **Mobile devs:** swift-lsp ships with Xcode — zero extra setup. kotlin-lsp installs via `brew install kotlin-language-server`.
 
 > **Pro tip:** Run `sosa-compliance-checker` on all your installed plugins — not just ours. It catches hardcoded API keys, missing confirmation gates, unpinned packages, and prompt injection vulnerabilities in *any* plugin.

@@ -1,0 +1,31 @@
+{
+  "name": "backend-pipeline",
+  "version": "0.2.0",
+  "description": "Backend-flavored Trello sweep — drains Blocked + In Progress + To Do to Code Review in one run. Pre-loads the cli-dev + gcloud-devops-expert safety stack for any card touching Cloud Run, Secret Manager, or services/cli-gateway*. Wraps blocked-pipeline + board-pipeline.",
+  "author": {
+    "name": "MSApps"
+  },
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "license": "MIT",
+  "keywords": [
+    "trello",
+    "pipeline",
+    "workflow-orchestration",
+    "backend",
+    "cloud-run",
+    "secret-manager",
+    "cli-gateway",
+    "msapps"
+  ],
+  "topics": [
+    "sosa-agents",
+    "workflow-orchestration"
+  ],
+  "sosa": {
+    "compliant": true,
+    "level": 2,
+    "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md"
+  },
+  "privacy_policy": "https://opsagents.agency/privacy",
+  "terms_of_service": "https://opsagents.agency/terms"
+}
