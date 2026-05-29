@@ -24,7 +24,7 @@ A non-error response confirms the board.
 
 ## How this differs from /board-pipeline, /backend-pipeline, /blocked-pipeline
 
-- **/board-pipeline** — drives raw card-shaped work through the 7-stage flow. Assumes the work itself is reasonably understood; its job is to *move* cards.
+- **/board-pipeline** — drives raw card-shaped work from To Do → Code Review. Ships PRs, stops at Code Review. **Does NOT drain Code Review** (isolation rule — see Stage 1.5 below). Assumes the work itself is reasonably understood; its job is to *move* cards into review.
 - **/backend-pipeline** — wraps /board-pipeline with Notion PRD/STD/STR mirroring and bounce-counter QA, but still mostly trusts the cards as written.
 - **/blocked-pipeline** — drains the Blocked column.
 - **/board-refinement** (this skill) — assumes the cards exist but may be underspecified, missing PRDs, missing tests, missing staging surfaces, or missing pre-prod prerequisites. It is a **production-readiness audit**, not an execution pass. It can call /board-pipeline as a sub-step when an individual card needs the standard 7-stage walk, but its own outer loop is: plan → verdict → QA → pre-prod gate.
@@ -98,6 +98,37 @@ Pre-load via the Skill tool, in this order — read each SKILL.md end-to-end bef
    **Suggested owner skill:** <specialist skill name>
    **AC:** <bulleted, testable AC>
    ```
+
+### Stage 1.5 — Code Review drain (fresh-context isolation)
+
+**Why this stage exists (2026-05-29 lesson).** `/board-pipeline` ships cards INTO the Code Review column but cannot review them — the same Claude session that wrote the PR has confirmation bias on its own diff. `/board-refinement` runs in a separate session with no visibility into the authoring transcript, so it is the canonical surface for the independent review. The Code Review column drain belongs HERE, not in `/board-pipeline`.
+
+For each card sitting in **Code Review**:
+
+1. **Locate the PR** — read the most recent `Shipped — PR #<n>` comment (or `Open PR:` frontmatter on a handoff card) for the canonical PR URL. If missing → bounce to To Do with a `## Missing PR link` brief via `/opsagents-md-composer` (cannot review what you can't find).
+
+2. **Dispatch fresh-context review via the `Task` tool** (NOT `Skill` — `Skill` is same-session). Pick the reviewer subagent by diff content:
+   - **`feature-dev:code-reviewer`** (Sonnet) — default for application code, UI/UX, Liquid themes, Markdown/config edits.
+   - **`pr-review-toolkit:code-reviewer`** (Opus) — when the diff touches auth, secrets, cross-tenant data, IAM/WIF bindings, or anything in `/opsagents-cto` Delivery Protocol §3's "auth/secrets/cross-tenant" carve-out.
+
+   The Task prompt must hand the agent: PR URL + repo + base branch + the card body's AC + an explicit "review against the AC, not just the diff." Honor rule #19 — declare `ToolSearch select:gh_exec,trello_exec` in the prompt.
+
+3. **Optional second pass: `/security-review` slash-command** — fixed-rubric checklist sweep. Run in addition to (never instead of) the Task-dispatched reviewer. Useful for the auth/secrets/cross-tenant carve-out.
+
+4. **Apply the verdict:**
+   - **APPROVE** (reviewer found no blocking issues + CI green on the exact head SHA per rule #22) → comment commit SHA + reviewer verdict link on the card → proceed to Stage 2 (CTO deploy-gate verdict + staging spin-up). Do NOT auto-merge here — Stage 2 owns the merge gate per the standard Trello → PR → merge flow.
+   - **REQUEST CHANGES** → move card back to the relevant To Do column (Core vs Front per owner skill). Attach a Markdown bounce brief authored by `/opsagents-md-composer`:
+     ```markdown
+     ## Code Review bounce — stage 1.5
+     **Verdict:** REQUEST CHANGES
+     **PR:** <URL>
+     **Reviewer:** Task → <subagent name> (verdict link)
+     **Issues:** <list with file:line refs>
+     **Suggested fix:** <concrete actions>
+     **Re-entry criterion:** <what stage 1.5 needs to see on the next pass>
+     ```
+
+**Adversarial-review pattern (high-risk PRs).** For PRs touching auth, prod data migrations, IAM/WIF, or anything that triggered a recent postmortem (firestore-rules-shared, WIF-mapping, firebase-tools-WIF, npm-omit-optional), dispatch 2–3 Task reviewers in parallel with different lenses (`correctness`, `security`, `does-it-reproduce`). Approve only if ≥majority pass. This is the only adversarial application currently mandated at Stage 1.5 — applying it blanket is wasteful.
 
 ### Stage 2 — CTO deploy-gate verdict
 

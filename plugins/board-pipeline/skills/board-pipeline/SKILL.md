@@ -1,6 +1,6 @@
 ---
 name: board-pipeline
-description: "Run the on-demand board pipeline — drains every To Do column by doing the work, pushing code, and moving each card to Code Review. Stops there. Does NOT review PRs, merge, deploy staging, run QA, or touch prod."
+description: "Run the on-demand board pipeline — drains every To Do column AND the In Progress / Doing column by doing the work, pushing code, and moving each card to Code Review. Stops there. Does NOT review PRs, merge, deploy staging, run QA, or touch prod."
 ---
 
 Board: $ARGUMENTS
@@ -27,11 +27,13 @@ violations.
 
 3. **Confirm Info column has the repo URL** for the board. If missing, ask `opsagent-pm` for a best guess and proceed. Coding cards without a known repo are stuck — surface them at the end of the recap.
 
-4. **Scope of this pipeline = To Do columns only.** Process every card in `To Do` (and any `To Do — *` splits like `To Do — Core` / `To Do — Front`). Skip 🚧 Blocked entirely. Do NOT touch Code Review, Deploy Staging, QA, Deploy Prod, or Done — cards already in those columns are out of scope and stay where they are. The pipeline's only job is: drain To Do → Code Review.
+4. **Scope of this pipeline = To Do columns AND In Progress / Doing (always, 2026-05-29 rule).** Process every card in `To Do` (and any `To Do — *` splits like `To Do — Core` / `To Do — Front`) AND every card in `In Progress` / `Doing`. Skip 🚧 Blocked entirely. Do NOT touch Code Review, Deploy Staging, QA, Deploy Prod, or Done — cards already in those columns are out of scope and stay where they are. The pipeline's job is: drain To Do AND In Progress → Code Review.
+
+   **Why In Progress is in scope (2026-05-29 rule).** Cards land in In Progress when a prior pipeline run parked them (Doing-park), when a human started work and stalled, or when a sister pipeline (like `/backend-pipeline`) bounced them out of one stage. Without an explicit In Progress drain, parked cards rot: the next pipeline run sees only the To Do column and skips them. Always drain both, every run. The Doing-park rule still applies — if a card is genuinely too big for THIS run, you may re-park it in In Progress with a fresh advisor note, but you must attempt it first.
 
    **Why Code Review is out of scope (isolation rule, 2026-05-29 lesson).** The Claude session that wrote a PR cannot independently review its own PR — same-context = confirmation bias. Fresh-context Task-dispatched review belongs to `/board-refinement` Stage 1.5, which runs in a separate session with no visibility into the authoring transcript. `/board-pipeline` ships cards INTO Code Review; `/board-refinement` drains Code Review OUT. Mixing the two collapses the isolation gap and re-introduces the same-session review failure mode (`/opsagents-cto` Delivery Protocol §3).
 
-5. **Per-card workflow — for each card in `To Do` (or `To Do — Core` / `To Do — Front`):**
+5. **Per-card workflow — for each card in `To Do` (or `To Do — Core` / `To Do — Front`) AND every card in `In Progress` / `Doing`:**
    - Read description + AC.
    - **Stale-bug pre-check** — if the card cites a specific file:line bug or "fix X in Y", fetch the current file at `?ref=main` via `gh_exec` (or `git cat-file blob main:<path>` if the canonical checkout is on `main`) and grep for the cited pattern. If the bug doesn't reproduce in current `main`, close the card directly to **Done** with the grep evidence as a `STALE — already fixed on main` verdict. Skip the 7-stage walk — there is no code to ship. (Postmortem: 2026-05-24 msapps-website run found 4/4 sampled bug cards were stale; walking them through CR→DS→QA→DP→Done generates noise without value.)
    - **Shared-gate clustering** — if 5+ cards share an identical gate (same upstream PR, same admin-role unblock, same plugin install, same legal sign-off), post the full Markdown gate comment on the **first** card listing all sibling shortLinks, then post a 1-line `Same gate as <firstCardShortLink>` comment on each sibling. Saves API noise without losing audit trail. (Postmortem: 2026-05-24 msapps-website run posted the same 30-line gate comment on 11 portfolio cards.)
@@ -47,7 +49,7 @@ violations.
      Honor rule #19 — each subagent prompt must include `ToolSearch select:gh_exec,trello_exec`. Cap at 20 parallel agents (Trello API budget; cli-gateway proxies through one shared token and 429s above ~30 concurrent). Adversarial reviewer required when the fan-out writes (Done-close), not just reads.
      **Escalation:** if Trello returns 429, drop the parallel cap from 20 → 10 in this file.
 
-6. **Loop step 5** until every To Do column (and any `To Do — *` splits) is empty. The pipeline ends when every card originally in a To Do column has either landed in Code Review, been pushed back to To Do with a blocker comment, been parked in Doing per the Doing-park rule below, or been closed directly to Done by the stale-bug pre-check. **Do not** touch Code Review, Deploy Staging, QA, Deploy Prod, or Done — they are out of scope.
+6. **Loop step 5** until every To Do column (and any `To Do — *` splits) AND the In Progress / Doing column are empty. The pipeline ends when every card originally in a To Do or In Progress column has either landed in Code Review, been pushed back to To Do with a blocker comment, been re-parked in In Progress per the Doing-park rule below (with a fresh advisor note), or been closed directly to Done by the stale-bug pre-check. **Do not** touch Code Review, Deploy Staging, QA, Deploy Prod, or Done — they are out of scope.
 
 7. **Final recap** — print a `🔀 CARD MOVEMENTS` block listing every To Do card touched and where it ended up (one line per card). Include:
    - Cards moved → Code Review (with commit SHA + branch + PR URL)
