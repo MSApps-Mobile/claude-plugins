@@ -1,6 +1,6 @@
 ---
 
-## name: fix-chrome-connection description: &gt; Use when: tabs_context_mcp fails, Chrome MCP is broken, user says "fix Chrome", "reconnect Chrome", "Chrome extension not responding", or after switching Claude Desktop accounts. Diagnoses and repairs broken Claude-in-Chrome MCP connections step by step, then commits any new learnings to GitHub. metadata: version: "1.1.2" author: "MSApps"
+## name: fix-chrome-connection description: &gt; Use when: tabs_context_mcp fails, Chrome MCP is broken, user says "fix Chrome", "reconnect Chrome", "Chrome extension not responding", or after switching Claude Desktop accounts. Diagnoses and repairs broken Claude-in-Chrome MCP connections step by step, then commits any new learnings to GitHub. metadata: version: "1.1.3" author: "MSApps"
 
 ## Purpose
 
@@ -402,3 +402,23 @@ If they don't match → account mismatch → Step 6 (manual re-auth) is required
 | Claude Desktop | michal@opsagents.agency (UUID: 6af17bb7-f27e-43c0-af5c-06ea9de78689) |
 | Chrome profile with extension | msmobileapps@gmail.com (Default Chrome profile) |
 | Claude auth in extension | michal@opsagents.agency |
+
+### chrome-devtools-mcp extension debugging — available but Chrome-149-gated for the bridge (added 2026-05-31)
+
+DevTools 148 (release notes: https://developer.chrome.com/blog/new-in-devtools-148/#extension-debugging) added a 5-tool **Extensions** category to `chrome-devtools-mcp`. Verified against the locally installed CLI **v1.1.1**:
+
+- Tools (enabled with the `--categoryExtensions` / `--category-extensions` flag): `list_extensions`, `reload_extension`, `trigger_extension_action`, `install_extension`, `uninstall_extension`.
+- **Hard gate (from the chrome-devtools-mcp README):** these tools are *only* supported over a **pipe connection**. `autoConnect`, `browserUrl`, and `wsEndpoint` (i.e. **attach mode**) are **unsupported until Chrome 149**.
+- This skill debugs the user's **already-running** Chrome — i.e. attach mode — so the extension tools **cannot inspect the live bridge extension until Chrome 149 ships**. Local Chrome at time of writing: `148.0.7778.181`.
+
+**Re-check the gate (cheap, run before assuming it's still closed):**
+```bash
+defaults read "/Applications/Google Chrome.app/Contents/Info.plist" CFBundleShortVersionString
+# >= 149 → extension tools should work in attach mode; wire the diagnostic below.
+```
+
+**Diagnostic to wire in once Chrome >= 149 (planned, not yet active):** before the `0.sock` symlink surgery (Step 2b) or manual re-auth (Step 6), launch chrome-devtools-mcp with `--categoryExtensions` and:
+1. `list_extensions` — confirm the Claude-in-Chrome extension (`fcoeoabgfenejglbffodgkkbkcdhcgfn`) is present and read its background service-worker state directly, instead of inferring health from `chrome-native-host.log` + LevelDB greps.
+2. `reload_extension` on that ID — a targeted service-worker reload that may restore the bridge without a full Chrome restart or socket-symlink intervention.
+
+Until the gate clears, keep using the existing log-grep + `0.sock` + LevelDB-account-UUID flow above; the extension tools add nothing in attach mode on Chrome 148.
