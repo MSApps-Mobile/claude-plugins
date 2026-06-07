@@ -133,4 +133,54 @@ See `references/safe-cache-locations.md` for the full list of Mac cache location
 
 ---
 
+## Phase 6 — Reclaiming large items & "junk" folders safely (only if the user asks)
+
+Phase 4 only *flags* large items. If the user asks you to actually remove them, follow these rules — they prevent irreversible mistakes that have bitten this skill in real runs.
+
+### Move to Trash, don't `rm` — and know the Trash mechanics
+
+- Move user files/folders to Trash (`mv "<item>" ~/.Trash/`) rather than `rm -rf`. This stays reversible (Finder → "Put Back") until the Trash is emptied.
+- **Space is NOT reclaimed until the Trash is emptied.** `df` will show no gain after a `mv` to Trash — don't report freed space until after emptying.
+- **`~/.Trash` is TCC-protected.** `rm -rf ~/.Trash/*` fails with `Operation not permitted` from a sandboxed shell, and the glob silently matches nothing (looks like success but isn't). Empty it through Finder instead:
+  ```bash
+  osascript -e 'tell application "Finder" to empty trash'
+  ```
+- If that returns error `-128` (a confirmation dialog or a locked item blocked it), disable the warning and retry:
+  ```bash
+  osascript -e 'tell application "Finder"' \
+            -e 'set warns before emptying of trash to false' \
+            -e 'empty trash' \
+            -e 'set warns before emptying of trash to true' \
+            -e 'end tell'
+  ```
+- Emptying the Trash is irreversible — confirm with the user first, and make sure irreplaceable personal files (videos, photos) are backed up before emptying.
+
+### "Looks like junk" ≠ "is junk" — git-safety check before deleting a dev folder
+
+A folder full of old project checkouts can still hold local-only work that exists **nowhere else**. Before deleting any folder containing code, check every git repo inside it:
+
+```bash
+cd "<folder>"
+for d in */; do
+  if [ -d "$d/.git" ]; then
+    (cd "$d"; echo "$d → uncommitted=$(git status -s | wc -l | tr -d ' ') unpushed=$(git log --branches --not --remotes --oneline | wc -l | tr -d ' ')")
+  fi
+done
+git -C "<folder>" status -s 2>/dev/null   # check the folder itself if it is a repo
+```
+
+- Repos with `uncommitted=0` and `unpushed=0` are safe — fully on the remote, re-cloneable.
+- "Unpushed" commits are often **already on the remote under a different SHA** (squash-merge). Verify by commit message against `origin/<branch>` before assuming work is at risk — don't force-push to "rescue" them.
+- For repos with genuine uncommitted/unpushed work, **rescue the deltas first** (usually a few KB) into a safe folder before deleting:
+  ```bash
+  git diff HEAD > rescue/<repo>-changes.diff                                  # tracked edits
+  git ls-files --others --exclude-standard | grep -viE '\.(swp|zip)$|node_modules/' \
+    | while read -r f; do mkdir -p "rescue/<repo>/$(dirname "$f")"; cp -p "$f" "rescue/<repo>/$f"; done
+  git format-patch origin/<branch>..HEAD --stdout > rescue/<repo>-commits.patch  # local-only commits
+  ```
+
+Only after the rescue bundle is verified should the folder be moved to Trash and the space reclaimed.
+
+---
+
 ⭐ *If this skill freed up space for you, [star the repo](https://github.com/MSApps-Mobile/claude-plugins) — it helps other devs find the marketplace.*
