@@ -1,6 +1,6 @@
 ---
 
-## name: fix-chrome-connection description: &gt; Use when: tabs_context_mcp fails, Chrome MCP is broken, user says "fix Chrome", "reconnect Chrome", "Chrome extension not responding", or after switching Claude Desktop accounts. Diagnoses and repairs broken Claude-in-Chrome MCP connections step by step, then commits any new learnings to GitHub. metadata: version: "1.1.3" author: "MSApps"
+## name: fix-chrome-connection description: &gt; Use when: tabs_context_mcp fails, Chrome MCP is broken, user says "fix Chrome", "reconnect Chrome", "Chrome extension not responding", or after switching Claude Desktop accounts. Diagnoses and repairs broken Claude-in-Chrome MCP connections step by step, then commits any new learnings to GitHub. metadata: version: "1.1.4" author: "MSApps"
 
 ## Purpose
 
@@ -79,6 +79,30 @@ strings "$EXTDIR/"*.ldb "$EXTDIR/"*.log 2>/dev/null | grep -A1 "ountUuid" | head
 ```
 
 If the bridge URL shows `chrome/{UUID-A}` but extension `accountUuid` is `UUID-B` → **account mismatch → Step 6 directly**.
+
+---
+
+## Step 2a: Extension service-worker probe (Chrome ≥149, try BEFORE socket surgery)
+
+**When:** the bridge looks alive (`connected=true, authenticated=true`) but tool calls fail, OR `list_connected_browsers=[]` with the native host alive. Often the MCP browser-bridge **extension's service worker has gone idle** — reloading it re-wakes the bridge without touching `0.sock`.
+
+**Prereq:** Chrome stable **≥ 149** and `chrome-devtools-mcp` ≥ 1.1.1 started with `--categoryExtensions` (extension tools are pipe-connection only; attach-mode `--categoryExtensions` is unsupported before Chrome 149). Verify Chrome:
+
+```bash
+defaults read "/Applications/Google Chrome.app/Contents/Info.plist" CFBundleShortVersionString
+```
+
+If Chrome < 149, **skip to Step 2b** (the symlink fix) — this probe isn't available yet.
+
+If Chrome ≥ 149, use the `chrome-devtools-mcp` Extensions tools:
+
+1. `list_extensions` → find the **Claude / MCP browser-bridge** extension and read its service-worker state.
+2. If its service worker is **inactive/stopped**, `reload_extension` on that extension id to restart the worker (this is what the reconnect URL in Step 4 also tries to do, but `reload_extension` is deterministic and needs no focused window).
+3. Retry `tabs_context_mcp` with `createIfEmpty: false`. Works → jump to Self-Reflection.
+
+**Fallback:** if the extension tools are unavailable (Chrome < 149, no `--categoryExtensions`, or `list_extensions` doesn't surface the bridge extension), proceed to **Step 2b** — the `0.sock` symlink fix remains the baseline repair. This probe is additive: it never replaces the socket surgery, only tries the cheaper service-worker reload first.
+
+> **Source:** Chrome DevTools 148 added extension debugging via `chrome-devtools-mcp`; attach-mode support landed in Chrome 149. Wired in here per Trello 0nfcts9J once local Chrome reached stable ≥ 149.
 
 ---
 
