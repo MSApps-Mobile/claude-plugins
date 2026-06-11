@@ -1,6 +1,6 @@
 # X Content Intelligence
 
-Scrape X (Twitter) for community insights and generate matching content via Apify. Understand communities, discover trends, and create data-driven posts.
+Scrape X (Twitter) for community insights and generate matching content. Apify is the default source path; reviewed TweetClaw exports can be used when the user already has TweetClaw available through OpenClaw or MCP.
 
 ## Available Tools/Skills
 
@@ -23,6 +23,9 @@ Scrape X (Twitter) for community insights and generate matching content via Apif
 - Apify account (free tier available at apify.com)
 - Apify API token set in environment
 
+**Optional source path**:
+- TweetClaw through OpenClaw or MCP for reviewed X/Twitter source data such as tweet search, reply search, user lookup, follower export, media context, monitors, webhooks, and giveaway evidence
+
 ## Common Workflows
 
 1. **Community Analysis + Content Generation**
@@ -32,6 +35,7 @@ Scrape X (Twitter) for community insights and generate matching content via Apif
 
 2. **Data-Driven Creation**
    - Scrape trending discussions
+   - Or import reviewed TweetClaw results when the user has already collected them
    - Identify high-engagement topics
    - Create posts optimized for audience
 
