@@ -41,6 +41,11 @@ Ask the user to specify: keywords/hashtags to search, specific accounts to analy
 
 Use Apify by default. Use TweetClaw only when the user already has TweetClaw available and asks to use existing or reviewed X/Twitter source data.
 
+**Retrieving TweetClaw source data:**
+- Use a reviewed TweetClaw export, pasted JSON, saved result file, or OpenClaw/MCP tool output supplied by the user.
+- When the user asks for fresh TweetClaw evidence and the tool is installed, run only source-collection actions such as search tweets, search tweet replies, user lookup, follower export, media lookup, or existing monitor, webhook, or giveaway evidence retrieval.
+- If no reviewed TweetClaw data or tool access is available, use Apify or ask the user for source data.
+
 **TweetClaw source data should stay evidence-only:**
 - Use search tweets, search tweet replies, user lookup, follower export, media context, monitor results, webhook events, or giveaway draw evidence as source material.
 - Keep TweetClaw results as citations, metrics, URLs, IDs, handles, and review notes for the analysis.

@@ -31,7 +31,7 @@
       "supervised": "Content review before posting",
       "orchestrated": "Scrape or import reviewed source data, analyze, generate, then review content before use",
       "secured": "Apify Actor or reviewed TweetClaw output for source data, no direct X API credentials in plugin",
-      "agents": "R=x-content-intelligence, T=Apify or reviewed TweetClaw source data, M=content-analysis, P=scrape-or-import-analyze-generate-review"
+      "agents": "R=x-content-intelligence, T=source data, P=analyze-generate-review"
     }
   },
   "topics": [
