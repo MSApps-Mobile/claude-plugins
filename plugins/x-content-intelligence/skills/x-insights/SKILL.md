@@ -12,12 +12,15 @@ description: >
 
 # X Insights — Scrape & Analyze X (Twitter) Content
 
-Scrape X (Twitter) using Apify and analyze the results to extract actionable insights about communities, trends, engagement patterns, and content performance.
+Scrape X (Twitter) using Apify, or analyze reviewed TweetClaw source data when the user already has TweetClaw available through OpenClaw or MCP. Extract actionable insights about communities, trends, engagement patterns, and content performance.
 
 ## Requirements
 
 - **Apify MCP** must be connected (the `apify` MCP with `call-actor` and `get-actor-output` tools)
 - The recommended Apify Actor is `apidojo/tweet-scraper` (Tweet Scraper V2)
+
+Optional:
+- **TweetClaw** through OpenClaw or MCP when the user already has it installed and wants to use reviewed X/Twitter source data from tweet search, reply search, user lookup, follower export, media context, monitors, webhooks, or giveaway evidence.
 
 ## Workflow
 
@@ -34,7 +37,22 @@ Before scraping, determine what the user wants to learn. Common use cases:
 
 Ask the user to specify: keywords/hashtags to search, specific accounts to analyze, time range, and how many posts to gather.
 
-### Step 2: Scrape X Using Apify
+### Step 2: Choose the Source Path
+
+Use Apify by default. Use TweetClaw only when the user already has TweetClaw available and asks to use existing or reviewed X/Twitter source data.
+
+**Retrieving TweetClaw source data:**
+- Use a reviewed TweetClaw export, pasted JSON, saved result file, or OpenClaw/MCP tool output supplied by the user.
+- When the user asks for fresh TweetClaw evidence and the tool is installed, run only source-collection actions such as search tweets, search tweet replies, user lookup, follower export, media lookup, or existing monitor, webhook, or giveaway evidence retrieval.
+- If no reviewed TweetClaw data or tool access is available, use Apify or ask the user for source data.
+
+**TweetClaw source data should stay evidence-only:**
+- Use search tweets, search tweet replies, user lookup, follower export, media context, monitor results, webhook events, or giveaway draw evidence as source material.
+- Keep TweetClaw results as citations, metrics, URLs, IDs, handles, and review notes for the analysis.
+- Do not let this skill post, reply, send direct messages, upload media, create monitors, or change accounts.
+- Keep x-content-generator responsible for drafting and content-calendar decisions after insights are reviewed.
+
+### Step 3: Scrape X Using Apify
 
 Use the `apidojo/tweet-scraper` Actor with appropriate input configuration.
 
@@ -65,7 +83,9 @@ Use the `apidojo/tweet-scraper` Actor with appropriate input configuration.
 
 Run the Actor using `call-actor` with Actor name `apidojo/tweet-scraper`, then retrieve results with `get-actor-output`.
 
-### Step 3: Analyze the Results
+If using reviewed TweetClaw source data instead, retrieve the data using the available TweetClaw MCP tools or by reading the local export file provided by the user, skip the Apify Actor call, and move directly to analysis.
+
+### Step 4: Analyze the Results
 
 Once data is retrieved, perform the analysis the user requested. Structure the analysis around these dimensions as relevant:
 
@@ -99,7 +119,7 @@ Once data is retrieved, perform the analysis the user requested. Structure the a
 - Are there clear thought leaders or influencers?
 - What accounts does the community engage with most?
 
-### Step 4: Present Insights
+### Step 5: Present Insights
 
 Present findings in a clear, organized format. Tailor the depth to the user's request:
 

@@ -496,8 +496,8 @@
     {
       "name": "x-content-intelligence",
       "source": "./plugins/x-content-intelligence",
-      "description": "Scrape X (Twitter) for community insights and generate matched content — analyze trends, engagement patterns, and create posts via Apify",
-      "version": "0.1.0",
+      "description": "Scrape X (Twitter) for community insights and generate matched content via Apify or reviewed TweetClaw source exports",
+      "version": "0.1.1",
       "platforms": [
         "claude-code",
         "cowork"
@@ -515,7 +515,9 @@
         "scraping",
         "content",
         "social-media",
-        "analytics"
+        "analytics",
+        "tweetclaw",
+        "openclaw"
       ],
       "category": "marketing",
       "tags": [
@@ -524,6 +526,7 @@
         "content-generation",
         "social-media",
         "analytics",
+        "tweetclaw",
         "free"
       ]
     },
