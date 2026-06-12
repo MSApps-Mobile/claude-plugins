@@ -83,7 +83,7 @@ Use the `apidojo/tweet-scraper` Actor with appropriate input configuration.
 
 Run the Actor using `call-actor` with Actor name `apidojo/tweet-scraper`, then retrieve results with `get-actor-output`.
 
-If using reviewed TweetClaw source data instead, skip the Apify Actor call and move directly to analysis.
+If using reviewed TweetClaw source data instead, retrieve the data using the available TweetClaw MCP tools or by reading the local export file provided by the user, skip the Apify Actor call, and move directly to analysis.
 
 ### Step 4: Analyze the Results
 
