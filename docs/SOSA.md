@@ -13,6 +13,7 @@ SOSA™ (Supervised Orchestrated Secured Agents) is a four-pillar methodology th
 All MSApps plugins are built to be **SOSA-compliant**, meaning they implement the four pillars at the plugin level.
 
 > **Read the full whitepaper:** [sosa-whitepaper.pdf](sosa-whitepaper.pdf)
+> **See the live framework page:** [opsagents.agency/sosa](https://opsagents.agency/sosa)
 
 ---
 
@@ -123,7 +124,7 @@ The `sosa-compliance-checker` runs the `token-efficiency-audit` as part of its O
 
 ## Reference Implementation
 
-[OpsAgent]([https://opsagents.agency]) by MSApps is the first commercial implementation of the SOSA framework, operating in production across 18+ department types since early 2025.
+[OpsAgents](https://opsagents.agency) by MSApps is the first commercial implementation of the SOSA framework, operating in production across 18+ agent types. The framework is presented as a live, citable page — with a real production audit-log proof — at **[opsagents.agency/sosa](https://opsagents.agency/sosa)**.
 
 ---
 
