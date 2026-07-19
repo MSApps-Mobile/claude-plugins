@@ -446,3 +446,6 @@ defaults read "/Applications/Google Chrome.app/Contents/Info.plist" CFBundleShor
 2. `reload_extension` on that ID — a targeted service-worker reload that may restore the bridge without a full Chrome restart or socket-symlink intervention.
 
 Until the gate clears, keep using the existing log-grep + `0.sock` + LevelDB-account-UUID flow above; the extension tools add nothing in attach mode on Chrome 148.
+
+### Claude Desktop not running is its own failure cause (observed 2026-07-20)
+When main.log's newest entries are days old and its last Chrome lines are "Shutting down MCP Server" — Claude **Desktop itself is closed**. No socket/symlink/pairing fix can produce a bridge connection because the consumer app is absent. Diagnostic: `pgrep -fl "Claude.app/Contents/MacOS"`. Fix: `open -a "Claude"`, wait ~25s, then re-run the reconnect URL. Note: in VSCode-extension/Cowork sessions the `mcp__Claude_in_Chrome__*` server is never attached at all (ToolSearch finds nothing) — that alone is NOT evidence of breakage; use `chrome-devtools-mcp` (`list_pages`) as that session's browser path. After Desktop relaunch the extension may still need one manual click (extension icon → Connect) before "Chrome extension connected to bridge" appears.
