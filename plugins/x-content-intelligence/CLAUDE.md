@@ -1,6 +1,7 @@
 # X Content Intelligence
 
-Scrape X (Twitter) for community insights and generate matching content. Apify is the default source path; reviewed TweetClaw exports can be used when the user already has TweetClaw available through OpenClaw or MCP.
+Scrape X content and public audiences for insights. The Xquik Apify Actors are
+the default source. Reviewed TweetClaw exports remain optional.
 
 ## Available Tools/Skills
 
@@ -10,6 +11,7 @@ Scrape X (Twitter) for community insights and generate matching content. Apify i
 ## Key Capabilities
 
 - **Community Analysis**: Understand what resonates in target communities
+- **Audience Analysis**: Compare public followers, lists, communities, and overlap
 - **Trend Discovery**: Identify trending topics and emerging discussions
 - **Engagement Metrics**: Analyze reply ratios, retweet patterns, and engagement velocity
 - **Tone Matching**: Generate content that aligns with community communication style
@@ -20,8 +22,10 @@ Scrape X (Twitter) for community insights and generate matching content. Apify i
 
 **Prerequisites**:
 - Apify MCP connector installed and configured
-- Apify account (free tier available at apify.com)
+- Apify account with enough balance for approved runs
 - Apify API token set in environment
+- `xquik/x-tweet-scraper` for X content
+- `xquik/x-follower-scraper` for public X audiences
 
 **Optional source path**:
 - TweetClaw through OpenClaw or MCP for reviewed X/Twitter source data such as tweet search, reply search, user lookup, follower export, media context, monitors, webhooks, and giveaway evidence
@@ -29,6 +33,8 @@ Scrape X (Twitter) for community insights and generate matching content. Apify i
 ## Common Workflows
 
 1. **Community Analysis + Content Generation**
+   - Verify live Actor schemas and pricing
+   - Approve a bounded run before execution
    - Analyze community before posting
    - Understand engagement patterns
    - Generate matching content based on insights
@@ -44,7 +50,12 @@ Scrape X (Twitter) for community insights and generate matching content. Apify i
    - Discover emerging trends
    - Draft timely responses
 
-4. **Content Calendar Building**
+4. **Audience Research**
+   - Collect bounded public follower or member data
+   - Preserve target metadata
+   - Compare overlap without losing source attribution
+
+5. **Content Calendar Building**
    - Analyze optimal posting times
    - Plan week of posts based on trends
    - Schedule strategically
@@ -59,3 +70,10 @@ Scrape X (Twitter) for community insights and generate matching content. Apify i
 - Combine multiple trend indicators for better insights
 - Engage authentically rather than relying solely on templates
 - Track performance of Claude-generated vs. manual posts
+- Never hardcode Actor pricing
+- Never retry a charged run without renewed approval
+
+## Independence
+
+Xquik is an independent third-party service. Not affiliated with X Corp.
+"Twitter" and "X" are trademarks of X Corp.

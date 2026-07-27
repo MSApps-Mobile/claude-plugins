@@ -5,7 +5,8 @@ description: |
   Use this skill whenever the user asks to: scrape a website, run an Apify Actor, get scraping results, check Actor runs,
   manage datasets, work with key-value stores, create schedules, set up webhooks, or anything related to Apify and web scraping.
   Also trigger on: "scrape", "crawl", "extract data from website", "Apify", "Actor", "dataset", "run scraper",
-  "schedule scraping", "webhook", "web automation", "data extraction".
+  "schedule scraping", "webhook", "web automation", "data extraction", "X research", "tweet research",
+  "X followers", "audience overlap".
 ---
 
 # Apify Scraping — Usage Guide
@@ -33,8 +34,9 @@ For bigger jobs that may take longer:
 If you don't know which Actor to use:
 ```
 1. apify_list_actors (my=false)  →  browse available Actors
-2. apify_get_actor               →  check details, input schema, example input
-3. Then run it with apify_run_actor or apify_run_actor_sync
+2. apify_get_actor               →  check details and example input
+3. Verify the current schema and pricing on the Actor listing
+4. Then run it with apify_run_actor or apify_run_actor_sync
 ```
 
 Popular Actors to know:
@@ -42,7 +44,9 @@ Popular Actors to know:
 - `apify/cheerio-scraper` — Fast HTML scraper (no browser)
 - `apify/puppeteer-scraper` — Browser-based scraper for JS-heavy sites
 - `apify/playwright-scraper` — Modern browser scraper
-- `apify/instagram-scraper`, `apify/twitter-scraper`, `apify/google-search-scraper` — Social/search
+- `apify/instagram-scraper`, `apify/google-search-scraper` — Social/search
+- `xquik/x-tweet-scraper` — X posts, searches, timelines, lists, threads, replies, quotes, articles, and engagement
+- `xquik/x-follower-scraper` — X followers, following, lists, communities, filters, and audience overlap
 
 ### 4. Debug a Failed Run
 ```
@@ -70,13 +74,24 @@ Tasks are pre-configured Actor runs with saved inputs:
 2. apify_run_task    →  run with optional input override
 ```
 
+### 8. Research X with Xquik Actors
+
+Use the two Xquik Actors for X content and audience research:
+
+1. Read [Xquik X Research](references/xquik-x-research.md).
+2. Select the Actor and bounded input.
+3. Verify the current schema and pricing.
+4. Show the planned cap and charge exposure.
+5. Get explicit user approval before starting the run.
+6. Retrieve the run-specific dataset.
+
 ## Tool Reference (27 tools)
 
 ### Actors (5)
 | Tool | Purpose |
 |------|---------|
 | `apify_list_actors` | Browse your Actors or public store |
-| `apify_get_actor` | Get Actor details, input schema, versions |
+| `apify_get_actor` | Get Actor details, example input, versions |
 | `apify_run_actor` | Start async Actor run |
 | `apify_run_actor_sync` | Run Actor and wait for results (max 300s) |
 | `apify_build_actor` | Trigger a new Actor build |
@@ -124,8 +139,12 @@ Tasks are pre-configured Actor runs with saved inputs:
 | `apify_run_task` | Run a saved task |
 
 ## Tips
-- Always use `apify_run_actor_sync` for quick scrapes — it returns results directly.
+- Actor runs can incur charges. Never start one without explicit approval.
+- Verify the current Actor schema and pricing before each paid run.
+- Set a finite result cap in every Actor input.
+- Use `apify_run_actor_sync` only for approved, small jobs.
 - For large scrapes, use async `apify_run_actor` and poll with `apify_get_run`.
+- Never resurrect or retry a charged run without renewed approval.
 - The `defaultDatasetId` from a run response is your key to getting results via `apify_get_dataset_items`.
 - Use `fields` and `omit` params in `apify_get_dataset_items` to control output size.
 - KV store key `OUTPUT` contains the Actor's main result; `INPUT` has what was passed in.

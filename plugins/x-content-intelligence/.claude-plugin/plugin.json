@@ -1,7 +1,7 @@
 {
   "name": "x-content-intelligence",
   "version": "0.1.1",
-  "description": "Scrape X (Twitter) for insights, analyze community trends and tone, and generate matching content. Uses Apify by default and can work from reviewed TweetClaw exports when available.",
+  "description": "Research X content and public audiences with Xquik Apify Actors, then analyze trends, tone, and community overlap. Not affiliated with X Corp.",
   "author": {
     "name": "MSApps"
   },
@@ -17,6 +17,9 @@
     "insights",
     "social-media",
     "apify",
+    "xquik",
+    "followers",
+    "audience-research",
     "tweetclaw",
     "openclaw",
     "sosa-agents"
@@ -30,8 +33,8 @@
     "pillars": {
       "supervised": "Content review before posting",
       "orchestrated": "Scrape or import reviewed source data, analyze, generate, then review content before use",
-      "secured": "Apify Actor or reviewed TweetClaw output for source data, no direct X API credentials in plugin",
-      "agents": "R=x-content-intelligence, T=Apify+TweetClaw, M=content-analysis, P=import/scrape-analyze-generate-review"
+      "secured": "Bounded Xquik Actor runs or reviewed TweetClaw output, no direct X API credentials in plugin",
+      "agents": "R=x-content-intelligence, T=Xquik-Apify+TweetClaw, M=content/audience-analysis, P=approve-import/scrape-analyze-review"
     }
   },
   "topics": [
