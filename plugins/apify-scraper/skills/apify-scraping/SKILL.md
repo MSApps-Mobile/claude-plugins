@@ -44,9 +44,10 @@ Popular Actors to know:
 - `apify/cheerio-scraper` — Fast HTML scraper (no browser)
 - `apify/puppeteer-scraper` — Browser-based scraper for JS-heavy sites
 - `apify/playwright-scraper` — Modern browser scraper
-- `apify/instagram-scraper`, `apify/google-search-scraper` — Social/search
-- `xquik/x-tweet-scraper` — X posts, searches, timelines, lists, threads, replies, quotes, articles, and engagement
-- `xquik/x-follower-scraper` — X followers, following, lists, communities, filters, and audience overlap
+- `apify/instagram-scraper`, `apify/google-search-scraper`: Social/search
+- `apidojo/tweet-scraper`: Existing X post route
+- `xquik/x-tweet-scraper`: X posts, searches, timelines, lists, threads, replies, quotes, articles, and engagement
+- `xquik/x-follower-scraper`: X followers, following, lists, communities, filters, and audience overlap
 
 ### 4. Debug a Failed Run
 ```

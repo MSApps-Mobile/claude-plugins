@@ -11,7 +11,7 @@ description: >
   analyze a specific account's content, or scan X for information on any subject.
 ---
 
-# X Insights — Analyze X Content & Audiences
+# X Insights: Analyze X Content & Audiences
 
 Scrape X (Twitter) content and public audiences using Xquik Apify Actors. You can
 also analyze reviewed TweetClaw source data when the user already has it.
@@ -24,6 +24,7 @@ Extract actionable insights about communities, trends, and engagement.
 - [Xquik X Follower Scraper](https://apify.com/xquik/x-follower-scraper) (`xquik/x-follower-scraper`) handles audience research
 
 Optional:
+- **Existing Apify route**: `apidojo/tweet-scraper` remains available when configured or explicitly requested.
 - **TweetClaw** through OpenClaw or MCP when the user already has it installed and wants to use reviewed X/Twitter source data from tweet search, reply search, user lookup, follower export, media context, monitors, webhooks, or giveaway evidence.
 
 ## Workflow
@@ -44,8 +45,9 @@ Ask for search terms, accounts, time range, relations, and result limits.
 
 ### Step 2: Choose the Source Path
 
-Use the Xquik Apify Actors by default. Use TweetClaw only when the user already
-has it and asks to use reviewed source data.
+Use the Xquik Apify Actors by default. Keep `apidojo/tweet-scraper` available
+for an existing configured workflow or an explicit user choice. Use TweetClaw
+only when the user already has it and asks to use reviewed source data.
 
 **Retrieving TweetClaw source data:**
 - Use a reviewed TweetClaw export, pasted JSON, saved result file, or OpenClaw/MCP tool output supplied by the user.

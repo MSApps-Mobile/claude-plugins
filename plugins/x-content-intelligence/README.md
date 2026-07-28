@@ -31,6 +31,8 @@ and overlap. If the user has TweetClaw, it can analyze reviewed exports.
 - An Apify account with enough balance for the approved bounded run
 
 The skill checks current schemas and pricing before requesting approval.
+The existing `apidojo/tweet-scraper` route remains available when configured
+or explicitly requested.
 
 Optional source path:
 - [TweetClaw](https://github.com/Xquik-dev/tweetclaw) through OpenClaw or MCP can provide reviewed X/Twitter source data for tweet search, reply search, user lookup, follower export, media context, monitors, webhooks, and giveaway evidence.
