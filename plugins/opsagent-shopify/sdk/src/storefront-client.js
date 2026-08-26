@@ -95,7 +95,11 @@ export function createStorefrontClient(config) {
     graphql,
 
     async searchProducts(query, { limit = 10 } = {}) {
-      return callMcp("search_shop_catalog", { query, limit });
+      // Shopify renamed `search_shop_catalog` -> `search_catalog` and nested
+      // the args (card N1UJorTX, probed live 2026-08-26 on u5rtvy-0a; the old
+      // name answers JSON-RPC -32602 "Tool not found"). Results are UCP-shaped;
+      // money amounts are MINOR units (29900 = 299.00 USD).
+      return callMcp("search_catalog", { catalog: { query, pagination: { limit } } });
     },
 
     async getProduct(handle) {
@@ -137,7 +141,10 @@ export function createStorefrontClient(config) {
 
     async healthCheck() {
       try {
-        await callMcp("search_shop_catalog", { query: "test", limit: 1 });
+        // Live probe with the CURRENT tool name — this is the self-test that
+        // must go loud (healthy:false) the next time Shopify renames a tool,
+        // instead of silently probing a name that no longer exists (N1UJorTX).
+        await callMcp("search_catalog", { catalog: { query: "test", pagination: { limit: 1 } } });
         return { healthy: true, transport: "mcp" };
       } catch (e) {
         return { healthy: false, error: e.message };

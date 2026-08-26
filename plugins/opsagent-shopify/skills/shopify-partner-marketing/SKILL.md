@@ -1,6 +1,20 @@
 ---
 name: shopify-partner-marketing
-description: Marketing playbook for Shopify Partners — how an agency or freelancer markets and sells their Shopify services. Captures the Shopify Academy course "Marketing Your Shopify Services as a Partner" plus public Partner Program guidance. Use this skill whenever the user is a Shopify Partner (agency, freelancer, dev, consultant) and wants to position their offering, define their ICP, run multi-touch or ABM campaigns, do digital marketing or SEO, market via events, measure marketing success, build a marketing plan, write proposals, prepare for or take the Shopify Academy "Marketing Your Shopify Services as a Partner" assessment, or generally grow merchant pipeline for their own services. Also trigger on "Shopify Partner marketing", "market my agency", "Shopify agency growth", "partner academy", "verified skill badge", "partner ICP", "merchant outreach plan", "Shopify partner SEO", "agency pricing", "Shopify partner referrals", "Hebrew/English Shopify partner pitch". Distinct from `shopify-sales-expert` (storefront CRO for merchants), `shopify-ai-expert` (building AI agents on stores), and `opsagent-bizdev` (general OpsAgent outreach) — this skill is specifically about how a Shopify Partner markets their services to merchants. If the user is asking how to *take the certification*, this skill drives the prep + answer-key reasoning.
+description: >-
+  Marketing playbook for Shopify Partners — how an agency or freelancer markets
+  and sells their Shopify services. Captures the Shopify Academy course 'Marketing
+  Your Shopify Services as a Partner' plus public Partner Program guidance. Use
+  whenever a Shopify Partner (agency, freelancer, dev, consultant) wants to
+  position their offering, define their ICP, run multi-touch/ABM campaigns, do
+  digital marketing or SEO, market via events, measure success, build a marketing
+  plan, write proposals, prep for the Academy 'Marketing Your Shopify Services as
+  a Partner' assessment, or grow merchant pipeline for their own services. Also
+  trigger on 'Shopify Partner marketing', 'market my agency', 'Shopify agency
+  growth', 'partner academy', 'verified skill badge', 'partner ICP', 'agency
+  pricing', 'Hebrew/English Shopify partner pitch'. Distinct from shopify-sales-
+  expert (merchant CRO), shopify-ai-expert (AI agents on stores), and opsagent-
+  bizdev (general outreach); also drives certification prep + answer-key
+  reasoning.
 ---
 
 # Shopify Partner Marketing
