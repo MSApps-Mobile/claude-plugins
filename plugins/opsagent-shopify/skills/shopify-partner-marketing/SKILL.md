@@ -6,12 +6,14 @@ description: >-
   Your Shopify Services as a Partner' plus public Partner Program guidance. Use
   whenever a Shopify Partner (agency, freelancer, dev, consultant) wants to
   position their offering, define their ICP, run multi-touch/ABM campaigns, do
-  digital marketing or SEO, market via events, measure success, build a marketing
-  plan, write proposals, prep for the Academy 'Marketing Your Shopify Services as
-  a Partner' assessment, or grow merchant pipeline for their own services. Also
-  trigger on 'Shopify Partner marketing', 'market my agency', 'Shopify agency
-  growth', 'partner academy', 'verified skill badge', 'partner ICP', 'agency
-  pricing', 'Hebrew/English Shopify partner pitch'. Distinct from shopify-sales-
+  digital marketing or SEO, market via events, measure marketing success, build a
+  marketing plan, write proposals, build a merchant outreach plan, prep for the
+  Academy 'Marketing Your Shopify Services as a Partner' assessment, or grow
+  merchant pipeline for their own services. Also trigger on 'Shopify Partner
+  marketing', 'market my agency', 'Shopify agency growth', 'partner academy',
+  'verified skill badge', 'partner ICP', 'agency pricing', 'merchant outreach
+  plan', 'Shopify partner SEO', 'Shopify partner referrals', 'Hebrew/English
+  Shopify partner pitch'. Distinct from shopify-sales-
   expert (merchant CRO), shopify-ai-expert (AI agents on stores), and opsagent-
   bizdev (general outreach); also drives certification prep + answer-key
   reasoning.
