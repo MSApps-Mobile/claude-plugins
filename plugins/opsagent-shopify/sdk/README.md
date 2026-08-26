@@ -42,7 +42,7 @@ import { createStorefrontClient } from "@opsagents/shopify-sdk";
 
 const storefront = createStorefrontClient({
   shopDomain: "your-store.myshopify.com",
-  storefrontToken: "your-storefront-token",
+  storefrontToken: process.env.SHOPIFY_STOREFRONT_TOKEN, // Storefront API token — never hardcode it
 });
 
 const results = await storefront.searchProducts("wool socks");
