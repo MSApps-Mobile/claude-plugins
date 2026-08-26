@@ -41,7 +41,7 @@ export function registerActorTools(server: McpServer): void {
     "apify_get_actor",
     {
       title: "Get Actor Details",
-      description: `Get detailed information about a specific Actor.\n\nArgs:\n  - actor_id (string): Actor ID or username/name (e.g. 'apify/web-scraper')\n\nReturns: Actor details including versions, default run options, input schema, and categories.`,
+      description: `Get detailed information about a specific Actor.\n\nArgs:\n  - actor_id (string): Actor ID or username/name (e.g. 'apify/web-scraper')\n\nReturns: Actor details including versions, default run options, example input, and categories.`,
       inputSchema: z.object({ actor_id: ActorIdSchema }).strict(),
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     },

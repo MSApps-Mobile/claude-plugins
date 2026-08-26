@@ -260,8 +260,8 @@
     {
       "name": "apify-scraper",
       "source": "./plugins/apify-scraper",
-      "description": "Full Apify web scraping platform integration — run Actors, manage datasets, key-value stores, schedules, webhooks, and tasks from within Claude",
-      "version": "0.1.0",
+      "description": "Run Apify Actors, manage storage and automation, and use bounded Xquik X research recipes. Not affiliated with X Corp.",
+      "version": "0.1.1",
       "platforms": [
         "claude-code",
         "cowork"
@@ -279,7 +279,9 @@
         "web",
         "actors",
         "datasets",
-        "automation"
+        "automation",
+        "x",
+        "xquik"
       ],
       "category": "data",
       "tags": [
@@ -288,6 +290,8 @@
         "actors",
         "datasets",
         "automation",
+        "x-research",
+        "xquik",
         "free"
       ]
     },
@@ -496,8 +500,8 @@
     {
       "name": "x-content-intelligence",
       "source": "./plugins/x-content-intelligence",
-      "description": "Scrape X (Twitter) for community insights and generate matched content — analyze trends, engagement patterns, and create posts via Apify",
-      "version": "0.1.0",
+      "description": "Research X content and audiences with Xquik Apify Actors, then analyze trends, tone, and overlap. Not affiliated with X Corp.",
+      "version": "0.1.1",
       "platforms": [
         "claude-code",
         "cowork"
@@ -515,7 +519,12 @@
         "scraping",
         "content",
         "social-media",
-        "analytics"
+        "analytics",
+        "xquik",
+        "followers",
+        "audience-research",
+        "tweetclaw",
+        "openclaw"
       ],
       "category": "marketing",
       "tags": [
@@ -524,6 +533,9 @@
         "content-generation",
         "social-media",
         "analytics",
+        "xquik",
+        "audience-research",
+        "tweetclaw",
         "free"
       ]
     },

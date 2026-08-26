@@ -38,6 +38,17 @@ APIFY_API_TOKEN=your_token_here
 **Check what happened:**
 > "Show me the last run of apify/web-scraper and its log"
 
+**Research X content:**
+> "Use the Xquik X Tweet Scraper for 50 recent posts about AI agents"
+
+**Compare X audiences:**
+> "Use the Xquik X Follower Scraper to compare two follower audiences"
+
+The bundled skill includes bounded recipes for
+[Xquik X Tweet Scraper](https://apify.com/xquik/x-tweet-scraper) and
+[Xquik X Follower Scraper](https://apify.com/xquik/x-follower-scraper).
+It verifies live schemas and pricing before requesting run approval.
+
 ## Architecture
 
 ```
@@ -62,7 +73,9 @@ apify-scraper/
 │           ├── key-value-stores.ts  # KV store tools
 │           └── schedules-webhooks.ts # Schedule, webhook & task tools
 ├── skills/apify-scraping/
-│   └── SKILL.md             # Usage guidance for Claude
+│   ├── SKILL.md             # Usage guidance for Claude
+│   └── references/
+│       └── xquik-x-research.md # Bounded X research recipes
 └── README.md
 ```
 
@@ -77,3 +90,8 @@ apify-scraper/
 ## Author
 
 MSApps
+
+## Independence
+
+Xquik is an independent third-party service. Not affiliated with X Corp.
+"Twitter" and "X" are trademarks of X Corp.

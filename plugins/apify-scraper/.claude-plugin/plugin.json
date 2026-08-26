@@ -1,6 +1,6 @@
 {
   "name": "apify-scraper",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Full Apify web scraping platform integration \u2014 run Actors, manage datasets, key-value stores, schedules, webhooks, and tasks directly from Claude.",
   "author": {
     "name": "MSApps"
@@ -12,6 +12,8 @@
     "actors",
     "datasets",
     "automation",
+    "x",
+    "xquik",
     "sosa-agents"
   ],
   "sosa": {

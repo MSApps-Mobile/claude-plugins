@@ -1,12 +1,14 @@
 # X Content Intelligence
 
-Scrape X (Twitter) for insights and generate community-matched content — powered by Apify.
+Scrape X (Twitter) for insights and generate community-matched content.
 
 ## What it does
 
 This plugin gives Claude two capabilities for working with X (Twitter):
 
-**X Insights** — Scrape and analyze X content to understand communities, trends, engagement patterns, and conversations. Use it to scan feeds, research topics, discover what's trending, or analyze what makes content resonate in a specific niche.
+**X Insights**: Scrape and analyze X content and public audiences. It uses the
+Xquik Apify Actors for posts, conversations, followers, lists, communities,
+and overlap. If the user has TweetClaw, it can analyze reviewed exports.
 
 **X Content Generator** — Create posts, threads, replies, and content calendars that match a target community's tone and topics. Works standalone or paired with X Insights for data-driven content creation.
 
@@ -19,11 +21,21 @@ This plugin gives Claude two capabilities for working with X (Twitter):
 - Draft thoughtful replies to boost engagement
 - Research what people are saying about any topic on X
 - Scan feeds for interesting content and patterns
+- Compare public follower audiences and community membership
 
 ## Requirements
 
-- [Apify MCP connector](https://apify.com/) — used for scraping X via the `apidojo/tweet-scraper` Actor
-- An Apify account (free tier available, pay-per-result for scraping)
+- An Apify MCP connector with Actor and dataset tools
+- [Xquik X Tweet Scraper](https://apify.com/xquik/x-tweet-scraper) for content research
+- [Xquik X Follower Scraper](https://apify.com/xquik/x-follower-scraper) for audience research
+- An Apify account with enough balance for the approved bounded run
+
+The skill checks current schemas and pricing before requesting approval.
+The existing `apidojo/tweet-scraper` route remains available when configured
+or explicitly requested.
+
+Optional source path:
+- [TweetClaw](https://github.com/Xquik-dev/tweetclaw) through OpenClaw or MCP can provide reviewed X/Twitter source data for tweet search, reply search, user lookup, follower export, media context, monitors, webhooks, and giveaway evidence.
 
 ## Install
 
@@ -52,6 +64,14 @@ This plugin gives Claude two capabilities for working with X (Twitter):
 **Feed scanning:**
 > "Search X for what people are saying about Claude Code and summarize the key themes"
 
+**Audience overlap:**
+> "Compare the public followers of two accounts and summarize their overlap"
+
 ## License
 
 MIT
+
+## Independence
+
+Xquik is an independent third-party service. Not affiliated with X Corp.
+"Twitter" and "X" are trademarks of X Corp.
