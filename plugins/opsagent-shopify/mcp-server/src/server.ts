@@ -84,7 +84,7 @@ function asError(e: unknown): {
 
 server.tool(
   "shopify_search_products",
-  "Search a merchant's public catalog. Wraps the Shopify Storefront MCP `search_shop_catalog` tool. Read-only, no token required. Use for: product discovery, recommendation flows, search-bar-style queries.",
+  "Search a merchant's public catalog. Wraps the Shopify Storefront MCP `search_catalog` tool (renamed by Shopify from `search_shop_catalog`; measured 2026-08-26). Read-only, no token required. Results are UCP-shaped and money amounts are in MINOR units (29900 = 299.00 USD). Use for: product discovery, recommendation flows, search-bar-style queries.",
   {
     ...shopArg,
     query: z.string().min(1).describe("Free-text search query, e.g. 'wool socks', 'gift under $50'."),
@@ -93,8 +93,11 @@ server.tool(
   async ({ shop, query, limit }) => {
     try {
       const result = await callStorefrontMcp(
-        "search_shop_catalog",
-        { query, limit: limit ?? 10 },
+        // Shopify renamed the tool and nested the args (card N1UJorTX,
+        // probed live 2026-08-26 on u5rtvy-0a: the old name answers
+        // JSON-RPC -32602 "Tool not found: search_shop_catalog").
+        "search_catalog",
+        { catalog: { query, pagination: { limit: limit ?? 10 } } },
         { shop }
       );
       return asText(result);
