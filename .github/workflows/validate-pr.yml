@@ -9,6 +9,10 @@ on:
     paths:
       - 'plugins/**'
       - 'scripts/**'
+      # Card 1zBkhSZm: the manifest was NOT a trigger, so a PR that edited only
+      # .claude-plugin/marketplace.json ran none of these jobs — including the
+      # coverage check below, whose whole subject is that file.
+      - '.claude-plugin/**'
 
 jobs:
   # ── Job 1: Detect which plugins are in this PR ───────────────────
@@ -219,3 +223,19 @@ jobs:
         run: |
           chmod +x scripts/sosa-eval.sh
           bash scripts/sosa-eval.sh . --ci
+
+      # ── Card 1zBkhSZm ──────────────────────────────────────────
+      # 33 plugin directories, 30 manifest entries, and nothing in this
+      # workflow compared the two — so opsagent-shopify carried a RELEASED tag
+      # (v0.3.7, 2026-08-26) pointing at content no user could install, for
+      # over a week, with every build green. The success signal and the failure
+      # signal were the same green build.
+      - name: Marketplace coverage — plugins/ vs the manifest
+        run: python3 scripts/check-marketplace-coverage.py --root .
+
+      # The card's AC-3 asks for this explicitly: "Pair it with a negative
+      # control — add a fixture that omits one entry and prove the check reds —
+      # or it is a guard that has only ever seen passing input." This step
+      # EXECUTES the red branch on every run, against committed fixtures.
+      - name: Marketplace coverage — prove the guard can FAIL
+        run: python3 scripts/check-marketplace-coverage.test.py
