@@ -2,3 +2,10 @@
 __MACOSX/
 *.zip
 cowork-plugin-management.plugin
+
+# internal analytics — this repo is the PUBLIC marketplace, do not publish (orchestra 2026-09-14)
+reports/
+plugin-analytics-*.html
+
+# opencode scratch incl. node_modules
+**/.opencode/
