@@ -78,9 +78,13 @@ def plugin_dirs(root):
     return sorted(n for n in os.listdir(base) if os.path.isdir(os.path.join(base, n)))
 
 
+def manifest_path(root):
+    return os.path.join(root, ".claude-plugin", "marketplace.json")
+
+
 def manifest_names(root):
     """Every plugin NAME the marketplace manifest publishes."""
-    path = os.path.join(root, ".claude-plugin", "marketplace.json")
+    path = manifest_path(root)
     with open(path, encoding="utf-8") as fh:
         data = json.load(fh)
     out = []
@@ -91,14 +95,25 @@ def manifest_names(root):
 
 
 def manifest_sources(root):
-    """Map published name -> the directory its `source` points at."""
-    path = os.path.join(root, ".claude-plugin", "marketplace.json")
+    """Map published name -> the directory its `source` points at, or None when the
+    source is not a path this check can key (see audit rule 2b)."""
+    path = manifest_path(root)
     with open(path, encoding="utf-8") as fh:
         data = json.load(fh)
     out = {}
     for entry in data.get("plugins", []):
-        if isinstance(entry, dict) and entry.get("name") and entry.get("source"):
-            out[entry["name"]] = os.path.basename(str(entry["source"]).rstrip("/"))
+        if not (isinstance(entry, dict) and entry.get("name") and entry.get("source")):
+            continue
+        src = entry["source"]
+        # A `source` may be a path string, a URL, or an object ({"source": "github", ...}).
+        # `basename(str(dict))` yields garbage like "'repo': 'x'}" and then rule 2 reds with
+        # "plugins/…/ does not exist" — a FALSE RED that names the wrong defect, which is
+        # how a guard gets muted. A non-path source is recorded as UNKEYABLE and reported
+        # as itself instead.
+        if isinstance(src, str):
+            out[entry["name"]] = os.path.basename(src.rstrip("/"))
+        else:
+            out[entry["name"]] = None
     return out
 
 
@@ -111,6 +126,18 @@ def audit(root, exclusions=None, min_dirs=MIN_PLUGIN_DIRS):
     if dirs is None:
         return ([f"no plugins/ directory under {root!r} — the walk found nothing to check"], {})
 
+    # A missing or unparseable manifest used to raise out of audit() and surface as a
+    # PYTHON TRACEBACK — no `::error::` annotation, so GitHub's UI shows a red job with
+    # nothing pointing at the cause. It is a problem, reported like every other one.
+    mpath = manifest_path(root)
+    if not os.path.isfile(mpath):
+        return ([f"no .claude-plugin/marketplace.json under {root!r} — the manifest this check compares against does not exist"], {})
+    try:
+        with open(mpath, encoding="utf-8") as fh:
+            json.load(fh)
+    except (json.JSONDecodeError, UnicodeDecodeError) as err:
+        return ([f".claude-plugin/marketplace.json does not parse as JSON: {err}"], {})
+
     if len(dirs) < min_dirs:
         problems.append(
             f"VACUITY: only {len(dirs)} plugin directories found, expected at least {min_dirs}. "
@@ -119,7 +146,14 @@ def audit(root, exclusions=None, min_dirs=MIN_PLUGIN_DIRS):
 
     names = manifest_names(root)
     sources = manifest_sources(root)
-    published_dirs = set(sources.values())
+    published_dirs = {v for v in sources.values() if v is not None}
+    for name, src in sources.items():
+        if src is None:
+            problems.append(
+                f"marketplace.json entry {name!r} has a non-path `source` this check cannot key "
+                f"to a directory. Reported rather than guessed: keying it wrongly would red the "
+                f"wrong rule, and skipping it silently would drop a published plugin from the sweep."
+            )
 
     # 1. a directory that is neither published nor consciously excluded
     for d in dirs:
@@ -136,18 +170,34 @@ def audit(root, exclusions=None, min_dirs=MIN_PLUGIN_DIRS):
 
     # 2. a manifest entry whose directory does not exist — publishing a path that isn't there
     for name, src in sources.items():
+        if src is None:
+            continue  # already reported above; keying it here would name the wrong defect
         if src not in dirs:
             problems.append(
                 f"marketplace.json publishes {name!r} from plugins/{src}/, which does not exist. "
                 f"Users installing it get nothing."
             )
 
-    # 3. a stale exclusion — permission for a directory that is gone
+    # 3. a stale exclusion — permission for a directory that is gone, OR for one that
+    #    has since been PUBLISHED. The second half was the hole: this list's own
+    #    docstring says "the moment a decision is made, the entry moves or the exclusion
+    #    is deleted", and until now only the DELETED half was enforced. A directory that
+    #    is in the manifest AND still in PENDING_DISPOSITION passed green, so the record
+    #    of an open decision outlived the decision — the same rot the manifest itself
+    #    suffered, reappearing in the guard written to stop it. Nothing else would catch
+    #    it: rule 1 skips published dirs before it ever looks at the exclusion list.
     for d in exclusions:
         if d not in dirs:
             problems.append(
                 f"PENDING_DISPOSITION lists {d!r}, but plugins/{d}/ no longer exists — "
                 f"remove the stale entry rather than leaving a decision recorded for nothing."
+            )
+        elif d in published_dirs or d in names:
+            problems.append(
+                f"PENDING_DISPOSITION lists {d!r}, but it IS published in "
+                f".claude-plugin/marketplace.json — the decision was made and the exclusion "
+                f"outlived it. Delete the entry; an exclusion list that still names a "
+                f"published plugin reads as an open question that nobody has to answer."
             )
         elif not str(exclusions[d]).strip():
             problems.append(f"PENDING_DISPOSITION[{d!r}] has no reason written — an exclusion without a reason is a silent carve-out.")
@@ -176,7 +226,10 @@ def main():
 
     if problems:
         for p in problems:
-            print(f"::error::{p}")
+            # GitHub reads an `::error::` annotation to the end of the LINE: a raw newline
+            # silently truncates the message and the rest lands as plain log text. Escaped
+            # per GitHub's own encoding so a multi-line explanation survives into the UI.
+            print("::error::" + str(p).replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A"))
         print(f"\n✗ marketplace coverage: {len(problems)} problem(s)")
         return 1
 

@@ -13,6 +13,10 @@ executed is a guard nobody has measured.
 | `agrees/` | one plugin, one manifest entry | **exit 0** — the known-POSITIVE |
 | `missing-entry/` | two plugin dirs, one manifest entry, no exclusion recorded | **exit 1** — the defect this card is about |
 | `dangling-source/` | a manifest entry pointing at a directory that is not there | **exit 1** — users install nothing |
+| `published-but-excluded/` | the dir IS in the manifest and STILL in `PENDING_DISPOSITION` | **exit 1** — the exclusion outlived the decision |
+| `object-source/` | a manifest `source` that is an object, not a path | **exit 1**, and exactly ONE problem — never "plugins/'repo': 'x'}/ does not exist" |
+| `no-manifest/` | plugins, no `.claude-plugin/marketplace.json` | **exit 1** as an `::error::`, never a traceback |
+| `bad-json/` | a manifest that does not parse | **exit 1** as an `::error::`, never a traceback |
 
 `--min-dirs` is not exposed on the CLI, so these fixtures are run through the
 `audit()` function directly by `scripts/check-marketplace-coverage.test.py`,

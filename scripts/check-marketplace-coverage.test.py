@@ -85,6 +85,35 @@ case(
     min_dirs=20,
 )
 
+case(
+    "an exclusion that OUTLIVED its decision — the dir IS published and still listed",
+    os.path.join(FIX, "published-but-excluded"),
+    {"alpha": "held pending a disposition — except it was published, and this line stayed"},
+    True,
+    match="outlived it",
+)
+case(
+    "a manifest `source` that is an OBJECT, not a path — reported, not mis-keyed",
+    os.path.join(FIX, "object-source"),
+    {},
+    True,
+    match="non-path `source`",
+)
+case(
+    "no manifest at all — an ::error::, never a traceback",
+    os.path.join(FIX, "no-manifest"),
+    {},
+    True,
+    match="does not exist",
+)
+case(
+    "a manifest that does not parse — an ::error::, never a traceback",
+    os.path.join(FIX, "bad-json"),
+    {},
+    True,
+    match="does not parse",
+)
+
 print("known-positives — these MUST pass, or the guard is just always-red:")
 case("a fixture where the sets agree", os.path.join(FIX, "agrees"), {}, False)
 case(
@@ -93,6 +122,26 @@ case(
     {"beta": "held pending a disposition, per the card"},
     False,
 )
+
+# ⭐ The object-source case must name ONE defect, not two. A guard that reds with
+# "plugins/'repo': 'x'}/ does not exist" is technically red and practically useless —
+# it sends the reader after a directory nobody ever wrote.
+_probs, _ = mc.audit(os.path.join(FIX, "object-source"), exclusions={}, min_dirs=1)
+if any("does not exist" in p for p in _probs):
+    failures.append(f"object-source: ALSO red on rule 2, naming a directory nobody wrote: {_probs}")
+elif len(_probs) != 1:
+    failures.append(f"object-source: expected exactly 1 problem, got {len(_probs)}: {_probs}")
+else:
+    print("  ok  object-source names exactly one defect, and it is the right one")
+
+# ⭐ And the live repo's own exclusions must not be silently published: this is the
+# assertion that would fire the day somebody adds opsagent-shopify to the manifest and
+# forgets the exclusion line — which is the whole point of the new rule.
+_live_problems, _ = mc.audit(REPO)
+if any("outlived it" in p for p in _live_problems):
+    failures.append(f"live repo: a PENDING_DISPOSITION entry is already published: {_live_problems}")
+else:
+    print("  ok  live repo — no exclusion outlives its decision today")
 
 print("the live repo — must pass at its recorded exclusions:")
 problems, summary = mc.audit(REPO)
