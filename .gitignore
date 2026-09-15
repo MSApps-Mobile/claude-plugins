@@ -2,3 +2,12 @@
 __MACOSX/
 *.zip
 cowork-plugin-management.plugin
+
+# Card 1zBkhSZm. `scripts/__pycache__/check-marketplace-coverage.cpython-313.pyc`
+# was TRACKED on a public marketplace repo — machine-specific compiled bytecode
+# that rewrites itself on use. Running the SCRIPT leaves the tree clean (it runs
+# as __main__); running the TEST SUITE imports the module, so Python rewrites the
+# cache and every contributor who runs the tests gets a dirty working tree, one
+# `git commit -a` away from shipping their own bytecode here.
+__pycache__/
+*.pyc
