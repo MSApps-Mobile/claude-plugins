@@ -1,6 +1,6 @@
 {
   "name": "whatsapp-mcp",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Connect Claude to WhatsApp — search messages, read conversations, send texts and media, and manage business outreach. Works in any language.",
   "author": {
     "name": "MSApps",
