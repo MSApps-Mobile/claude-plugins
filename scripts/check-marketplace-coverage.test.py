@@ -72,7 +72,7 @@ case(
 case(
     "an exclusion with an EMPTY reason — a silent carve-out",
     os.path.join(FIX, "missing-entry"),
-    {"beta": "   "},
+    {"beta": "    "},
     True,
     match="no reason written",
 )
@@ -105,17 +105,40 @@ else:
         f"{summary['pending_disposition']} pending disposition"
     )
 
-# The card's own measurement, pinned. If somebody publishes opsagent-shopify the
-# exclusion has to go, and this assertion is what says so out loud instead of
-# letting PENDING_DISPOSITION quietly outlive the decision.
-if "opsagent-shopify" not in mc.PENDING_DISPOSITION:
-    print("  ok  opsagent-shopify is no longer pending — remove this assertion with the exclusion")
+# Card 1zBkhSZm AC-2: opsagent-shopify must be PUBLISHED (in the manifest),
+# not lingering in PENDING_DISPOSITION. The assertion below fails loud if the
+# exclusion quietly returns.
+if "opsagent-shopify" in mc.PENDING_DISPOSITION:
+    failures.append(
+        "opsagent-shopify is still in PENDING_DISPOSITION — AC-2 requires it published "
+        "(in marketplace.json) and removed from the exclusion list"
+    )
 else:
+    names = mc.manifest_names(REPO)
     dirs = mc.plugin_dirs(REPO) or []
-    if "opsagent-shopify" not in dirs:
-        failures.append("opsagent-shopify is excluded but its directory is gone")
+    if "opsagent-shopify" not in names:
+        failures.append("opsagent-shopify missing from marketplace.json after publish disposition")
+    elif "opsagent-shopify" not in dirs:
+        failures.append("opsagent-shopify is in the manifest but plugins/opsagent-shopify/ is gone")
     else:
-        print("  ok  opsagent-shopify still RELEASED-BUT-UNPUBLISHED (card 1zBkhSZm AC-2, open)")
+        print("  ok  opsagent-shopify PUBLISHED (card 1zBkhSZm AC-2)")
+
+if "agents-md-optimizer" in mc.PENDING_DISPOSITION:
+    failures.append("agents-md-optimizer still pending — should be published")
+elif "agents-md-optimizer" not in (mc.manifest_names(REPO)):
+    failures.append("agents-md-optimizer missing from marketplace.json after publish disposition")
+else:
+    print("  ok  agents-md-optimizer PUBLISHED (card 1zBkhSZm AC-1)")
+
+if "msapps-public plugins" not in mc.PENDING_DISPOSITION:
+    failures.append(
+        "msapps-public plugins missing from PENDING_DISPOSITION — physical delete deferred; "
+        "exclusion with DELETE reason must remain until workflow-scope fix lands"
+    )
+elif "msapps-public plugins" not in (mc.plugin_dirs(REPO) or []):
+    failures.append("msapps-public plugins dir gone but exclusion remains — remove stale PENDING entry")
+else:
+    print("  ok  msapps-public plugins EXCLUDE/DELETE recorded (physical delete deferred, card 1zBkhSZm)")
 
 if failures:
     print("\n✗ FAILURES:")

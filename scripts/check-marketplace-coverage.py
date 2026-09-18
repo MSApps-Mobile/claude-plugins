@@ -6,14 +6,10 @@ Trello 1zBkhSZm. Measured 2026-09-04 and RE-MEASURED 2026-09-12 on `main`:
 33 directories under plugins/, 30 entries in .claude-plugin/marketplace.json,
 and the board anchor said 29. Three numbers, three sources, one live defect.
 
-    In the repo, absent from the manifest:
-      opsagent-shopify        <- THE REPO'S MOST RECENT RELEASE, tag
-                                 opsagent-shopify-v0.3.7, published 2026-08-26.
-                                 The newest thing we shipped is the one nobody
-                                 can install.
-      agents-md-optimizer     <- a live, in-fleet plugin
-      'msapps-public plugins' <- a directory name WITH A SPACE IN IT; almost
-                                 certainly a stray path, not a plugin
+    In the repo, absent from the manifest (DISPOSED 2026-09-18 on card 1zBkhSZm):
+      opsagent-shopify       <- PUBLISHED into marketplace.json (tag opsagent-shopify-v0.3.7)
+      agents-md-optimizer    <- PUBLISHED into marketplace.json (v1.0.1, shippable plugin.json)
+      'msapps-public plugins' <- EXCLUDE/DELETE recorded — physical delete deferred (CI detect+workflow scope)
 
 WHY NOTHING CAUGHT IT. release.yml, sosa-lint.yml and validate-pr.yml all exist
 and all pass. Not one of them compares the directory set to the manifest set, so
@@ -21,8 +17,8 @@ a released plugin sat unpublished for over a week with no red signal anywhere:
 the success signal and the failure signal were the same green build.
 
 WHAT THIS SCRIPT RULES ON — and what it deliberately does NOT.
-It rules on AGREEMENT, never on DISPOSITION. Whether opsagent-shopify should be
-published is a judgement call the card assigns to /opsagents-cto, and publishing
+It rules on AGREEMENT, never on DISPOSITION. Whether a plugin should be
+published is a judgment call the card assigns to /opsagents-cto, and publishing
 to a public marketplace is an outward-facing act. So every directory must be
 either IN the manifest or in PENDING_DISPOSITION below WITH A WRITTEN REASON —
 and the moment a decision is made, the entry moves or the exclusion is deleted.
@@ -39,28 +35,20 @@ import json
 import os
 import sys
 
-# ── The exclusion list: every directory NOT in the manifest, with the reason ──
+# — —  The exclusion list: every directory NOT in the manifest, with the reason  — —
 #
 # This list may only SHRINK. Each entry is an open decision, not a permanent
 # carve-out, and the script reds if an entry names a directory that no longer
 # exists — a stale exclusion reads as "we know about this one" long after the
 # code changed, which is the same rot the manifest itself suffered.
+# 2026-09-18: all three prior exclusions disposed (publish / publish / delete).
 PENDING_DISPOSITION = {
-    "opsagent-shopify": (
-        "RELEASED BUT UNPUBLISHED — tag opsagent-shopify-v0.3.7 (2026-08-26) points at "
-        "content no user can install. Trello 1zBkhSZm AC-2 resolves this FIRST. The fix is "
-        "either to publish it or to un-tag / mark it pre-release; leaving a released tag "
-        "pointing at unpublished content is the one option the card rules out."
-    ),
-    "agents-md-optimizer": (
-        "live, in-fleet plugin, absent from the manifest. Disposition (publish vs keep "
-        "internal) is Trello 1zBkhSZm AC-1 and belongs to /opsagents-cto."
-    ),
     "msapps-public plugins": (
-        "directory name CONTAINS A SPACE — almost certainly a stray or mis-created path "
-        "rather than a plugin. Trello 1zBkhSZm AC-1 says confirm and DELETE rather than "
-        "publish. Kept listed so the deletion is a decision somebody makes, not a thing "
-        "that quietly persists."
+        "DELETE pending — directory name CONTAINS A SPACE; confirmed stale nested mirror "
+        "of fix-chrome-connection (plugins/msapps-public plugins/plugins/fix-chrome-connection/). "
+        "Not a plugin. Physical delete deferred: Validate Plugin PR detect puts removed paths "
+        "in the matrix and reds; fixing detect requires workflow-scope (card 1zBkhSZm). "
+        "Do not publish."
     ),
 }
 
