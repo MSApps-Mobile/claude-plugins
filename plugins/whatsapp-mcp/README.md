@@ -11,6 +11,22 @@ This plugin gives Claude full access to your WhatsApp account through an MCP bri
 - **Business Outreach** — Compose and send professional follow-ups, lead outreach, and client communications with templates and best practices.
 - **Conversation Memory** — Claude remembers every contact's preferences, communication style, and conversation history across sessions — and gets better with every interaction.
 
+## Install (marketplace first)
+
+This plugin ships in the **[MSApps-Mobile/claude-plugins](https://github.com/MSApps-Mobile/claude-plugins)** marketplace.
+
+**Claude Code (CLI):**
+```bash
+/plugin marketplace add MSApps-Mobile/claude-plugins
+/plugin install whatsapp-mcp@msapps-plugins
+```
+
+**Cowork:** Settings → Plugins → Marketplaces → Add → `MSApps-Mobile/claude-plugins` → search `whatsapp-mcp` → Install.
+
+> If this plugin is useful, please [⭐ star the marketplace](https://github.com/MSApps-Mobile/claude-plugins/stargazers) — it helps other developers find it.
+
+Then set up the WhatsApp MCP **bridge** (upstream dependency) in Setup below.
+
 ## Conversation Memory — How Claude Learns
 
 Unlike a typical chatbot that starts fresh every session, this plugin includes a **persistent memory system** that makes Claude smarter over time.
@@ -73,7 +89,9 @@ Before installing this plugin, you need to set up the WhatsApp MCP bridge on you
 3. **FFmpeg** (optional, for voice messages) — `brew install ffmpeg`
 ## Setup
 
-### 1. Clone the WhatsApp MCP repo
+### 1. Clone the WhatsApp MCP bridge (upstream dependency)
+
+Credit: [`lharries/whatsapp-mcp`](https://github.com/lharries/whatsapp-mcp) — the bridge this plugin talks to. Do this **after** the marketplace install above.
 
 ```bash
 git clone https://github.com/lharries/whatsapp-mcp.git ~/whatsapp-mcp
@@ -97,17 +115,14 @@ export WHATSAPP_MCP_PATH="$HOME/whatsapp-mcp"
 
 Add this to your `~/.zshrc` or `~/.bashrc` to persist it.
 
-### 4. Install the plugin
+### 4. Confirm the marketplace plugin is installed
 
-**Claude Code (CLI):**
+If you skipped [Install (marketplace first)](#install-marketplace-first):
+
 ```bash
 /plugin marketplace add MSApps-Mobile/claude-plugins
 /plugin install whatsapp-mcp@msapps-plugins
 ```
-
-**Cowork:**
-1. Settings → Plugins → Marketplaces → Add → `MSApps-Mobile/claude-plugins`
-2. Search "whatsapp-mcp" → Install
 ## Skills
 
 | Skill | Description |
