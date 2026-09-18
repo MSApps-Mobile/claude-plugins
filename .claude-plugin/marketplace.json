@@ -5,8 +5,8 @@
     "email": "michal@msapps.mobi"
   },
   "metadata": {
-    "description": "Free Claude plugins by MSApps — Google Drive upload, Toggl time tracking, YouTube transcription, Notion memory, session backups, SOSA governance, CLAUDE.md composer, and more. Works in both Claude Code and Cowork.",
-    "version": "3.4.0",
+    "description": "Free Claude plugins by MSApps — Google Drive upload, Toggl time tracking, YouTube transcription, Notion memory, session backups, SOSA governance, CLAUDE.md composer, Shopify Admin/Storefront tools, and more. Works in both Claude Code and Cowork.",
+    "version": "3.4.1",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -1050,6 +1050,80 @@
         "inspiration": "https://medium.com/@kjramsy/your-claude-md-is-eating-your-token-budget-heres-how-to-fix-it-b8d6c4d1c986",
         "inspiration_author": "Kjramsy (Medium, Jan 2026)"
       }
+    },
+    {
+      "name": "opsagent-shopify",
+      "source": "./plugins/opsagent-shopify",
+      "description": "MSApps OpsAgents Shopify plugin — full Admin API + Storefront MCP tools (products CRUD, files, orders, customers, themes, metafields), go-to-market guidance, and @opsagents/shopify-sdk typed contracts.",
+      "version": "0.3.7",
+      "platforms": [
+        "claude-code",
+        "cowork"
+      ],
+      "author": {
+        "name": "Michal Shatz / MSApps",
+        "email": "michal@opsagents.agency"
+      },
+      "homepage": "https://msapps.mobi/plugins",
+      "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+      "license": "MIT",
+      "keywords": [
+        "shopify",
+        "storefront",
+        "admin-api",
+        "mcp",
+        "theme",
+        "msapps",
+        "opsagent",
+        "partner-marketing",
+        "shopify-academy",
+        "sdk"
+      ],
+      "category": "integrations",
+      "tags": [
+        "shopify",
+        "admin-api",
+        "storefront",
+        "mcp",
+        "themes",
+        "partner-marketing",
+        "free"
+      ]
+    },
+    {
+      "name": "agents-md-optimizer",
+      "source": "./plugins/agents-md-optimizer",
+      "description": "Audit bloated agent-instruction files (CLAUDE.md, AGENTS.md, and their variants) and rewrite them lean, or author a new one from scratch following the 200-line recipe-book principle. Detects antipatterns like embedded API docs, negative rules, tutorials, and preemptive file preloads.",
+      "version": "1.0.1",
+      "platforms": [
+        "claude-code",
+        "cowork"
+      ],
+      "author": {
+        "name": "MSApps",
+        "email": "michal@msapps.mobi"
+      },
+      "homepage": "https://msapps.mobi/plugins",
+      "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+      "license": "MIT",
+      "keywords": [
+        "claude-md",
+        "agents-md",
+        "context-optimization",
+        "token-efficiency",
+        "agent-instructions",
+        "prompt-engineering",
+        "msapps"
+      ],
+      "category": "devtools",
+      "tags": [
+        "claude-md",
+        "agents-md",
+        "token-efficiency",
+        "audit",
+        "prompt-engineering",
+        "free"
+      ]
     }
   ]
 }
