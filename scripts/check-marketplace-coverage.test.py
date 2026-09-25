@@ -179,15 +179,12 @@ elif "agents-md-optimizer" not in (mc.manifest_names(REPO)):
 else:
     print("  ok  agents-md-optimizer PUBLISHED (card 1zBkhSZm AC-1)")
 
-if "msapps-public plugins" not in mc.PENDING_DISPOSITION:
-    failures.append(
-        "msapps-public plugins missing from PENDING_DISPOSITION — physical delete deferred; "
-        "exclusion with DELETE reason must remain until workflow-scope fix lands"
-    )
-elif "msapps-public plugins" not in (mc.plugin_dirs(REPO) or []):
-    failures.append("msapps-public plugins dir gone but exclusion remains — remove stale PENDING entry")
+if "msapps-public plugins" in mc.PENDING_DISPOSITION:
+    failures.append("msapps-public plugins still pending — it was deleted (card 4vgdDPNS); drop the entry")
+elif "msapps-public plugins" in (mc.plugin_dirs(REPO) or []):
+    failures.append("plugins/msapps-public plugins/ is back — it is a stale mirror of fix-chrome-connection")
 else:
-    print("  ok  msapps-public plugins EXCLUDE/DELETE recorded (physical delete deferred, card 1zBkhSZm)")
+    print("  ok  msapps-public plugins DELETED and no longer excluded (card 4vgdDPNS)")
 
 if failures:
     print("\n✗ FAILURES:")
