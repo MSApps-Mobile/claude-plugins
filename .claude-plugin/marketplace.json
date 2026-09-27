@@ -1013,7 +1013,7 @@
       "name": "claude-md-composer",
       "source": "./plugins/claude-md-composer",
       "description": "Audit, compose, and refactor CLAUDE.md files — keep memory files under 200 lines, flip negative rules, split across the 4-level hierarchy. Inspired by Kjramsy's 'CLAUDE.md eating your token budget' post.",
-      "version": "1.0.0",
+      "version": "1.0.2",
       "platforms": [
         "claude-code",
         "cowork"
@@ -1045,11 +1045,7 @@
         "composer",
         "memory",
         "free"
-      ],
-      "sources": {
-        "inspiration": "https://medium.com/@kjramsy/your-claude-md-is-eating-your-token-budget-heres-how-to-fix-it-b8d6c4d1c986",
-        "inspiration_author": "Kjramsy (Medium, Jan 2026)"
-      }
+      ]
     },
     {
       "name": "opsagent-shopify",
