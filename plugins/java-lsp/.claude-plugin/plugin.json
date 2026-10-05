@@ -35,7 +35,7 @@
     "pillars": {
       "supervised": "Fully autonomous — read-only code analysis, no external calls or side effects",
       "orchestrated": "LSP protocol handles diagnostics, navigation, and hover automatically on file changes",
-      "secured": "No credentials, no network access beyond localhost LSP socket, no file writes",
+      "secured": "Not sandboxed: build-tool import (Gradle/Maven, which executes project build scripts) and autobuild are OFF by default; enable them only for trusted projects",
       "agents": "R=java-code-intelligence, T=jdtls, M=none, P=analyze-on-edit"
     }
   },

@@ -15,7 +15,7 @@ The C# LSP plugin delivers real-time code intelligence for C# and .NET projects 
 - **Navigation**: Go-to-definition (follows `using` aliases, partial classes, `[Generator]` source-generated members, metadata references) and find-references across the whole solution graph
 - **Type Information**: Hover to see inferred types, generic instantiations, async return types, and XML doc comments
 - **Solution-Aware**: Indexes from `.sln` / `.slnx` / bare `.csproj` roots — no Visual Studio required
-- **Read-Only Analysis**: Safe by design — no file modifications, no network calls, no credentials
+- **Read-Only Analysis**: no file modifications, no credentials. OmniSharp still evaluates the opened project's MSBuild files, so use it on trusted projects only (analyzers and package auto-restore are off by default)
 
 ## Workflow Process
 

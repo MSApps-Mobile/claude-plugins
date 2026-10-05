@@ -34,16 +34,26 @@ Gives Claude Roslyn-grade diagnostics, go-to-definition, find-references, and ty
 - `omnisharp` on `PATH`
 - A solution root: `.sln`, `.slnx`, or `.csproj`
 
+## Security — open only projects you trust
+
+OmniSharp **evaluates the MSBuild project files** (`.csproj`, `Directory.Build.props/targets`) of whatever you open, and MSBuild can run tasks and inline code during evaluation. That is inherent to the server and cannot be switched off from this config.
+
+What this plugin turns off by default, because it would load or fetch **more** code from an untrusted repo:
+- `RoslynExtensionsOptions.EnableAnalyzersSupport: false` — Roslyn analyzers are DLLs shipped in the project's NuGet packages and run inside the server.
+- `MsBuild.EnablePackageAutoRestore: false` — no automatic `dotnet restore` against the opened project.
+
+For a repo you trust, you may re-enable both in `.lsp.json`. Do not enable this plugin while working in a repo you did not write or review.
+
 ## SOSA Compliance
 
 | Pillar       | Level |
 |-------------|-------|
 | Supervised  | L1 — read-only, no side effects |
 | Orchestrated | L1 — LSP protocol, no manual routing |
-| Secured     | L1 — no credentials, no network, no writes |
+| Secured     | L1 — no credentials, no writes; NOT sandboxed against the opened project (see Security) |
 | Agents      | L1 — pure code analysis |
 
-**Level 1** — safe to run autonomously on any codebase.
+**Level 1** — safe to run autonomously on codebases you trust (see Security above).
 
 ## Supported languages
 

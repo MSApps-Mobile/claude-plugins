@@ -35,7 +35,7 @@
     "pillars": {
       "supervised": "Fully autonomous — read-only code analysis, no external calls or side effects",
       "orchestrated": "LSP protocol handles Roslyn diagnostics, navigation, and hover automatically on file changes",
-      "secured": "No credentials, no network access, no file writes — pure code analysis via local OmniSharp binary",
+      "secured": "Not sandboxed: OmniSharp evaluates the opened project's MSBuild files (which can run code). Analyzer loading and package auto-restore are OFF by default; use on trusted projects only",
       "agents": "R=csharp-code-intelligence, T=omnisharp, M=none, P=analyze-on-edit"
     }
   },
