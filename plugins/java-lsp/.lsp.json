@@ -14,12 +14,18 @@
       "settings": {
         "java": {
           "import": {
-            "gradle": { "enabled": true },
-            "maven": { "enabled": true }
+            "gradle": {
+              "enabled": false
+            },
+            "maven": {
+              "enabled": false
+            }
           },
-          "autobuild": { "enabled": true },
+          "autobuild": {
+            "enabled": false
+          },
           "configuration": {
-            "updateBuildConfiguration": "automatic"
+            "updateBuildConfiguration": "disabled"
           }
         }
       }

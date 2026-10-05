@@ -34,16 +34,26 @@ Gives Claude compile-accurate diagnostics, go-to-definition, find-references, an
 - `jdtls` on `PATH`
 - A recognizable project root: `pom.xml`, `build.gradle[.kts]`, `settings.gradle[.kts]`, `.project`, or `.git`
 
+## Security — open only projects you trust
+
+Importing a **Gradle** build executes `build.gradle(.kts)` and `settings.gradle`, and a **Maven** import can run plugins the `pom.xml` declares. A repo can put arbitrary code there.
+
+This plugin therefore ships with build-tool import **off**:
+- `java.import.gradle.enabled: false`, `java.import.maven.enabled: false`
+- `java.autobuild.enabled: false`, `java.configuration.updateBuildConfiguration: "disabled"`
+
+Plain `.java` files still get diagnostics and navigation. For a repo you trust and want full classpath resolution, set the import flags to `true` in `.lsp.json`.
+
 ## SOSA Compliance
 
 | Pillar       | Level |
 |-------------|-------|
 | Supervised  | L1 — read-only, no side effects |
 | Orchestrated | L1 — LSP protocol, no manual routing |
-| Secured     | L1 — no credentials, localhost socket only, no writes |
+| Secured     | L1 — no credentials, localhost socket only, no writes; build-tool import OFF by default (see Security) |
 | Agents      | L1 — pure code analysis |
 
-**Level 1** — safe to run autonomously on any codebase.
+**Level 1** — safe to run autonomously on codebases you trust (see Security above).
 
 ## Startup Notes
 

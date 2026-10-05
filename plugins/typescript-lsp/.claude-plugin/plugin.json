@@ -34,7 +34,7 @@
     "pillars": {
       "supervised": "Fully autonomous — read-only code analysis, no external calls or side effects",
       "orchestrated": "LSP protocol handles TypeScript diagnostics, navigation, and hover automatically on file changes",
-      "secured": "No credentials, no network access, no file writes — pure static analysis via local tsserver",
+      "secured": "Not sandboxed: the server runs the project's own node_modules/typescript and tsconfig plugins; use on trusted projects only",
       "agents": "R=typescript-code-intelligence, T=typescript-language-server, M=none, P=analyze-on-edit"
     }
   },

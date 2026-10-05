@@ -45,16 +45,22 @@ The server respects your existing `tsconfig.json`. For JS projects without type 
 }
 ```
 
+## Security — open only projects you trust
+
+`typescript-language-server` prefers the **project's own** `node_modules/typescript` (tsserver) over a global install, and tsserver loads **language-service plugins** listed in the project's `tsconfig.json` from `node_modules`. Both are code from the repo you opened, and both run inside the server. This cannot be fully switched off from this config.
+
+Use this plugin on projects you trust. In a repo you did not write or review, check `node_modules/typescript` and `compilerOptions.plugins` in `tsconfig.json` before enabling it, or disable the plugin for that session.
+
 ## SOSA Compliance
 
 | Pillar       | Level |
 |-------------|-------|
 | Supervised  | L1 — read-only, no side effects |
 | Orchestrated | L1 — LSP protocol, no manual routing |
-| Secured     | L1 — no credentials, no network, no writes |
+| Secured     | L1 — no credentials, no writes; NOT sandboxed against the opened project (see Security) |
 | Agents      | L1 — pure static analysis |
 
-**Level 1** — safe to run autonomously on any codebase.
+**Level 1** — safe to run autonomously on codebases you trust (see Security above).
 
 ## Supported files
 
