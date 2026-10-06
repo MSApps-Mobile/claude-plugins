@@ -9,6 +9,7 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -294,6 +295,146 @@ class LockAndBackoffTests(unittest.TestCase):
         self.clear_marker()
         self.m.get_db().close()
         self.assertEqual(["locked"], outcome)
+
+
+def garble_fts_segments(path):
+    """Overwrite FTS5 segment-leaf payload bytes in the file (b-tree left valid), so a
+    MATCH query mid-command raises 'database disk image is malformed' -- the shape the
+    PR #42 reviewer reproduced. Done at byte level because SQLite's defensive mode
+    refuses writes to FTS shadow tables. Synthetic rows only."""
+    c = sqlite3.connect(str(path))
+    blocks = [b for (b,) in c.execute("SELECT block FROM observations_fts_data WHERE length(block) > 100")]
+    c.close()
+    raw = bytearray(path.read_bytes())
+    n = 0
+    for b in blocks:
+        i = raw.find(b)
+        if i >= 0:
+            raw[i + 4:i + len(b)] = b"\xff" * (len(b) - 4)
+            n += 1
+    path.write_bytes(bytes(raw))
+    return n
+
+
+class FuseDeadlockTests(unittest.TestCase):
+    """Bounce 2 (PR #42): on FUSE (journal MEMORY + locking_mode EXCLUSIVE) an unclosed
+    command connection held the lock, so repair's BEGIN IMMEDIATE timed out busy and the
+    retry failed 'malformed'. Every connection must be closed before repair runs."""
+
+    BUSY = 2.0
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.db = Path(self.tmp.name) / "memory.db"
+        os.environ["COWORK_MEM_FORCE_FUSE"] = "1"
+        os.environ["COWORK_MEM_BUSY_TIMEOUT"] = str(self.BUSY)
+        self.m = load(self.db)
+        seed(self.m)
+        self.assertGreater(garble_fts_segments(self.db), 0, "fixture must garble FTS segments")
+        c = sqlite3.connect(str(self.db))
+        self.assertTrue(self.m._integrity_problems(c), "fixture must actually be corrupt")
+        c.close()
+        # Fresh integrity marker: the scheduled check is skipped, so corruption surfaces
+        # MID-COMMAND (inside the FTS MATCH), which is the deadlock path.
+        self.m._marker_path().touch()
+
+    def tearDown(self):
+        os.environ.pop("COWORK_MEM_FORCE_FUSE", None)
+        os.environ.pop("COWORK_MEM_BUSY_TIMEOUT", None)
+        self.tmp.cleanup()
+
+    rows = RepairTests.rows
+
+    def test_cli_search_mid_command_corruption_on_fuse_repairs_without_busy_wait(self):
+        before = self.rows()
+        env = dict(os.environ, COWORK_MEM_DB=str(self.db))
+        t0 = time.monotonic()
+        try:
+            r = subprocess.run([sys.executable, str(SCRIPTS / "memory_store.py"), "search", "widget"],
+                               capture_output=True, text=True, env=env, timeout=4 * self.BUSY + 10)
+        except subprocess.TimeoutExpired:
+            self.fail("search hung on FUSE mid-command corruption (deadlock)")
+        elapsed = time.monotonic() - t0
+        self.assertEqual(0, r.returncode, r.stderr)
+        self.assertNotIn("database busy", r.stderr)
+        self.assertIn("auto-repaired", r.stderr)
+        out = json.loads(r.stdout)
+        self.assertEqual("ok", out["status"])
+        self.assertEqual(20, out["count"])
+        # Pre-fix this waited out busy_timeout on our own lock before failing.
+        self.assertLess(elapsed, self.BUSY, f"waited on a lock for {elapsed:.1f}s")
+        self.assertEqual(before, self.rows())
+        c = sqlite3.connect(str(self.db))
+        self.assertEqual([], self.m._integrity_problems(c))
+        c.close()
+
+    def test_command_connection_closed_before_repair_in_process(self):
+        seen = {}
+        orig = self.m.repair_db
+
+        def spy():
+            seen["open_sessions"] = self.m._open_sessions
+            seen["cmd_db_closed"] = _is_closed(seen.get("db"))
+            return orig()
+
+        self.m.repair_db = spy
+
+        def op(db):
+            seen.setdefault("db", db)
+            return db.execute("SELECT COUNT(*) FROM observations_fts WHERE observations_fts MATCH 'widget'").fetchone()[0]
+
+        self.assertEqual(200, self.m.run_with_db(op))
+        self.assertEqual(0, seen["open_sessions"])
+        self.assertTrue(seen["cmd_db_closed"], "first-attempt connection still open during repair")
+        self.assertEqual(0, self.m._open_sessions)
+
+    def test_connection_closed_when_command_raises(self):
+        held = []
+
+        def op(db):
+            held.append(db)
+            raise ValueError("boom")
+
+        with self.assertRaises(ValueError):
+            self.m.run_with_db(op)
+        self.assertTrue(_is_closed(held[0]))
+        self.assertEqual(0, self.m._open_sessions)
+
+    def test_repair_refused_while_a_session_is_open(self):
+        self.m._marker_path().unlink()  # force the scheduled check to find the damage
+        self.m._open_sessions = 1
+        try:
+            with self.assertRaises(RuntimeError):
+                self.m.run_with_db(lambda db: None)
+        finally:
+            self.m._open_sessions = 0
+
+
+def _is_closed(conn):
+    if conn is None:
+        return False
+    try:
+        conn.execute("SELECT 1")
+        return False
+    except sqlite3.ProgrammingError:
+        return True
+
+
+class SingleRepairSiteTest(unittest.TestCase):
+    """Bounce 2 B2: check -> repair -> retry lives in exactly one function."""
+
+    def test_one_call_site(self):
+        import ast
+        tree = ast.parse((SCRIPTS / "memory_store.py").read_text(encoding="utf-8"))
+        callers = {"_auto_repair": set(), "repair_db": set(), "_scheduled_integrity_problems": set()}
+        for fn in ast.walk(tree):
+            if isinstance(fn, ast.FunctionDef):
+                for node in ast.walk(fn):
+                    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in callers:
+                        callers[node.func.id].add(fn.name)
+        self.assertEqual({"run_with_db"}, callers["_auto_repair"])
+        self.assertEqual({"_auto_repair"}, callers["repair_db"])
+        self.assertEqual({"run_with_db"}, callers["_scheduled_integrity_problems"])
 
 
 if __name__ == "__main__":

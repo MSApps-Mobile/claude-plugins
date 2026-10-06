@@ -31,7 +31,7 @@ import sqlite3
 import sys
 import time
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -312,7 +312,7 @@ def _prune_pre_repair_copies(keep: int = KEEP_PRE_REPAIR_COPIES) -> None:
 
 def backup_db(reason: str = "pre-repair") -> Path:
     """Copy the DB (and sidecars) aside. Call with the write lock held (repair_db does)."""
-    stamp = datetime.utcnow().strftime("%Y%m%dT%H%M%S%f")
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f")
     dest = Path(f"{DB_PATH}.{reason}-{stamp}")
     shutil.copy2(DB_PATH, dest)
     for suffix in ("-journal", "-wal", "-shm"):
@@ -408,7 +408,7 @@ def repair_db() -> dict:
 
 
 def _auto_repair(trigger: str):
-    """Single corrupt -> repair -> warn path (used by get_db, the integrity check and main).
+    """Repair + warn + back-off. Called ONLY from run_with_db(), never with a connection open.
 
     Honours a back-off marker so an unrepairable DB is not re-copied on every
     hook call. Returns the repair info, or None when nothing was repaired.
@@ -430,7 +430,7 @@ def _auto_repair(trigger: str):
         return None
     except MemoryDBError as e:
         try:
-            fail.write_text(f"{datetime.utcnow().isoformat()}Z {e}\n")
+            fail.write_text(f"{datetime.now(timezone.utc).isoformat()} {e}\n")
         except OSError:
             pass
         raise
@@ -445,41 +445,37 @@ def _auto_repair(trigger: str):
     return None
 
 
-def _maybe_check_integrity() -> None:
-    """Cheap-by-default check: run at most once per INTEGRITY_RECHECK_SECONDS."""
+def _scheduled_integrity_problems() -> list:
+    """Cheap-by-default check, at most once per INTEGRITY_RECHECK_SECONDS.
+
+    Returns the corruption problems found (empty = healthy, skipped or busy).
+    Never repairs: the check connection is closed before this returns, so the
+    single repair site in run_with_db() never races a lock held by it.
+    """
     marker = _marker_path()
     try:
         if time.time() - marker.stat().st_mtime < INTEGRITY_RECHECK_SECONDS:
-            return
+            return []
     except OSError:
         pass  # no marker yet -> check
     if not Path(DB_PATH).exists():
-        return
-    fuse = _is_fuse_path(DB_PATH)
-    delay = 0.1
-    for attempt in range(3):
+        return []
+    try:
+        conn = _connect(_is_fuse_path(DB_PATH), tolerant=True)
         try:
-            conn = _connect(fuse, tolerant=True)
-            try:
-                problems = _integrity_problems(conn)
-            finally:
-                conn.close()
-            break
-        except sqlite3.DatabaseError as e:
-            if _is_corruption(e):
-                problems = [str(e)]
-                break
-            if attempt == 2:
-                return  # locked / transient I/O: not corruption, check again next time
-            time.sleep(delay)
-            delay *= 3
-    if problems:
-        _auto_repair("integrity check")
-    else:
+            problems = _integrity_problems(conn)
+        finally:
+            conn.close()
+    except sqlite3.DatabaseError as e:
+        if not _is_corruption(e):
+            return []  # locked / transient I/O (busy_timeout already waited): check next time
+        problems = [str(e)]
+    if not problems:
         try:
             marker.touch()
         except OSError:
             pass
+    return problems
 
 
 def _open_conn(fuse: bool) -> sqlite3.Connection:
@@ -493,25 +489,61 @@ def _open_conn(fuse: bool) -> sqlite3.Connection:
     return conn
 
 
-def get_db() -> sqlite3.Connection:
+# Connections currently held by run_with_db(). Repair must never run while one is
+# open: on FUSE (journal MEMORY + locking_mode EXCLUSIVE) an open connection keeps
+# the file lock, so repair's BEGIN IMMEDIATE would wait out busy_timeout and fail.
+_open_sessions = 0
+
+
+def run_with_db(op=None):
+    """THE single check -> repair -> retry site. Every caller goes through here.
+
+    1. Scheduled integrity check (its connection is closed before any repair).
+    2. Open a connection and run ``op(db)``; the connection is ALWAYS closed
+       (finally) before control leaves this frame, success or failure.
+    3. On a corruption-class error (at open or mid-command): repair once with no
+       connection of ours open, then retry once. Lock/IO errors are never
+       repaired and propagate unchanged.
+
+    ``op=None`` returns an open connection for library callers (get_db); the
+    caller owns closing it and must do so before any later run_with_db call.
+    """
+    global _open_sessions
     fuse = _is_fuse_path(DB_PATH)
-    try:
-        _maybe_check_integrity()
-        return _open_conn(fuse)
-    except sqlite3.DatabaseError as e:
-        if not _is_corruption(e):
-            raise
-        _auto_repair(f"open: {e}")
-        return _open_conn(fuse)
+    problems = _scheduled_integrity_problems()
+    trigger = f"integrity check: {'; '.join(problems)}" if problems else None
+    for attempt in range(2):
+        if trigger:
+            if _open_sessions:
+                raise RuntimeError("repair requested while a cowork-mem connection is still open")
+            _auto_repair(trigger)
+        try:
+            db = _open_conn(fuse)  # closes itself if SCHEMA fails
+            if op is None:
+                return db
+            _open_sessions += 1
+            try:
+                return op(db)
+            finally:
+                _open_sessions -= 1
+                db.close()
+        except sqlite3.DatabaseError as e:
+            if attempt or not _is_corruption(e):
+                raise
+            trigger = f"command: {e}"
+
+
+def get_db() -> sqlite3.Connection:
+    """Open, checked (and if needed repaired) connection. Caller must close it."""
+    return run_with_db()
 
 
 # ---------------------------------------------------------------------------
 # Commands
 # ---------------------------------------------------------------------------
 
-def cmd_add(args):
+def cmd_add(db, args):
     """Add an observation to memory."""
-    db = get_db()
     obs_id = f"obs_{uuid.uuid4().hex[:12]}"
     now = datetime.utcnow().isoformat() + "Z"
 
@@ -536,14 +568,12 @@ def cmd_add(args):
         (obs_id, session_id, args.type, content, context_json, tags, now, is_private),
     )
     db.commit()
-    db.close()
 
     print(json.dumps({"status": "ok", "id": obs_id, "session_id": session_id}))
 
 
-def cmd_search(args):
+def cmd_search(db, args):
     """Search memories using FTS5 full-text search."""
-    db = get_db()
     limit = args.limit or 20
 
     # Build FTS query â simple word matching with prefix support
@@ -598,13 +628,11 @@ def cmd_search(args):
             "session_id": r["session_id"],
         })
 
-    db.close()
     print(json.dumps({"status": "ok", "count": len(results), "results": results}, indent=2))
 
 
-def cmd_timeline(args):
+def cmd_timeline(db, args):
     """Get recent observations in chronological order."""
-    db = get_db()
     hours = args.hours or 72
     limit = args.limit or 50
     since = (datetime.utcnow() - timedelta(hours=hours)).isoformat() + "Z"
@@ -619,13 +647,11 @@ def cmd_timeline(args):
     ).fetchall()
 
     results = [dict(r) for r in rows]
-    db.close()
     print(json.dumps({"status": "ok", "count": len(results), "since": since, "results": results}, indent=2))
 
 
-def cmd_session_start(args):
+def cmd_session_start(db, args):
     """Start a new memory session."""
-    db = get_db()
     session_id = f"sess_{uuid.uuid4().hex[:12]}"
     now = datetime.utcnow().isoformat() + "Z"
 
@@ -659,7 +685,6 @@ def cmd_session_start(args):
            ORDER BY ended_at DESC LIMIT 1"""
     ).fetchone()
 
-    db.close()
 
     result = {
         "status": "ok",
@@ -677,9 +702,8 @@ def cmd_session_start(args):
     print(json.dumps(result, indent=2))
 
 
-def cmd_session_end(args):
+def cmd_session_end(db, args):
     """End the current session with an optional summary."""
-    db = get_db()
     now = datetime.utcnow().isoformat() + "Z"
 
     row = db.execute(
@@ -716,13 +740,11 @@ def cmd_session_end(args):
         )
 
     db.commit()
-    db.close()
     print(json.dumps({"status": "ok", "session_id": session_id, "stats": stats}))
 
 
-def cmd_get(args):
+def cmd_get(db, args):
     """Fetch full details for specific observation IDs."""
-    db = get_db()
     placeholders = ",".join("?" for _ in args.ids)
     rows = db.execute(
         f"SELECT * FROM observations WHERE id IN ({placeholders})",
@@ -730,13 +752,11 @@ def cmd_get(args):
     ).fetchall()
 
     results = [dict(r) for r in rows]
-    db.close()
     print(json.dumps({"status": "ok", "results": results}, indent=2))
 
 
-def cmd_stats(args):
+def cmd_stats(db, args):
     """Show memory statistics."""
-    db = get_db()
 
     total_obs = db.execute("SELECT COUNT(*) as c FROM observations").fetchone()["c"]
     total_sessions = db.execute("SELECT COUNT(*) as c FROM sessions").fetchone()["c"]
@@ -752,7 +772,6 @@ def cmd_stats(args):
            FROM sessions ORDER BY started_at DESC LIMIT 5"""
     ).fetchall()
 
-    db.close()
     print(json.dumps({
         "status": "ok",
         "db_path": str(DB_PATH),
@@ -765,13 +784,12 @@ def cmd_stats(args):
     }, indent=2))
 
 
-def cmd_compact(args):
+def cmd_compact(db, args):
     """Compress old observations to save space.
 
     Merges observations older than N days into daily summaries,
     keeping the originals' key information but reducing row count.
     """
-    db = get_db()
     days = args.before_days or 30
     cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat() + "Z"
 
@@ -808,30 +826,25 @@ def cmd_compact(args):
         compacted += cnt
 
     db.commit()
-    db.close()
     print(json.dumps({"status": "ok", "compacted_observations": compacted, "days_processed": len(rows)}))
 
 
-def cmd_delete(args):
+def cmd_delete(db, args):
     """Delete specific observations by ID."""
-    db = get_db()
     placeholders = ",".join("?" for _ in args.ids)
     db.execute(f"DELETE FROM observations WHERE id IN ({placeholders})", args.ids)
     db.commit()
-    db.close()
     print(json.dumps({"status": "ok", "deleted": args.ids}))
 
 
-def cmd_export(args):
+def cmd_export(db, args):
     """Export all memories."""
-    db = get_db()
     fmt = args.format or "json"
 
     observations = db.execute(
         "SELECT * FROM observations WHERE is_private = 0 ORDER BY created_at"
     ).fetchall()
     sessions = db.execute("SELECT * FROM sessions ORDER BY started_at").fetchall()
-    db.close()
 
     if fmt == "json":
         print(json.dumps({
@@ -922,15 +935,7 @@ def main():
     }
 
     try:
-        try:
-            commands[args.command](args)
-        except sqlite3.DatabaseError as e:
-            # Corruption surfacing mid-command (e.g. FTS query): repair once, retry once.
-            # Lock/IO errors are NOT corruption and are never repaired.
-            if not _is_corruption(e):
-                raise
-            _auto_repair(f"command: {e}")
-            commands[args.command](args)
+        run_with_db(lambda db: commands[args.command](db, args))
     except Exception as e:
         print(json.dumps({"status": "error", "message": str(e)}), file=sys.stderr)
         sys.exit(1)

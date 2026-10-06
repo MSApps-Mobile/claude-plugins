@@ -32,7 +32,7 @@ import json
 import os
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -103,6 +103,16 @@ def find_memory_script() -> str | None:
     return str(candidate) if candidate.exists() else None
 
 
+def _add_timeout() -> float:
+    """Outlast memory_store's worst case: integrity check + repair + command, each
+    allowed to wait COWORK_MEM_BUSY_TIMEOUT (default 10s) on a lock."""
+    try:
+        busy = float(os.environ.get("COWORK_MEM_BUSY_TIMEOUT", "10"))
+    except ValueError:
+        busy = 10.0
+    return 3 * busy + 5
+
+
 def save_observation(obs_type: str, content: str, tags: str = "auto-capture"):
     """Call memory_store.py to save an observation."""
     script = find_memory_script()
@@ -118,7 +128,7 @@ def save_observation(obs_type: str, content: str, tags: str = "auto-capture"):
         r = subprocess.run(
             ["python3", script, "add", obs_type, content, "--tags", tags],
             env=env,
-            timeout=15,
+            timeout=_add_timeout(),
             capture_output=True,
             text=True,
         )
@@ -140,7 +150,7 @@ def _report_failure(message: str, db_path: str = ""):
         log_dir = Path(db_path).parent if db_path else Path.home() / ".claude" / ".cowork-mem"
         log_dir.mkdir(parents=True, exist_ok=True)
         with open(log_dir / "capture-errors.log", "a", encoding="utf-8") as fh:
-            fh.write(f"{datetime.utcnow().isoformat()}Z {line}\n")
+            fh.write(f"{datetime.now(timezone.utc).isoformat()} {line}\n")
     except Exception:
         pass
 
