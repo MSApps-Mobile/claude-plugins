@@ -90,6 +90,14 @@ DB_PATH = _find_db_path()
 # Schema
 # ---------------------------------------------------------------------------
 
+FTS_DDL = """CREATE VIRTUAL TABLE IF NOT EXISTS observations_fts USING fts5(
+    content,
+    tags,
+    context,
+    content=observations,
+    content_rowid=rowid
+)"""
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS observations (
     id          TEXT PRIMARY KEY,
@@ -112,13 +120,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 
 -- Full-text search index
-CREATE VIRTUAL TABLE IF NOT EXISTS observations_fts USING fts5(
-    content,
-    tags,
-    context,
-    content=observations,
-    content_rowid=rowid
-);
+{FTS_DDL}
 
 -- Triggers to keep FTS in sync
 CREATE TRIGGER IF NOT EXISTS observations_ai AFTER INSERT ON observations BEGIN
@@ -142,7 +144,7 @@ END;
 CREATE INDEX IF NOT EXISTS idx_obs_created ON observations(created_at);
 CREATE INDEX IF NOT EXISTS idx_obs_session ON observations(session_id);
 CREATE INDEX IF NOT EXISTS idx_obs_type ON observations(type);
-"""
+""".replace("{FTS_DDL}", FTS_DDL.strip() + ";")
 
 # ---------------------------------------------------------------------------
 # Connection
@@ -183,72 +185,264 @@ class MemoryDBError(Exception):
     """Raised when the DB is damaged and could not be repaired."""
 
 
+class DBBusy(Exception):
+    """The DB is locked / hit a transient I/O error. NOT corruption: never repaired."""
+
+
+KEEP_PRE_REPAIR_COPIES = 3
+REPAIR_BACKOFF_SECONDS = 3600
+_CORRUPT_MARKERS = ("malformed", "corrupt", "not a database", "encrypted")
+_CORRUPT_CODES = (11, 26)  # SQLITE_CORRUPT, SQLITE_NOTADB
+
+
+def _busy_timeout() -> float:
+    try:
+        return float(os.environ.get("COWORK_MEM_BUSY_TIMEOUT", "10"))
+    except ValueError:
+        return 10.0
+
+
+def _is_corruption(exc: BaseException) -> bool:
+    """The ONLY classifier that may authorise a repair.
+
+    Lock/busy and disk-I/O errors (SQLITE_BUSY/LOCKED/IOERR) are never
+    corruption: a concurrent writer must not make a healthy DB look damaged.
+    """
+    if not isinstance(exc, sqlite3.DatabaseError):
+        return False
+    msg = str(exc).lower()
+    if "locked" in msg or "busy" in msg or "disk i/o" in msg:
+        return False
+    code = getattr(exc, "sqlite_errorcode", None)
+    if code is not None and (code & 0xFF) in _CORRUPT_CODES:
+        return True
+    return any(s in msg for s in _CORRUPT_MARKERS)
+
+
 def _marker_path() -> Path:
     return Path(str(DB_PATH) + ".integrity-ok")
 
 
+def _fail_marker_path() -> Path:
+    return Path(str(DB_PATH) + ".repair-failed")
+
+
+def _configure(conn: sqlite3.Connection, fuse: bool, tolerant: bool = False) -> None:
+    """Pragma set shared by _open_conn, the integrity check and repair.
+
+    tolerant=True swallows corruption-class errors so a damaged file can still
+    be inspected/repaired; lock/IO errors always propagate.
+    """
+    try:
+        conn.execute(f"PRAGMA busy_timeout={int(_busy_timeout() * 1000)}")
+        mode = None
+        if not fuse:
+            # Durable on-disk rollback journal: an interrupted write is rolled
+            # back on next open instead of leaving the DB inconsistent.
+            try:
+                mode = conn.execute("PRAGMA journal_mode=TRUNCATE").fetchone()[0].lower()
+            except sqlite3.OperationalError as e:
+                if _is_corruption(e):
+                    raise
+                mode = None
+        if mode != "truncate":
+            # WARNING: Cowork's workspace mount (FUSE/network FS) cannot do WAL or
+            # DELETE journals. MEMORY is only used there (or if a durable journal
+            # is refused): single-user, single-process, commit after every write.
+            conn.execute("PRAGMA journal_mode=MEMORY")
+            conn.execute("PRAGMA locking_mode=EXCLUSIVE")
+        conn.execute("PRAGMA synchronous=NORMAL")
+        conn.execute("PRAGMA foreign_keys=ON")
+    except sqlite3.DatabaseError as e:
+        if not (tolerant and _is_corruption(e)):
+            raise
+
+
+def _connect(fuse: bool, tolerant: bool = False, autocommit: bool = False) -> sqlite3.Connection:
+    conn = sqlite3.connect(
+        str(DB_PATH), timeout=_busy_timeout(), isolation_level=None if autocommit else ""
+    )
+    try:
+        _configure(conn, fuse, tolerant)
+    except BaseException:
+        conn.close()
+        raise
+    return conn
+
+
 def _integrity_problems(conn: sqlite3.Connection) -> list:
-    """Return a list of problems (empty = healthy). Never raises."""
+    """Return a list of problems (empty = healthy).
+
+    Only corruption-class findings are returned as problems. Lock/IO errors
+    are re-raised so callers can back off instead of "repairing" a healthy DB.
+    """
     problems = []
     try:
         for (msg,) in conn.execute("PRAGMA quick_check").fetchall():
             if msg != "ok":
                 problems.append(msg)
     except sqlite3.DatabaseError as e:
+        if not _is_corruption(e):
+            raise
         problems.append(str(e))
     try:
         conn.execute("INSERT INTO observations_fts(observations_fts, rank) VALUES('integrity-check', 1)")
     except sqlite3.DatabaseError as e:
-        problems.append(f"fts5 integrity-check: {e}")
+        if "no such table" in str(e).lower():
+            pass  # SCHEMA (re)creates it on open; not corruption
+        elif not _is_corruption(e):
+            raise
+        else:
+            problems.append(f"fts5 integrity-check: {e}")
     return problems
 
 
+def _prune_pre_repair_copies(keep: int = KEEP_PRE_REPAIR_COPIES) -> None:
+    copies = sorted(
+        p for p in Path(DB_PATH).parent.glob(Path(DB_PATH).name + ".pre-repair-*")
+        if p.suffix not in ("-journal", "-wal", "-shm") and not p.name.endswith(("-journal", "-wal", "-shm"))
+    )
+    for old in copies[:-keep] if keep > 0 else copies:
+        for suffix in ("", "-journal", "-wal", "-shm"):
+            try:
+                Path(str(old) + suffix).unlink()
+            except OSError:
+                pass
+
+
 def backup_db(reason: str = "pre-repair") -> Path:
-    """Copy the DB (and any journal/wal sidecars) aside before touching it."""
-    stamp = datetime.utcnow().strftime("%Y%m%dT%H%M%S")
+    """Copy the DB (and sidecars) aside. Call with the write lock held (repair_db does)."""
+    stamp = datetime.utcnow().strftime("%Y%m%dT%H%M%S%f")
     dest = Path(f"{DB_PATH}.{reason}-{stamp}")
     shutil.copy2(DB_PATH, dest)
     for suffix in ("-journal", "-wal", "-shm"):
         side = Path(str(DB_PATH) + suffix)
         if side.exists():
             shutil.copy2(side, Path(str(dest) + suffix))
+    _prune_pre_repair_copies()
     return dest
 
 
+def _end_txn(conn: sqlite3.Connection, verb: str) -> None:
+    try:
+        conn.execute(verb)
+    except sqlite3.Error:
+        pass  # no transaction open (e.g. unparseable file)
+
+
 def repair_db() -> dict:
-    """Back up, rebuild the FTS index + REINDEX, re-check. Raises MemoryDBError."""
+    """Prove corruption under a held write lock, then back up, rebuild, re-check.
+
+    * Lock/IO errors raise DBBusy and never touch the index.
+    * A healthy DB is left alone (returns repaired=False).
+    * DROP TABLE observations_fts only runs after corruption was confirmed AND
+      FTS 'rebuild' itself failed with a corruption-class error.
+    Raises MemoryDBError if the DB is still damaged afterwards.
+    """
     if not Path(DB_PATH).exists():
         raise MemoryDBError(f"no database at {DB_PATH}")
-    backup = backup_db()
-    conn = sqlite3.connect(str(DB_PATH))
+    fuse = _is_fuse_path(DB_PATH)
     try:
-        before = None
+        conn = _connect(fuse, tolerant=True, autocommit=True)
+    except sqlite3.DatabaseError as e:
+        if _is_corruption(e):
+            raise
+        raise DBBusy(str(e)) from e
+    try:
         try:
-            before = conn.execute("SELECT COUNT(*) FROM observations").fetchone()[0]
-        except sqlite3.DatabaseError:
-            pass
+            conn.execute("BEGIN IMMEDIATE")  # waits busy_timeout, holds through rebuild
+        except sqlite3.DatabaseError as e:
+            # A file SQLite cannot even parse has no lock to take: go on to the
+            # (read-only) proof and let the rebuild report it as unrepairable.
+            if not _is_corruption(e):
+                raise DBBusy(str(e)) from e
         try:
-            conn.execute("INSERT INTO observations_fts(observations_fts) VALUES('rebuild')")
-        except sqlite3.DatabaseError:
-            # FTS shadow tables unusable: drop and recreate from the base table.
-            conn.execute("DROP TABLE IF EXISTS observations_fts")
-            conn.executescript(SCHEMA)
-            conn.execute("INSERT INTO observations_fts(observations_fts) VALUES('rebuild')")
-        conn.execute("REINDEX")
-        conn.commit()
-        problems = _integrity_problems(conn)
-        if problems:
-            raise MemoryDBError(
-                f"repair failed, still damaged: {'; '.join(problems)} (backup: {backup})"
-            )
-        after = conn.execute("SELECT COUNT(*) FROM observations").fetchone()[0]
+            try:
+                problems = _integrity_problems(conn)
+            except sqlite3.OperationalError as e:
+                raise DBBusy(str(e)) from e
+            if not problems:
+                _end_txn(conn, "ROLLBACK")
+                return {"repaired": False, "reason": "no corruption found"}
+            backup = backup_db()
+            before = None
+            try:
+                before = conn.execute("SELECT COUNT(*) FROM observations").fetchone()[0]
+            except sqlite3.DatabaseError:
+                pass
+            try:
+                conn.execute("INSERT INTO observations_fts(observations_fts) VALUES('rebuild')")
+            except sqlite3.DatabaseError as e:
+                if not _is_corruption(e) and "no such table" not in str(e).lower():
+                    raise
+                # Confirmed corruption and FTS shadow tables unusable: recreate from base table.
+                conn.execute("DROP TABLE IF EXISTS observations_fts")
+                conn.execute(FTS_DDL)
+                conn.execute("INSERT INTO observations_fts(observations_fts) VALUES('rebuild')")
+            conn.execute("REINDEX")
+            remaining = _integrity_problems(conn)
+            if remaining:
+                _end_txn(conn, "ROLLBACK")
+                raise MemoryDBError(
+                    f"repair failed, still damaged: {'; '.join(remaining)} (backup: {backup})"
+                )
+            after = conn.execute("SELECT COUNT(*) FROM observations").fetchone()[0]
+            conn.execute("COMMIT")
+        except sqlite3.DatabaseError as e:
+            _end_txn(conn, "ROLLBACK")
+            if _is_corruption(e):
+                raise MemoryDBError(f"unrepairable: {e}") from e
+            raise DBBusy(str(e)) from e
+        except BaseException:
+            _end_txn(conn, "ROLLBACK")
+            raise
     finally:
         conn.close()
+    for p in (_marker_path(),):
+        try:
+            p.touch()
+        except OSError:
+            pass
+    return {"repaired": True, "backup": str(backup), "rows_before": before, "rows_after": after,
+            "problems": problems}
+
+
+def _auto_repair(trigger: str):
+    """Single corrupt -> repair -> warn path (used by get_db, the integrity check and main).
+
+    Honours a back-off marker so an unrepairable DB is not re-copied on every
+    hook call. Returns the repair info, or None when nothing was repaired.
+    """
+    fail = _fail_marker_path()
     try:
-        _marker_path().touch()
+        if time.time() - fail.stat().st_mtime < REPAIR_BACKOFF_SECONDS:
+            raise MemoryDBError(
+                f"database is damaged and the last repair failed; auto-repair suppressed "
+                f"for {REPAIR_BACKOFF_SECONDS}s (see {fail}); trigger: {trigger}"
+            )
     except OSError:
         pass
-    return {"repaired": True, "backup": str(backup), "rows_before": before, "rows_after": after}
+    try:
+        info = repair_db()
+    except DBBusy as e:
+        print(json.dumps({"status": "warning", "message": f"repair skipped, database busy: {e}"}),
+              file=sys.stderr)
+        return None
+    except MemoryDBError as e:
+        try:
+            fail.write_text(f"{datetime.utcnow().isoformat()}Z {e}\n")
+        except OSError:
+            pass
+        raise
+    try:
+        fail.unlink()
+    except OSError:
+        pass
+    if info.get("repaired"):
+        print(json.dumps({"status": "warning", "message": f"database was damaged and auto-repaired ({trigger})",
+                          **info}), file=sys.stderr)
+        return info
+    return None
 
 
 def _maybe_check_integrity() -> None:
@@ -261,15 +455,26 @@ def _maybe_check_integrity() -> None:
         pass  # no marker yet -> check
     if not Path(DB_PATH).exists():
         return
-    conn = sqlite3.connect(str(DB_PATH))
-    try:
-        problems = _integrity_problems(conn)
-    finally:
-        conn.close()
+    fuse = _is_fuse_path(DB_PATH)
+    delay = 0.1
+    for attempt in range(3):
+        try:
+            conn = _connect(fuse, tolerant=True)
+            try:
+                problems = _integrity_problems(conn)
+            finally:
+                conn.close()
+            break
+        except sqlite3.DatabaseError as e:
+            if _is_corruption(e):
+                problems = [str(e)]
+                break
+            if attempt == 2:
+                return  # locked / transient I/O: not corruption, check again next time
+            time.sleep(delay)
+            delay *= 3
     if problems:
-        info = repair_db()
-        print(json.dumps({"status": "warning", "message": "database was damaged and has been auto-repaired",
-                          "problems": problems, **info}), file=sys.stderr)
+        _auto_repair("integrity check")
     else:
         try:
             marker.touch()
@@ -278,25 +483,13 @@ def _maybe_check_integrity() -> None:
 
 
 def _open_conn(fuse: bool) -> sqlite3.Connection:
-    conn = sqlite3.connect(str(DB_PATH), timeout=10)
+    conn = _connect(fuse)
     conn.row_factory = sqlite3.Row
-    mode = None
-    if not fuse:
-        # Durable on-disk rollback journal: an interrupted write is rolled
-        # back on next open instead of leaving the DB inconsistent.
-        try:
-            mode = conn.execute("PRAGMA journal_mode=TRUNCATE").fetchone()[0].lower()
-        except sqlite3.OperationalError:
-            mode = None
-    if mode != "truncate":
-        # WARNING: Cowork's workspace mount (FUSE/network FS) cannot do WAL or
-        # DELETE journals. MEMORY is only used there (or if a durable journal
-        # is refused): single-user, single-process, commit after every write.
-        conn.execute("PRAGMA journal_mode=MEMORY")
-        conn.execute("PRAGMA locking_mode=EXCLUSIVE")
-    conn.execute("PRAGMA synchronous=NORMAL")
-    conn.execute("PRAGMA foreign_keys=ON")
-    conn.executescript(SCHEMA)
+    try:
+        conn.executescript(SCHEMA)
+    except BaseException:
+        conn.close()
+        raise
     return conn
 
 
@@ -306,10 +499,9 @@ def get_db() -> sqlite3.Connection:
         _maybe_check_integrity()
         return _open_conn(fuse)
     except sqlite3.DatabaseError as e:
-        if "malformed" not in str(e).lower() and "corrupt" not in str(e).lower():
+        if not _is_corruption(e):
             raise
-        info = repair_db()
-        print(json.dumps({"status": "warning", "message": f"auto-repaired after: {e}", **info}), file=sys.stderr)
+        _auto_repair(f"open: {e}")
         return _open_conn(fuse)
 
 
@@ -734,10 +926,10 @@ def main():
             commands[args.command](args)
         except sqlite3.DatabaseError as e:
             # Corruption surfacing mid-command (e.g. FTS query): repair once, retry once.
-            if "malformed" not in str(e).lower() and "corrupt" not in str(e).lower():
+            # Lock/IO errors are NOT corruption and are never repaired.
+            if not _is_corruption(e):
                 raise
-            info = repair_db()
-            print(json.dumps({"status": "warning", "message": f"auto-repaired after: {e}", **info}), file=sys.stderr)
+            _auto_repair(f"command: {e}")
             commands[args.command](args)
     except Exception as e:
         print(json.dumps({"status": "error", "message": str(e)}), file=sys.stderr)
