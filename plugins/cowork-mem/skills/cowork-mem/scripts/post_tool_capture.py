@@ -26,10 +26,13 @@ Deliberately NOT captured:
   screenshot, mouse, keyboard — transient UI actions
 """
 
+from __future__ import annotations
+
 import json
 import os
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -112,14 +115,34 @@ def save_observation(obs_type: str, content: str, tags: str = "auto-capture"):
         env["COWORK_MEM_DB"] = db_path
 
     try:
-        subprocess.run(
+        r = subprocess.run(
             ["python3", script, "add", obs_type, content, "--tags", tags],
             env=env,
-            timeout=5,
+            timeout=15,
             capture_output=True,
+            text=True,
         )
+        if r.returncode != 0:
+            _report_failure(f"memory_store add exited {r.returncode}: {(r.stderr or r.stdout).strip()}", db_path)
+    except Exception as e:
+        # Hook errors must not break Claude's workflow -- but never lose a write silently.
+        _report_failure(f"capture failed: {e}", db_path)
+
+
+def _report_failure(message: str, db_path: str = ""):
+    """Surface a failed write: stderr line + append to capture-errors.log next to the DB."""
+    line = f"[cowork-mem] WRITE FAILED: {message}"
+    try:
+        print(line, file=sys.stderr)
     except Exception:
-        pass  # Hook errors must not break Claude's workflow
+        pass
+    try:
+        log_dir = Path(db_path).parent if db_path else Path.home() / ".claude" / ".cowork-mem"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        with open(log_dir / "capture-errors.log", "a", encoding="utf-8") as fh:
+            fh.write(f"{datetime.utcnow().isoformat()}Z {line}\n")
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------

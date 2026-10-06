@@ -26,6 +26,7 @@ Usage:
 import argparse
 import json
 import os
+import shutil
 import sqlite3
 import sys
 import time
@@ -147,18 +148,169 @@ CREATE INDEX IF NOT EXISTS idx_obs_type ON observations(type);
 # Connection
 # ---------------------------------------------------------------------------
 
-def get_db() -> sqlite3.Connection:
+# Filesystem types where SQLite's journal/locking is unreliable (Cowork's
+# workspace mount is FUSE/network backed).
+_FUSE_FSTYPES = ("fuse", "9p", "virtiofs", "vboxsf", "nfs", "cifs", "smb")
+INTEGRITY_RECHECK_SECONDS = 24 * 3600
+
+
+def _is_fuse_path(path: Path) -> bool:
+    """True when `path` lives on the Cowork FUSE/network workspace mount.
+
+    Reads /proc/mounts (Linux/Cowork VM) and picks the longest mount point
+    that prefixes the DB path. Non-Linux hosts (macOS) have no /proc/mounts
+    and are treated as regular filesystems.
+    """
+    if os.environ.get("COWORK_MEM_FORCE_FUSE") == "1":
+        return True
+    try:
+        target = str(Path(path).resolve())
+        best_len, best_type = -1, ""
+        with open("/proc/mounts", encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                parts = line.split()
+                if len(parts) < 3:
+                    continue
+                mnt = parts[1].replace("\\040", " ")
+                if (target == mnt or target.startswith(mnt.rstrip("/") + "/")) and len(mnt) > best_len:
+                    best_len, best_type = len(mnt), parts[2]
+        return best_type.startswith(_FUSE_FSTYPES)
+    except OSError:
+        return False
+
+
+class MemoryDBError(Exception):
+    """Raised when the DB is damaged and could not be repaired."""
+
+
+def _marker_path() -> Path:
+    return Path(str(DB_PATH) + ".integrity-ok")
+
+
+def _integrity_problems(conn: sqlite3.Connection) -> list:
+    """Return a list of problems (empty = healthy). Never raises."""
+    problems = []
+    try:
+        for (msg,) in conn.execute("PRAGMA quick_check").fetchall():
+            if msg != "ok":
+                problems.append(msg)
+    except sqlite3.DatabaseError as e:
+        problems.append(str(e))
+    try:
+        conn.execute("INSERT INTO observations_fts(observations_fts, rank) VALUES('integrity-check', 1)")
+    except sqlite3.DatabaseError as e:
+        problems.append(f"fts5 integrity-check: {e}")
+    return problems
+
+
+def backup_db(reason: str = "pre-repair") -> Path:
+    """Copy the DB (and any journal/wal sidecars) aside before touching it."""
+    stamp = datetime.utcnow().strftime("%Y%m%dT%H%M%S")
+    dest = Path(f"{DB_PATH}.{reason}-{stamp}")
+    shutil.copy2(DB_PATH, dest)
+    for suffix in ("-journal", "-wal", "-shm"):
+        side = Path(str(DB_PATH) + suffix)
+        if side.exists():
+            shutil.copy2(side, Path(str(dest) + suffix))
+    return dest
+
+
+def repair_db() -> dict:
+    """Back up, rebuild the FTS index + REINDEX, re-check. Raises MemoryDBError."""
+    if not Path(DB_PATH).exists():
+        raise MemoryDBError(f"no database at {DB_PATH}")
+    backup = backup_db()
     conn = sqlite3.connect(str(DB_PATH))
+    try:
+        before = None
+        try:
+            before = conn.execute("SELECT COUNT(*) FROM observations").fetchone()[0]
+        except sqlite3.DatabaseError:
+            pass
+        try:
+            conn.execute("INSERT INTO observations_fts(observations_fts) VALUES('rebuild')")
+        except sqlite3.DatabaseError:
+            # FTS shadow tables unusable: drop and recreate from the base table.
+            conn.execute("DROP TABLE IF EXISTS observations_fts")
+            conn.executescript(SCHEMA)
+            conn.execute("INSERT INTO observations_fts(observations_fts) VALUES('rebuild')")
+        conn.execute("REINDEX")
+        conn.commit()
+        problems = _integrity_problems(conn)
+        if problems:
+            raise MemoryDBError(
+                f"repair failed, still damaged: {'; '.join(problems)} (backup: {backup})"
+            )
+        after = conn.execute("SELECT COUNT(*) FROM observations").fetchone()[0]
+    finally:
+        conn.close()
+    try:
+        _marker_path().touch()
+    except OSError:
+        pass
+    return {"repaired": True, "backup": str(backup), "rows_before": before, "rows_after": after}
+
+
+def _maybe_check_integrity() -> None:
+    """Cheap-by-default check: run at most once per INTEGRITY_RECHECK_SECONDS."""
+    marker = _marker_path()
+    try:
+        if time.time() - marker.stat().st_mtime < INTEGRITY_RECHECK_SECONDS:
+            return
+    except OSError:
+        pass  # no marker yet -> check
+    if not Path(DB_PATH).exists():
+        return
+    conn = sqlite3.connect(str(DB_PATH))
+    try:
+        problems = _integrity_problems(conn)
+    finally:
+        conn.close()
+    if problems:
+        info = repair_db()
+        print(json.dumps({"status": "warning", "message": "database was damaged and has been auto-repaired",
+                          "problems": problems, **info}), file=sys.stderr)
+    else:
+        try:
+            marker.touch()
+        except OSError:
+            pass
+
+
+def _open_conn(fuse: bool) -> sqlite3.Connection:
+    conn = sqlite3.connect(str(DB_PATH), timeout=10)
     conn.row_factory = sqlite3.Row
-    # Use MEMORY journal mode — WAL and DELETE fail on Cowork's workspace
-    # mount (FUSE/network FS). MEMORY is safe here: single-user, single-
-    # process, and we commit after every write.
-    conn.execute("PRAGMA journal_mode=MEMORY")
-    conn.execute("PRAGMA synchronous=OFF")
-    conn.execute("PRAGMA locking_mode=EXCLUSIVE")
+    mode = None
+    if not fuse:
+        # Durable on-disk rollback journal: an interrupted write is rolled
+        # back on next open instead of leaving the DB inconsistent.
+        try:
+            mode = conn.execute("PRAGMA journal_mode=TRUNCATE").fetchone()[0].lower()
+        except sqlite3.OperationalError:
+            mode = None
+    if mode != "truncate":
+        # WARNING: Cowork's workspace mount (FUSE/network FS) cannot do WAL or
+        # DELETE journals. MEMORY is only used there (or if a durable journal
+        # is refused): single-user, single-process, commit after every write.
+        conn.execute("PRAGMA journal_mode=MEMORY")
+        conn.execute("PRAGMA locking_mode=EXCLUSIVE")
+    conn.execute("PRAGMA synchronous=NORMAL")
     conn.execute("PRAGMA foreign_keys=ON")
     conn.executescript(SCHEMA)
     return conn
+
+
+def get_db() -> sqlite3.Connection:
+    fuse = _is_fuse_path(DB_PATH)
+    try:
+        _maybe_check_integrity()
+        return _open_conn(fuse)
+    except sqlite3.DatabaseError as e:
+        if "malformed" not in str(e).lower() and "corrupt" not in str(e).lower():
+            raise
+        info = repair_db()
+        print(json.dumps({"status": "warning", "message": f"auto-repaired after: {e}", **info}), file=sys.stderr)
+        return _open_conn(fuse)
 
 
 # ---------------------------------------------------------------------------
@@ -578,7 +730,15 @@ def main():
     }
 
     try:
-        commands[args.command](args)
+        try:
+            commands[args.command](args)
+        except sqlite3.DatabaseError as e:
+            # Corruption surfacing mid-command (e.g. FTS query): repair once, retry once.
+            if "malformed" not in str(e).lower() and "corrupt" not in str(e).lower():
+                raise
+            info = repair_db()
+            print(json.dumps({"status": "warning", "message": f"auto-repaired after: {e}", **info}), file=sys.stderr)
+            commands[args.command](args)
     except Exception as e:
         print(json.dumps({"status": "error", "message": str(e)}), file=sys.stderr)
         sys.exit(1)
