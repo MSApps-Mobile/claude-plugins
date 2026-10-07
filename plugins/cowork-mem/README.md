@@ -56,6 +56,13 @@ You can also explicitly ask:
 
 Memories are stored in `~/.cowork-mem/memory.db` (in your Cowork workspace folder). The database persists on your machine across sessions.
 
+### Durability and self-repair
+
+- On a regular filesystem the database uses a durable on-disk rollback journal (`TRUNCATE`) with `synchronous=NORMAL`, so an interrupted write is rolled back on the next open.
+- On the Cowork workspace mount (FUSE/network filesystem) SQLite cannot keep an on-disk journal, so it falls back to `journal_mode=MEMORY` + `locking_mode=EXCLUSIVE`. **There, an interrupted write can still damage the full-text index: corruption is detected and repaired, not prevented.**
+- Detection: a `quick_check` + FTS5 integrity check at most once a day, and on any "malformed" error during a command. Repair copies the database aside (`memory.db.pre-repair-*`, the newest 3 are kept), rebuilds the FTS index from the base table and re-checks, all under a held write lock. Lock/busy errors are never treated as corruption. If a repair fails, auto-repair backs off for an hour (`memory.db.repair-failed`).
+- Failed writes from the auto-capture hook are logged to `capture-errors.log` next to the database instead of being lost silently.
+
 ## Requirements
 
 - Python 3 (included in Cowork sandbox)
