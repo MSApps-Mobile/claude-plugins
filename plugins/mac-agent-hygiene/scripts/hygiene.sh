@@ -12,7 +12,9 @@
 #   plugin-clones    ~/.claude/plugins/cache/temp_git_*            leftover plugin-install clones >24h
 #   browser-caches   cache subfolders INSIDE ~/.cache/playwright-* persistent profiles — the
 #                    profiles are logins; Cookies / Local Storage / IndexedDB / Login Data stay
-#   model-caches     whole directories listed in HYG_MODEL_CACHES, idle > HYG_MODEL_CACHE_AGE_DAYS
+#   model-caches     whole directories listed in HYG_MODEL_CACHES, not MODIFIED for HYG_MODEL_CACHE_AGE_DAYS
+#                    (directory mtime — a model that is only read is still removed after the window and
+#                    re-downloaded on next use; raise the window for models that must stay warm)
 #   worktrees        linked git worktrees under HYG_WT_ROOT matching HYG_WT_GLOB with no file newer
 #                    than HYG_WT_AGE_DAYS, clean, nobody's cwd, HEAD on a remote ref or a merged-PR
 #                    head. Dirty / unpushed / in-use: KEPT. Note: "clean" is `git status --porcelain`,

@@ -51,8 +51,8 @@ case "$ACTION" in
     loaded "$LABEL" && /bin/launchctl bootout "gui/$UID_N/$LABEL" 2>/dev/null
     if loaded "$LEGACY_LABEL"; then
       /bin/launchctl bootout "gui/$UID_N/$LEGACY_LABEL" 2>/dev/null
-      [ -f "$LEGACY_PLIST" ] && /bin/mv "$LEGACY_PLIST" "$LEGACY_PLIST.adopted-by-mac-agent-hygiene"
-      echo "adopted	$LEGACY_LABEL (unloaded; plist renamed *.adopted-by-mac-agent-hygiene so it does not reload at login)"
+      if [ -f "$LEGACY_PLIST" ]; then /bin/mv "$LEGACY_PLIST" "$LEGACY_PLIST.adopted-by-mac-agent-hygiene"; echo "adopted	$LEGACY_LABEL (unloaded; plist renamed *.adopted-by-mac-agent-hygiene so it does not reload at login)"
+      else echo "adopted	$LEGACY_LABEL (unloaded; its plist was not at the default path — remove it by hand so it does not reload at login)"; fi
     fi
     i=0; until /bin/launchctl bootstrap "gui/$UID_N" "$PLIST" 2>/dev/null; do i=$((i+1)); [ $i -ge 5 ] && { echo "bootstrap failed" >&2; exit 1; }; /bin/sleep 1; done
     loaded_path=$(/bin/launchctl print "gui/$UID_N/$LABEL" 2>/dev/null | /usr/bin/sed -n 's/^[[:space:]]*path = //p' | /usr/bin/head -1)

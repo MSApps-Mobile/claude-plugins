@@ -63,7 +63,7 @@ HYG_WT_ROOT="$HOME/code"      # where agent worktrees live
 HYG_WT_GLOB="*wt-*"           # how they are named
 HYG_WT_AGE_DAYS=7
 HYG_MODEL_CACHES="$HOME/.cache/whisper $HOME/.cache/codex-runtimes"
-HYG_MODEL_CACHE_AGE_DAYS=7    # model caches go only when idle this long
+HYG_MODEL_CACHE_AGE_DAYS=7    # model caches go when not MODIFIED this long (a read does not count)
 HYG_WT_MERGED_PR_CHECK=1      # 0 = pushed-only (no gh call)
 ```
 

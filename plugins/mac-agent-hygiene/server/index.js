@@ -62,7 +62,7 @@ const TOOLS = [
 function sh(file, args, env) {
   const r = spawnSync('/bin/bash', [file, ...args], { encoding: 'utf8', env: { ...process.env, ...env }, maxBuffer: 64 * 1024 * 1024 });
   if (r.error) throw r.error;
-  if (r.status !== 0 && !args.includes('status')) throw new Error(`${path.basename(file)} ${args[0]} exited ${r.status}: ${(r.stderr || '').trim().slice(0, 500)}`);
+  if (r.status !== 0) throw new Error(`${path.basename(file)} ${args[0]} exited ${r.status}: ${(r.stderr || '').trim().slice(0, 500)}`);
   return r;
 }
 const SUPPORTED_PROTOCOLS = ['2024-11-05', '2025-03-26', '2025-06-18'];
@@ -128,7 +128,7 @@ function handle(msg) {
   const error = (code, message) => ({ jsonrpc: '2.0', id, error: { code, message } });
   switch (method) {
     case 'initialize':
-      return reply({ protocolVersion: SUPPORTED_PROTOCOLS.includes(params && params.protocolVersion) ? params.protocolVersion : '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'mac-agent-hygiene', version: '0.1.0' } });
+      return reply({ protocolVersion: SUPPORTED_PROTOCOLS.includes(params && params.protocolVersion) ? params.protocolVersion : SUPPORTED_PROTOCOLS[SUPPORTED_PROTOCOLS.length - 1], capabilities: { tools: {} }, serverInfo: { name: 'mac-agent-hygiene', version: '0.1.0' } });
     case 'ping': return reply({});
     case 'tools/list': return reply({ tools: TOOLS });
     case 'tools/call': {
