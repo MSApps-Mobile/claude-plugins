@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>__LABEL__</string>
+  <key>ProgramArguments</key><array><string>/bin/bash</string><string>__SCRIPT__</string><string>run</string></array>
+  <key>StartCalendarInterval</key><dict><key>Hour</key><integer>__HOUR__</integer><key>Minute</key><integer>__MINUTE__</integer></dict>
+  <key>EnvironmentVariables</key><dict><key>PATH</key><string>__PATH__</string><key>HOME</key><string>__HOME__</string></dict>
+  <key>LowPriorityIO</key><true/>
+  <key>Nice</key><integer>10</integer>
+  <key>StandardOutPath</key><string>__HOME__/Library/Logs/mac-agent-hygiene.out</string>
+  <key>StandardErrorPath</key><string>__HOME__/Library/Logs/mac-agent-hygiene.err</string>
+</dict></plist>

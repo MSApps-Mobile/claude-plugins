@@ -1,0 +1,6 @@
+{
+  "name": "mac-agent-hygiene-mcp",
+  "private": true,
+  "type": "commonjs",
+  "description": "stdio MCP server for the mac-agent-hygiene plugin — zero dependencies"
+}

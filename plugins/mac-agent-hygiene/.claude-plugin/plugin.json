@@ -1,0 +1,46 @@
+{
+  "name": "mac-agent-hygiene",
+  "description": "Keeps a Mac that runs Claude Code agents from filling its disk: a daily LaunchAgent plus an MCP server that clears regenerable caches (Xcode DerivedData, leftover plugin clones, browser-profile caches) and reaps stale git worktrees that are clean and already pushed. Plan first, apply on confirm.",
+  "version": "0.1.0",
+  "author": {
+    "name": "MSApps",
+    "url": "https://claudeservices.ai"
+  },
+  "license": "MIT",
+  "homepage": "https://claudeservices.ai/plugins#mac-agent-hygiene",
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "privacy_policy": "https://opsagents.agency/privacy",
+  "terms_of_service": "https://opsagents.agency/terms",
+  "keywords": [
+    "mac",
+    "macos",
+    "disk",
+    "cleanup",
+    "worktree",
+    "launchd",
+    "mcp",
+    "claude-code",
+    "agents",
+    "sosa-agents"
+  ],
+  "platforms": [
+    "claude-code",
+    "cowork"
+  ],
+  "sosa": {
+    "compliant": true,
+    "level": 2,
+    "impact": "medium",
+    "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md",
+    "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
+    "pillars": {
+      "supervised": "Every removal is planned first (dry run with per-item reasons) and applied only with an explicit plan_id + confirm; the scheduled run deletes only regenerable caches and worktrees that are clean, pushed and untouched for a week",
+      "orchestrated": "status → plan → re-check → apply → log; one shell script decides eligibility in both plan and apply so nothing slips between them",
+      "secured": "Local filesystem only, no network except an optional read-only gh query for merged PRs; never sudo; never login state inside browser profiles; never dirty or unpushed worktrees; paths outside $HOME refused",
+      "agents": "R=mac-hygiene, T=bash+launchd+git+gh(read), M=30-min plan cache + append-only log, P=status-plan-confirm-apply"
+    }
+  },
+  "topics": [
+    "sosa-agents"
+  ]
+}
