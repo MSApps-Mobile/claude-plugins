@@ -13,7 +13,7 @@ and Desktop together held 2 GB. The space was in:
 
 | Where | Size | What it was |
 |---|---|---|
-| `~/code/*wt-*` | ~230 GB | 774 linked git worktrees agents created per task and never removed |
+| `~/code/*wt-*` | most of the 233 GB under `~/code` | 774 linked git worktrees (up to 1 GB each) agents created per task and never removed |
 | `~/.claude/plugins/cache/temp_git_*` | 34 GB | 937 leftover clones from plugin installs |
 | `~/.cache/playwright-*` | 7 GB | agent browser profiles — half of it Chromium's regenerable caches |
 | `~/Library/Developer/Xcode/DerivedData` | 6 GB | build output |
@@ -42,7 +42,8 @@ dirty, unpushed or in use; disk went from 16 GB free to 219 GB free.
 - Optional: GitHub CLI `gh`, authenticated — enables the merged-PR check for squash-merged worktrees.
   Without it the routine keeps any worktree whose HEAD is not on a remote ref.
 - No `sudo`. Nothing is installed outside `~/Library/LaunchAgents`, `~/Library/Logs` and
-  `~/.local/state/mac-agent-hygiene`.
+  `~/.local/share/mac-agent-hygiene` (a stable copy of `hygiene.sh` the LaunchAgent runs, so a plugin
+  update never leaves the scheduled job pointing at a moved file — re-run install after updating).
 
 ## Setup
 
@@ -77,7 +78,12 @@ HYG_WT_ROOT="$HOME/code"      # where agent worktrees live
 HYG_WT_GLOB="*wt-*"           # how they are named
 HYG_WT_AGE_DAYS=7
 HYG_MODEL_CACHES="$HOME/.cache/whisper $HOME/.cache/codex-runtimes"
+HYG_MODEL_CACHE_AGE_DAYS=7     # model caches go only when idle this long
 ```
+
+Environment variables win over the config file, so one MCP call can override one value for one run.
+"Clean" means `git status --porcelain` is empty — gitignored files (a local `.env`, `node_modules`)
+are removed together with a clean worktree.
 
 ### Without the MCP server
 
@@ -104,7 +110,7 @@ mac-agent-hygiene/
 ├── scripts/
 │   ├── hygiene.sh                 # status | plan | apply <planfile> | run — ONE eligibility function
 │   ├── install-launchd.sh         # install | status | uninstall the daily agent
-│   └── launchagent.plist.template # rendered from $HOME + detected Homebrew path
+│   └── launchagent.plist.template # rendered (bash substitution) from $HOME + detected Homebrew path
 ├── skills/mac-agent-hygiene/
 │   ├── SKILL.md
 │   └── references/safety-model.md

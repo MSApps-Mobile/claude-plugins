@@ -27,7 +27,9 @@ Run the four MCP tools in this order. Never skip the plan.
    time by the same function that planned it; anything that changed since the plan is refused, not
    removed. Report removed / refused / MB freed from the result.
 4. **`hygiene_schedule`** `action: "install"` once per Mac — installs the LaunchAgent
-   `com.msapps.mac-agent-hygiene` (default 04:30 daily). `action: "status"` later. The scheduled run
+   `com.msapps.mac-agent-hygiene` (default 04:30 daily); it copies `hygiene.sh` to
+   `~/.local/share/mac-agent-hygiene/` so the job survives plugin updates — re-run install after an
+   update. `action: "status"` later. The scheduled run
    is exactly `plan` + `apply` with no human in the loop, which is why the eligibility rules below
    are conservative by construction.
 
@@ -41,7 +43,7 @@ Without the MCP server (plain shell): `bash scripts/hygiene.sh status | plan | r
 | `derived-data` | `~/Library/Developer/Xcode/DerivedData/*` | everything, while `xcodebuild`, Xcode or `XCBBuildService` is running |
 | `plugin-clones` | `~/.claude/plugins/cache/temp_git_*` older than 24 h | younger clones (an install may still be using them) |
 | `browser-caches` | inside each `~/.cache/playwright-*` profile, ONLY: `Default/Cache`, `Default/Code Cache`, `Default/GPUCache`, `Default/Service Worker/CacheStorage` + `ScriptCache`, Dawn / Graphite / shader caches, `BrowserMetrics*` | Cookies, Local Storage, IndexedDB, Login Data, Local State, Preferences, Session Storage, Network — the profile IS a login; any profile with a `SingletonLock` or open files is skipped whole |
-| `model-caches` | the directories in `HYG_MODEL_CACHES` (default `~/.cache/whisper`, `~/.cache/codex-runtimes`) | when a process has them open |
+| `model-caches` | the directories in `HYG_MODEL_CACHES` (default `~/.cache/whisper`, `~/.cache/codex-runtimes`), idle > `HYG_MODEL_CACHE_AGE_DAYS` (7) | when a process has them open or they were used this week |
 | `worktrees` | a linked worktree under `HYG_WT_ROOT` (default `~/code`) matching `HYG_WT_GLOB` (default `*wt-*`) that is untouched > `HYG_WT_AGE_DAYS` (7), is nobody's cwd, has an empty `git status --porcelain`, and whose HEAD is on a remote-tracking ref or equals the head of a merged PR (`gh pr list --state merged`) | dirty, unpushed, unmerged, in-use, recently touched, or a full clone (`.git` is a directory, not a file) |
 
 The decision lives in one shell function per category, used by `plan` and by `apply`. A `gh` failure
@@ -61,8 +63,13 @@ HYG_WT_ROOT="$HOME/code"      # where agent worktrees live
 HYG_WT_GLOB="*wt-*"           # how they are named
 HYG_WT_AGE_DAYS=7
 HYG_MODEL_CACHES="$HOME/.cache/whisper $HOME/.cache/codex-runtimes"
+HYG_MODEL_CACHE_AGE_DAYS=7    # model caches go only when idle this long
 HYG_WT_MERGED_PR_CHECK=1      # 0 = pushed-only (no gh call)
 ```
+
+Environment variables win over the config file (an MCP `worktree_age_days` override applies to that
+run only). "Untouched" means no regular file inside the worktree (outside `.git`) is newer than the
+age. "Clean" is `git status --porcelain` empty, so gitignored files go with the worktree.
 
 The browser-cache allowlist is fixed in code on purpose. The LaunchAgent carries an explicit `PATH`
 (`/usr/bin:/bin:/usr/sbin:/sbin` plus the Homebrew bin that holds `gh`) because launchd does not

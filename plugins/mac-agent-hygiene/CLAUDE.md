@@ -8,9 +8,10 @@
 - `server/index.js` frames stdio JSON-RPC for MCP with no dependencies. It keeps plans in memory for
   30 minutes keyed by a hash of the remove-set; `hygiene_apply` requires a live `plan_id` and
   `confirm: true`, writes the remove-set to a 0600 temp file and calls `hygiene.sh apply`.
-- `scripts/install-launchd.sh` renders `launchagent.plist.template` from `$HOME`, this plugin's
-  absolute path and the detected Homebrew bin, then `bootout` + `bootstrap` and verifies the loaded
-  job path. It adopts (unloads) the hand-rolled predecessor `com.opsagents.dev-cache-cleanup` if present.
+- `scripts/install-launchd.sh` copies `hygiene.sh` to `~/.local/share/mac-agent-hygiene/` (stable path;
+  the plugin cache path moves on every update), renders `launchagent.plist.template` by bash
+  substitution (no sed — `&`/`#` in `$HOME` are safe), then `bootout` + `bootstrap` (retried) and
+  verifies the loaded job path. It adopts (unloads) the hand-rolled predecessor `com.opsagents.dev-cache-cleanup` if present.
 
 ## Invariants (do not relax)
 
@@ -19,6 +20,8 @@
   `gh` failure ⇒ keep. Never `--force`.
 - DerivedData skipped while Xcode builds. Never sudo. Paths outside `$HOME` refused at apply.
 - System binaries by absolute path; explicit PATH in the plist; `mktemp` with a `${TMPDIR:-/tmp}` template.
+- Paths compared as fixed strings (never a grep pattern); `.`/`..` components refused at the apply gate; every
+  category checks `dirname`/`basename`, not a glob across `/`. Environment > config file > defaults.
 
 ## Testing
 

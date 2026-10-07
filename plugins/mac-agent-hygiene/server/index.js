@@ -18,12 +18,12 @@ const plans = new Map(); // plan_id → { at, items }
 
 const TOOLS = [
   {
-    name: 'hygiene_status',
+    name: 'hygiene_status', annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
     description: 'Read-only snapshot: disk free, Xcode DerivedData size, leftover plugin clone count, Playwright profile count (locked / in use), stale worktree census, Xcode build state, LaunchAgent state, last log lines. Never changes anything.',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
   },
   {
-    name: 'hygiene_plan',
+    name: 'hygiene_plan', annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
     description: 'Dry run. Lists every candidate path with action remove|keep, size in KB and the reason (e.g. dirty-uncommitted-work, profile-in-use, pushed). Returns a plan_id valid for 30 minutes that hygiene_apply requires. Deletes nothing.',
     inputSchema: {
       type: 'object',
@@ -35,7 +35,7 @@ const TOOLS = [
     },
   },
   {
-    name: 'hygiene_apply',
+    name: 'hygiene_apply', annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
     description: 'Removes ONLY the items a fresh hygiene_plan marked remove, after re-checking each one at apply time (anything that became dirty, in-use or touched is refused). Requires the plan_id and confirm=true. Returns per-item outcome and MB freed.',
     inputSchema: {
       type: 'object',
@@ -45,7 +45,7 @@ const TOOLS = [
     },
   },
   {
-    name: 'hygiene_schedule',
+    name: 'hygiene_schedule', annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     description: 'Manage the daily LaunchAgent (com.msapps.mac-agent-hygiene). action=status reads it; install renders the plist from this plugin path and the current $HOME, unloads a legacy com.opsagents.dev-cache-cleanup agent if present, bootstraps and verifies; uninstall removes only this agent.',
     inputSchema: {
       type: 'object',
@@ -62,8 +62,10 @@ const TOOLS = [
 function sh(file, args, env) {
   const r = spawnSync('/bin/bash', [file, ...args], { encoding: 'utf8', env: { ...process.env, ...env }, maxBuffer: 64 * 1024 * 1024 });
   if (r.error) throw r.error;
+  if (r.status !== 0 && !args.includes('status')) throw new Error(`${path.basename(file)} ${args[0]} exited ${r.status}: ${(r.stderr || '').trim().slice(0, 500)}`);
   return r;
 }
+const SUPPORTED_PROTOCOLS = ['2024-11-05', '2025-03-26', '2025-06-18'];
 const tsv = (out) => out.split('\n').filter(Boolean).map((l) => l.split('\t'));
 const planItems = (out) => tsv(out).map(([category, action, kb, reason, p]) => ({ category, action, kb: Number(kb) || 0, reason, path: p }));
 const planId = (items) => createHash('sha1').update(items.filter((i) => i.action === 'remove').map((i) => i.category + '\t' + i.path).sort().join('\n')).digest('hex').slice(0, 16);
@@ -76,7 +78,10 @@ function toolStatus() {
   o.log_tail = tail;
   return o;
 }
+const CATS = ['derived-data', 'plugin-clones', 'browser-caches', 'model-caches', 'worktrees'];
 function toolPlan(args = {}) {
+  if (args.categories !== undefined && !(Array.isArray(args.categories) && args.categories.every((c) => CATS.includes(c)))) return { isError: true, text: `categories must be a subset of ${CATS.join(', ')}` };
+  if (args.worktree_age_days !== undefined && !(Number.isInteger(args.worktree_age_days) && args.worktree_age_days >= 1)) return { isError: true, text: 'worktree_age_days must be an integer >= 1' };
   const env = {};
   if (args.worktree_age_days) env.HYG_WT_AGE_DAYS = String(args.worktree_age_days);
   const r = sh(HYGIENE, ['plan'], env);
@@ -91,7 +96,7 @@ function toolPlan(args = {}) {
   return { plan_id: id, expires_in_minutes: 30, would_remove: remove.length, would_free_mb: mb(remove.reduce((s, i) => s + i.kb, 0)), kept: items.length - remove.length, by_category: byCat, items, note: 'Nothing was deleted. Call hygiene_apply with this plan_id and confirm=true to remove the "remove" items; each is re-checked first.' };
 }
 function toolApply(args = {}) {
-  if (args.confirm !== true) return { isError: true, text: 'Refused: confirm must be true.' };
+  if (typeof args.plan_id !== 'string' || args.confirm !== true) return { isError: true, text: 'Refused: plan_id (string) and confirm=true are required.' };
   const plan = plans.get(args.plan_id);
   if (!plan) return { isError: true, text: 'Refused: unknown or expired plan_id — call hygiene_plan again and pass its plan_id.' };
   if (Date.now() - plan.at > PLAN_TTL_MS) { plans.delete(args.plan_id); return { isError: true, text: 'Refused: plan expired (30 min). Call hygiene_plan again.' }; }
@@ -107,8 +112,11 @@ function toolApply(args = {}) {
   } finally { fs.rmSync(path.dirname(file), { recursive: true, force: true }); }
 }
 function toolSchedule(args = {}) {
+  if (!['status', 'install', 'uninstall'].includes(args.action)) return { isError: true, text: 'action must be status | install | uninstall' };
+  for (const [k, max] of [['hour', 23], ['minute', 59]]) if (args[k] !== undefined && !(Number.isInteger(args[k]) && args[k] >= 0 && args[k] <= max)) return { isError: true, text: `${k} must be an integer 0-${max}` };
   const a = ['hour', 'minute'].flatMap((k) => (args[k] !== undefined ? [`--${k}`, String(args[k])] : []));
-  const r = sh(LAUNCHD, [args.action, ...a]);
+  const r = spawnSync('/bin/bash', [LAUNCHD, args.action, ...a], { encoding: 'utf8' });
+  if (r.error) throw r.error;
   const o = {}; for (const [k, v] of tsv(r.stdout)) o[k] = v;
   if (r.status !== 0) return { isError: true, text: (r.stderr || r.stdout || 'failed').trim(), partial: o };
   return o;
@@ -120,7 +128,7 @@ function handle(msg) {
   const error = (code, message) => ({ jsonrpc: '2.0', id, error: { code, message } });
   switch (method) {
     case 'initialize':
-      return reply({ protocolVersion: (params && params.protocolVersion) || '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'mac-agent-hygiene', version: '0.1.0' } });
+      return reply({ protocolVersion: SUPPORTED_PROTOCOLS.includes(params && params.protocolVersion) ? params.protocolVersion : '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'mac-agent-hygiene', version: '0.1.0' } });
     case 'ping': return reply({});
     case 'tools/list': return reply({ tools: TOOLS });
     case 'tools/call': {

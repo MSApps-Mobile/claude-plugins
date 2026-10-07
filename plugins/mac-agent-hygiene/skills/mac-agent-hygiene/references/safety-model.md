@@ -21,10 +21,11 @@ of that site, and re-login is a human action (passkeys, 2FA, bot checks). So:
 ## Worktrees may be the only copy of something
 
 Agents create linked worktrees (`git worktree add`) per task. On the reference machine 774 of them
-held ~230 GB; 500 had not been touched in a week. But a dirty worktree or one with unpushed commits
+held most of the 233 GB under `~/code` (up to 1 GB each); 500 had not been touched in a week. But a dirty worktree or one with unpushed commits
 can be the only copy of real work, and no board signal says which. Removal therefore requires ALL of:
 
-1. untouched for `HYG_WT_AGE_DAYS` (directory mtime);
+1. untouched for `HYG_WT_AGE_DAYS` — no regular file inside (outside `.git`) newer than the age, not
+   just the directory mtime (editing a nested file would otherwise leave the top-level mtime old);
 2. no process has its cwd inside (`lsof -d cwd`) — a live session may be parked there;
 3. `.git` is a FILE (a linked worktree). A `.git` directory means a full clone, which is left alone.
    The common idiom `[ -d .git ]` is false for a worktree and is exactly the wrong test here;
@@ -41,13 +42,23 @@ second line of defence) followed by `git worktree prune` in the main repository.
 The first real run on the reference machine removed 420 worktrees / 133 GB and kept 80 — every kept
 one was dirty, unpushed, in use, or a full clone.
 
+## Paths are compared as strings, never as patterns
+
+A worktree named `wt-[x` once slipped past a cwd check that used the path as a `grep` pattern (the `[`
+made the expression invalid, grep exited 2, and the gate was silently skipped). The cwd set is now
+read once per run and compared with `=` / a quoted `case` prefix. The apply gate also refuses any
+path with a `.` or `..` component before any category check runs, and each category checks
+`dirname`/`basename` equality rather than a glob that `*` could stretch across `/`.
+
 ## launchd does not give you a PATH
 
 A script that works in Terminal fails under launchd because launchd's job PATH lacks Homebrew and
 may lack `/usr/sbin`. Measured failures: bare `ioreg`, `lsof`, `gh` "command not found" only when
 scheduled. Hence the plist carries an explicit `PATH` and the scripts call `/usr/sbin/lsof`,
 `/usr/bin/find`, `/bin/launchctl` and friends by absolute path, and the installer detects the
-Homebrew bin that holds `gh` at install time and bakes it into the rendered plist.
+Homebrew bin that holds `gh` at install time and bakes it into the rendered plist. The plist points at
+a stable copy of the script under `~/.local/share/mac-agent-hygiene/`, never into the plugin cache,
+whose path carries a version hash and moves on every plugin update.
 
 Reinstall means `launchctl bootout` + `launchctl bootstrap`. `launchctl kickstart` alone runs the
 OLD job definition. The installer verifies the loaded job's path equals the plist it just wrote.
