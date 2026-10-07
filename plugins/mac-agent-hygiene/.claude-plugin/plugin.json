@@ -1,7 +1,7 @@
 {
   "name": "mac-agent-hygiene",
   "description": "Keeps a Mac that runs Claude Code agents from filling its disk: a daily LaunchAgent plus an MCP server that clears regenerable caches (Xcode DerivedData, leftover plugin clones, browser-profile caches) and reaps stale git worktrees that are clean and already pushed. Plan first, apply on confirm.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": {
     "name": "MSApps",
     "url": "https://claudeservices.ai"
