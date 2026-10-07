@@ -61,6 +61,7 @@ We built **SOSA™ (Supervised Orchestrated Secured Agents)** to fix that — a 
 | [**session-backup**](./plugins/session-backup) | Daily backups of sessions, skills & configs to Drive | `session-backup@msapps-plugins` |
 | [**notion-memory**](./plugins/notion-memory) | Long-term memory + the 4 official Anthropic Notion skills (knowledge-capture, meeting-intelligence, research-documentation, spec-to-implementation) bundled in | `notion-memory@msapps-plugins` |
 | [**mac-disk-cleaner**](./plugins/mac-disk-cleaner) | Reclaim disk space on macOS — clean caches, find bloat | `mac-disk-cleaner@msapps-plugins` |
+| [**mac-agent-hygiene**](./plugins/mac-agent-hygiene) | Daily LaunchAgent + MCP server that keeps agent Macs from filling up — caches and stale pushed worktrees, plan → confirm → apply | `mac-agent-hygiene@msapps-plugins` |
 | [**whatsapp-mcp**](./plugins/whatsapp-mcp) | Connect Claude to WhatsApp — search, read, send | `whatsapp-mcp@msapps-plugins` |
 | [**apify-scraper**](./plugins/apify-scraper) | Full Apify web scraping — run Actors, manage datasets | `apify-scraper@msapps-plugins` |
 | [**apollo**](./plugins/apollo) | Prospect leads & enrich contacts with Apollo.io | `apollo@msapps-plugins` |
