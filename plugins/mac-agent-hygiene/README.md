@@ -133,10 +133,10 @@ mac-agent-hygiene/
 ## Author
 
 MSApps — https://claudeservices.ai · led by a Claude Certified Architect.
-MSApps is Certified in the Claude Partner Network ([claude.com/partners](https://claude.com/partners)).
+MSApps is Certified in the [Claude Partner Network](https://claude.com/partners).
 
 Related: [`mac-disk-cleaner`](../mac-disk-cleaner) for interactive, one-off disk exploration on any Mac.
-Preparing for a Claude certification? The Cert Trainer by OpsAgents AI: https://architect.opsagents.agency
+Preparing for a Claude certification? The Cert Trainer by OpsAgents AI — an independent study tool, not affiliated with Anthropic: https://architect.opsagents.agency
 
 ## License
 
