@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "COWORK_MEM_DB=~/.claude/.cowork-mem/memory.db python3 ~/.claude/skills/cowork-mem/scripts/post_tool_capture.py 2>/dev/null || true"
+            "command": "sh -c 'R=\"$1\"; D=\"$HOME/.claude/.cowork-mem\"; mkdir -p \"$D\" 2>/dev/null; COWORK_MEM_DB=\"$D/memory.db\" python3 \"$R/skills/cowork-mem/scripts/post_tool_capture.py\" 2>/dev/null || { rc=$?; echo \"$(date -u +%Y-%m-%dT%H:%M:%SZ) [cowork-mem] HOOK FAILED exit=$rc script=$R/skills/cowork-mem/scripts/post_tool_capture.py\" >>\"$D/capture-errors.log\" 2>/dev/null; }; exit 0' _ \"${CLAUDE_PLUGIN_ROOT}\""
           }
         ]
       }
