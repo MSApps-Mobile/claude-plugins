@@ -14,7 +14,7 @@
       "name": "google-drive-upload",
       "source": "./plugins/google-drive-upload",
       "description": "Upload files from Claude directly to Google Drive — unlimited uploads, completely free",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "platforms": [
         "claude-code",
         "cowork"
@@ -145,7 +145,7 @@
       "name": "notion-memory",
       "source": "./plugins/notion-memory",
       "description": "Long-term memory for Claude across sessions via Notion — plus the 4 official Anthropic Notion skills (knowledge-capture, meeting-intelligence, research-documentation, spec-to-implementation) bundled in",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "platforms": [
         "claude-code",
         "cowork"
@@ -192,7 +192,7 @@
       "name": "mac-disk-cleaner",
       "source": "./plugins/mac-disk-cleaner",
       "description": "Free up disk space on Mac by clearing caches, finding large files, and getting smart storage recommendations",
-      "version": "0.2.0",
+      "version": "0.2.3",
       "platforms": [
         "claude-code",
         "cowork"
@@ -226,7 +226,7 @@
       "name": "vm-disk-cleanup",
       "source": "./plugins/vm-disk-cleanup",
       "description": "Prevent and recover from disk-full (ENOSPC) errors in Cowork session VMs and Claude Code sandboxes. 3-phase cleanup: caches, temp files, build artifacts, node_modules.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "platforms": [
         "claude-code",
         "cowork"
@@ -295,7 +295,7 @@
       "name": "apollo",
       "source": "./plugins/apollo",
       "description": "Prospect, enrich leads, and load outreach sequences with Apollo.io — one-click MCP server integration with skills for enrichment, prospecting, and sequence loading",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "platforms": [
         "claude-code",
         "cowork"
@@ -329,7 +329,7 @@
       "name": "fix-chrome-connection",
       "source": "./plugins/fix-chrome-connection",
       "description": "Diagnoses and repairs broken Claude in Chrome MCP connections in seconds — auto-detects stale extension service workers and fixes them without manual steps",
-      "version": "0.1.0",
+      "version": "0.1.30",
       "platforms": [
         "claude-code",
         "cowork"
@@ -363,7 +363,7 @@
       "name": "linkedin-scraper",
       "source": "./plugins/linkedin-scraper",
       "description": "Token-efficient LinkedIn data access — scrape profiles, companies, and jobs via structured MCP, 5-10x cheaper than browser-based approaches",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "platforms": [
         "claude-code",
         "cowork"
@@ -397,7 +397,7 @@
       "name": "rtl-chat-fixer",
       "source": "./plugins/rtl-chat-fixer",
       "description": "Fixes jumbled text when mixing RTL languages (Hebrew, Arabic, Persian, Urdu) with English in Cowork and Claude Desktop chat",
-      "version": "0.1.0",
+      "version": "0.2.1",
       "platforms": [
         "claude-code",
         "cowork"
@@ -431,7 +431,7 @@
       "name": "whatsapp-mcp",
       "source": "./plugins/whatsapp-mcp",
       "description": "Connect Claude to WhatsApp — search messages, read conversations, send texts and media, manage business outreach with persistent conversation memory",
-      "version": "0.1.0",
+      "version": "0.2.2",
       "platforms": [
         "claude-code",
         "cowork"
@@ -531,7 +531,7 @@
       "name": "cowork-session-fixer",
       "source": "./plugins/cowork-session-fixer",
       "description": "Addresses the 'RPC error: process with name already running' issue in Claude Cowork by identifying and removing orphaned session processes",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "platforms": [
         "claude-code",
         "cowork"
@@ -565,7 +565,7 @@
       "name": "digital-presence",
       "source": "./plugins/digital-presence",
       "description": "Manage and optimize online presence across all major social platforms — unified dashboard for content, analytics, and engagement",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "platforms": [
         "claude-code",
         "cowork"
@@ -598,7 +598,7 @@
       "name": "gcloud-cli-health-check",
       "source": "./plugins/gcloud-cli-health-check",
       "description": "Comprehensive Google Cloud CLI validation — checks installation, authentication, project config, enabled APIs, billing, and Cloud Run availability",
-      "version": "1.0.0",
+      "version": "1.1.4",
       "platforms": [
         "claude-code",
         "cowork"
@@ -633,7 +633,7 @@
       "name": "github-cli-health-check",
       "source": "./plugins/github-cli-health-check",
       "description": "Dual-path manual GitHub CLI health check. Ships as a Claude Code cloud Routine (cloud gh, native api.github.com access) + a Cowork manual task via Desktop Commander (Mac host gh) — redundant by design so a failure on either side is still caught by the other. Works around the Cowork sandbox api.github.com block tracked in claude-code#37970.",
-      "version": "0.10.1",
+      "version": "0.10.2",
       "platforms": [
         "claude-code",
         "cowork"
@@ -841,7 +841,7 @@
       "name": "token-efficiency-audit",
       "source": "./plugins/token-efficiency-audit",
       "description": "Audits and optimizes token usage across skills, scheduled tasks, plugins, and MCP connectors — SOSA Supervised pillar enforcement for efficiency requirements",
-      "version": "1.0.0",
+      "version": "1.0.2",
       "platforms": [
         "claude-code",
         "cowork"
@@ -910,7 +910,7 @@
       "name": "cowork-mem",
       "source": "./plugins/cowork-mem",
       "description": "Persistent memory across Cowork sessions — automatically recalls past decisions, file changes, insights, and errors so you never lose context between sessions. SQLite + FTS5, token-efficient 3-layer retrieval.",
-      "version": "0.1.0",
+      "version": "0.2.2",
       "platforms": [
         "claude-code",
         "cowork"
@@ -1013,7 +1013,7 @@
       "name": "claude-md-composer",
       "source": "./plugins/claude-md-composer",
       "description": "Audit, compose, and refactor CLAUDE.md files — keep memory files under 200 lines, flip negative rules, split across the 4-level hierarchy. Inspired by Kjramsy's 'CLAUDE.md eating your token budget' post.",
-      "version": "1.0.0",
+      "version": "1.0.2",
       "platforms": [
         "claude-code",
         "cowork"
@@ -1129,7 +1129,7 @@
       "name": "mac-agent-hygiene",
       "source": "./plugins/mac-agent-hygiene",
       "description": "Keeps a Mac that runs Claude Code agents from filling its disk — daily LaunchAgent + MCP server that clear regenerable caches and reap stale, clean, pushed git worktrees (plan first, apply on confirm)",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "platforms": [
         "claude-code",
         "cowork"
