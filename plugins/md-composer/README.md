@@ -1,4 +1,4 @@
-# claude-md-composer
+# md-composer
 
 Audit, compose, and refactor `CLAUDE.md` files so they stay lean and stop eating your token budget.
 
@@ -35,16 +35,20 @@ Enforces:
 - "flip the negative rules in CLAUDE.md"
 - "set up the CLAUDE.md hierarchy"
 
+## Renamed from `claude-md-composer`
+
+This plugin was previously published as `claude-md-composer`. Anthropic reserves plugin names starting with `claude-`, so it is now `md-composer`. Existing installs: run `/plugin uninstall claude-md-composer@msapps-plugins` then `/plugin install md-composer@msapps-plugins`.
+
 ## Install
 
 ```bash
-/plugin install claude-md-composer@msapps-plugins
+/plugin install md-composer@msapps-plugins
 ```
 
 ## What's inside
 
 ```
-skills/claude-md-composer/
+skills/md-composer/
 ├── SKILL.md
 ├── reference/
 │   ├── anti-patterns.md      (the 4 bloat patterns)
