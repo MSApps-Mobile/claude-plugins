@@ -158,6 +158,8 @@ jobs:
           PLUGIN="${{ matrix.plugin }}"
           NEW_VERSION="${{ steps.bump.outputs.new_version }}"
           git add "plugins/$PLUGIN/.claude-plugin/plugin.json"
+          # Card okOoGKTA: bump-version.sh also rewrites the marketplace entry.
+          git add .claude-plugin/marketplace.json
           git commit -m "chore(release): bump $PLUGIN to v$NEW_VERSION [skip ci]"
 
           for attempt in 1 2 3 4 5; do

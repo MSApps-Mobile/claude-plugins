@@ -244,3 +244,15 @@ jobs:
       # EXECUTES the red branch on every run, against committed fixtures.
       - name: Marketplace coverage — prove the guard can FAIL
         run: python3 scripts/check-marketplace-coverage.test.py
+
+      # ── Card okOoGKTA ──────────────────────────────────────────
+      # release.yml bumped plugin.json but never marketplace.json, so 17 of 33
+      # listings advertised a stale version with every build green. Fail a PR
+      # where any marketplace.json version differs from its plugin.json.
+      - name: Marketplace versions — manifest vs plugin.json
+        run: python3 scripts/marketplace-versions.py --root .
+
+      # Negative control: the red branch (a deliberately drifted fixture) and
+      # the bump-version.sh integration run on every build, not once by hand.
+      - name: Marketplace versions — prove the guard can FAIL
+        run: python3 scripts/marketplace-versions.test.py
