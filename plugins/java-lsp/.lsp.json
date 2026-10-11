@@ -1,0 +1,34 @@
+{
+  "java": {
+    "command": "jdtls",
+    "extensionToLanguage": {
+      ".java": "java"
+    },
+    "restartOnCrash": true,
+    "maxRestarts": 3,
+    "startupTimeoutMs": 45000,
+    "shutdownTimeoutMs": 5000,
+    "initializationOptions": {
+      "bundles": [],
+      "workspaceFolders": [],
+      "settings": {
+        "java": {
+          "import": {
+            "gradle": {
+              "enabled": false
+            },
+            "maven": {
+              "enabled": false
+            }
+          },
+          "autobuild": {
+            "enabled": false
+          },
+          "configuration": {
+            "updateBuildConfiguration": "disabled"
+          }
+        }
+      }
+    }
+  }
+}

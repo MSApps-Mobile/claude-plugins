@@ -1010,6 +1010,153 @@
       ]
     },
     {
+      "name": "python-lsp",
+      "source": "./plugins/python-lsp",
+      "description": "Real-time Python code intelligence for Claude — type errors, go-to-definition, find references, and hover via Pyright language server",
+      "version": "1.0.0",
+      "platforms": [
+        "claude-code"
+      ],
+      "author": {
+        "name": "MSApps",
+        "email": "michal@msapps.mobi"
+      },
+      "homepage": "https://msapps.mobi/plugins",
+      "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+      "license": "MIT",
+      "keywords": [
+        "python",
+        "pyright",
+        "type-checking",
+        "lsp",
+        "code-intelligence",
+        "diagnostics"
+      ],
+      "category": "devtools",
+      "tags": [
+        "python",
+        "pyright",
+        "type-checking",
+        "lsp",
+        "code-intelligence",
+        "diagnostics",
+        "free"
+      ]
+    },
+    {
+      "name": "typescript-lsp",
+      "source": "./plugins/typescript-lsp",
+      "description": "Real-time TypeScript and JavaScript code intelligence for Claude — type errors, go-to-definition, find references, and hover via typescript-language-server",
+      "version": "1.0.0",
+      "platforms": [
+        "claude-code"
+      ],
+      "author": {
+        "name": "MSApps",
+        "email": "michal@msapps.mobi"
+      },
+      "homepage": "https://msapps.mobi/plugins",
+      "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+      "license": "MIT",
+      "keywords": [
+        "typescript",
+        "javascript",
+        "tsx",
+        "jsx",
+        "react",
+        "node",
+        "lsp",
+        "code-intelligence",
+        "diagnostics"
+      ],
+      "category": "devtools",
+      "tags": [
+        "typescript",
+        "javascript",
+        "tsx",
+        "jsx",
+        "code-intelligence",
+        "diagnostics",
+        "free"
+      ]
+    },
+    {
+      "name": "csharp-lsp",
+      "source": "./plugins/csharp-lsp",
+      "description": "Real-time C# code intelligence for Claude — Roslyn diagnostics, go-to-definition, find references, and type info via OmniSharp",
+      "version": "1.0.0",
+      "platforms": [
+        "claude-code"
+      ],
+      "author": {
+        "name": "MSApps",
+        "email": "michal@msapps.mobi"
+      },
+      "homepage": "https://msapps.mobi/plugins",
+      "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+      "license": "MIT",
+      "keywords": [
+        "csharp",
+        "dotnet",
+        "omnisharp",
+        "roslyn",
+        "unity",
+        "xamarin",
+        "maui",
+        "lsp",
+        "code-intelligence",
+        "diagnostics"
+      ],
+      "category": "devtools",
+      "tags": [
+        "csharp",
+        "dotnet",
+        "omnisharp",
+        "roslyn",
+        "code-intelligence",
+        "diagnostics",
+        "free"
+      ]
+    },
+    {
+      "name": "java-lsp",
+      "source": "./plugins/java-lsp",
+      "description": "Real-time Java code intelligence for Claude — compile errors, go-to-definition, find references, and type info via Eclipse JDT Language Server (jdtls)",
+      "version": "1.0.0",
+      "platforms": [
+        "claude-code"
+      ],
+      "author": {
+        "name": "MSApps",
+        "email": "michal@msapps.mobi"
+      },
+      "homepage": "https://msapps.mobi/plugins",
+      "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+      "license": "MIT",
+      "keywords": [
+        "java",
+        "jdtls",
+        "eclipse-jdt",
+        "android",
+        "maven",
+        "gradle",
+        "spring",
+        "lsp",
+        "code-intelligence",
+        "diagnostics"
+      ],
+      "category": "devtools",
+      "tags": [
+        "java",
+        "jdtls",
+        "eclipse-jdt",
+        "android",
+        "code-intelligence",
+        "diagnostics",
+        "free"
+      ]
+    },
+    {
       "name": "claude-md-composer",
       "source": "./plugins/claude-md-composer",
       "description": "Audit, compose, and refactor CLAUDE.md files — keep memory files under 200 lines, flip negative rules, split across the 4-level hierarchy. Inspired by Kjramsy's 'CLAUDE.md eating your token budget' post.",
