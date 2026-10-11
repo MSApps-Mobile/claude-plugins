@@ -1010,8 +1010,8 @@
       ]
     },
     {
-      "name": "claude-md-composer",
-      "source": "./plugins/claude-md-composer",
+      "name": "md-composer",
+      "source": "./plugins/md-composer",
       "description": "Audit, compose, and refactor CLAUDE.md files — keep memory files under 200 lines, flip negative rules, split across the 4-level hierarchy. Inspired by Kjramsy's 'CLAUDE.md eating your token budget' post.",
       "version": "1.0.0",
       "platforms": [

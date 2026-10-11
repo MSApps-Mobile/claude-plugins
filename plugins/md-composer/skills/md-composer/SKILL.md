@@ -1,5 +1,5 @@
 ---
-name: claude-md-composer
+name: md-composer
 description: Audit, compose, and refactor CLAUDE.md files so they stay under the token budget. Use when the user says "audit my CLAUDE.md", "my CLAUDE.md is too long", "compose a CLAUDE.md", "refactor CLAUDE.md", "CLAUDE.md is eating tokens", "flip negative rules", "extract bloat out of CLAUDE.md", "set up the CLAUDE.md hierarchy", "write a CLAUDE.md for this project", or any request to create, shrink, or reorganize a CLAUDE.md file. Works on the root CLAUDE.md, feature-level CLAUDE.md (in subdirs), user-level ~/.claude/CLAUDE.md, and local CLAUDE.local.md.
 ---
 
