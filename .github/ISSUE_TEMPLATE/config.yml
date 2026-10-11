@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 💬 Question / idea
+    url: https://github.com/MSApps-Mobile/claude-plugins/discussions
+    about: Not sure it is a bug, or want to float a plugin idea before writing it up? Start a discussion.
+  - name: 🔒 Security disclosure
+    url: https://github.com/MSApps-Mobile/claude-plugins/security/advisories/new
+    about: A plugin leaks a credential, over-reaches its permissions, or can be steered into acting outside its scope. Please report privately — see SECURITY.md.
