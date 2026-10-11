@@ -22,5 +22,9 @@
     "200-line-rule",
     "hierarchy",
     "skills"
-  ]
+  ],
+  "sources": {
+    "inspiration": "https://medium.com/@kjramsy/your-claude-md-is-eating-your-token-budget-heres-how-to-fix-it-b8d6c4d1c986",
+    "inspiration_author": "Kjramsy (Medium, Jan 2026)"
+  }
 }
