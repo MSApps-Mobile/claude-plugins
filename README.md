@@ -44,7 +44,7 @@ We built **SOSA™ (Supervised Orchestrated Secured Agents)** to fix that — a 
 |--------|------------|
 | **🛡️ Supervised** | High-impact actions require human approval. An outreach agent can't send 500 emails without your sign-off. |
 | **⚙️ Orchestrated** | Agents follow Plan → Act → Verify. Token budgets are enforced — bloated skills waste your money. |
-| **🔒 Secured** | No hardcoded credentials. External data is scanned for prompt injection. Package versions pinned. |
+| **🔒 Secured** | No hardcoded credentials (checked in CI). Plugin authors should treat external data as untrusted and pin package versions; neither is enforced here. |
 | **🤖 Agents** | Each agent has a formal role spec, declared tool access, and explicit boundaries. A finance agent can't send emails — period. |
 
 > **📄 Read the whitepaper:** [SOSA™ — Supervised Orchestrated Secured Agents](docs/sosa-whitepaper.pdf) (Shatz, 2026)
