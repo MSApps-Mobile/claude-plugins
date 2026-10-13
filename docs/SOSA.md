@@ -103,9 +103,11 @@ Every SOSA-compliant plugin follows a three-phase execution loop:
 
 | Level | Requirements | Example Plugins |
 |-------|-------------|-----------------|
-| **Level 1 — Basic** | Role spec in SKILL.md, pinned dependencies, no hardcoded secrets | rtl-chat-fixer, vm-disk-cleanup, mac-disk-cleaner |
-| **Level 2 — Standard** | Level 1 + prompt injection scanning, audit logging, declared capability set, token-efficient skill design | google-drive-upload, youtube-transcriber, session-backup |
-| **Level 3 — Full** | Level 2 + human approval gates for high-impact actions, structured Plan→Act→Verify loop, trust gradient, system-level efficiency auditing | whatsapp-mcp, apollo, apify-scraper, linkedin-scraper, token-efficiency-audit |
+| **Level 1 — Basic** | Role spec in SKILL.md, pinned dependencies, no hardcoded secrets | — |
+| **Level 2 — Standard** | Level 1 + prompt injection handling, audit logging, declared capability set, token-efficient skill design | — |
+| **Level 3 — Full** | Level 2 + human approval gates for high-impact actions, structured Plan→Act→Verify loop, trust gradient, system-level efficiency auditing | — |
+
+These levels are the requirements a plugin author declares and aims for. This repository does not verify them: CI checks only that a `SKILL.md` exists, a few secret patterns are absent and token budgets are respected (see [SECURITY.md](../SECURITY.md)). Pinned dependencies, prompt injection handling and audit logging are not checked, and no plugin is certified at any level, so no example plugins are listed.
 
 ---
 

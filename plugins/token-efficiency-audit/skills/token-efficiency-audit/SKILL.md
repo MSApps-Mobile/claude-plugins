@@ -102,7 +102,7 @@ See `references/optimization-patterns.md` for detailed pattern descriptions, imp
 ## Integration Points
 - **Supervised**: All recommendations require human review before implementation
 - **Orchestrated**: Integrates with SOSA compliance checker for security review
-- **Secured**: Prompt injection scanning on all extracted text samples
+- **Secured**: Treat extracted text samples as untrusted data (no automated injection scanner is included)
 - **Agents**: Supports multi-turn analysis with refinement iterations
 
 ## Audit Report Structure

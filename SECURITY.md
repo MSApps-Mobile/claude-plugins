@@ -23,7 +23,7 @@ We acknowledge reports on a best-effort basis, normally within a few business da
 whether we accept the report and what we plan to do about it. We are a small team: there is no 24/7
 on-call rotation, and we do not run a bug bounty.
 
-This address is for vulnerabilities in **this repository's plugins**. Issues in Claude, Claude Code or
+This channel is for vulnerabilities in **this repository's plugins**. Issues in Claude, Claude Code or
 other Anthropic products should go to Anthropic through its own disclosure channels, not to us.
 
 ## How these plugins run — read before installing
@@ -44,13 +44,14 @@ other Anthropic products should go to Anthropic through its own disclosure chann
 - **Automated checks on pull requests** (`.github/workflows/`):
   - `validate-pr.yml` — runs on PRs that touch `plugins/`, `scripts/` or `.claude-plugin/`. For each changed
     plugin it runs our own structure check and a `plugin.json` schema check, a `SKILL.md` quality check, a
-    pattern scan for hardcoded secrets (`secret`, `password` and `token` assignments, and committed `.env`
-    files) and a dry-run package build; it also checks that the marketplace manifest covers every plugin
+    pattern scan for hardcoded secrets (`api_key`/`api-key`, `secret`, `password` and `token` assignments with
+    a quoted value, `sk-…` and `xoxb-…` strings, and committed `.env` files) and a dry-run package build; it also checks that the marketplace manifest covers every plugin
     directory. It does not run `claude plugin validate`;
   - `sosa-lint.yml` — runs on every PR and every push to `main`: the SOSA™ four-pillar lint and evaluation
-    scores, a check that every plugin has a `SKILL.md`, and a token-efficiency check. Its secret scan is
+    scores, a check that every plugin has a `SKILL.md`, and a token-efficiency check. Its own secret scan step is
     narrower than the one above: it flags `api_key=` and `password=` assignments and committed `.env` files.
-    It does not scan for tokens.
+    The lint script it runs (`scripts/sosa-lint.sh`) also flags `apiKey` and long `token=` assignments. These
+    are pattern matches, not a full secret scanner, and a failing check does not block a merge (see above).
 - **GitHub secret scanning** with push protection is enabled on this repository.
 - **Releases** are tagged per plugin by `release.yml` when a plugin changes on `main`. Releases are not
   cryptographically signed.

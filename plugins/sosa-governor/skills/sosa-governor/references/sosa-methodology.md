@@ -19,8 +19,8 @@ Tasks are prioritized by urgency, business impact, and efficiency score.
 
 ### Secured
 Security is a property of every layer. Each agent runs with scoped credentials,
-zero-trust boundaries, and audit trails. No hardcoded secrets. Prompt injection
-scanning on external data. Pinned MCP versions.
+zero-trust boundaries, and audit trails (target model; not verified by this repository). No hardcoded
+secrets. External data treated as untrusted. Pinned MCP versions recommended.
 
 ### Agents
 Each agent is formally defined as A = (Role, Tools, Memory, Planning):

@@ -99,7 +99,7 @@ We built **SOSA™ (Supervised Orchestrated Secured Agents)** to fix that — a 
 
 > **Mobile devs:** swift-lsp ships with Xcode — zero extra setup. kotlin-lsp installs via `brew install kotlin-language-server`.
 
-> **Pro tip:** Run `sosa-compliance-checker` on all your installed plugins — not just ours. It catches hardcoded API keys, missing confirmation gates, unpinned packages, and prompt injection vulnerabilities in *any* plugin.
+> **Pro tip:** Run `sosa-compliance-checker` on all your installed plugins — not just ours. It checks for hardcoded API keys, missing confirmation gates, unpinned packages, and prompt injection risks in *any* plugin; it is an audit aid that reports findings, not a guarantee.
 
 ---
 
