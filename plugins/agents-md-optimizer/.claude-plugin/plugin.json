@@ -16,14 +16,6 @@
     "prompt-engineering",
     "msapps"
   ],
-  "topics": [
-    "sosa-agents"
-  ],
-  "sosa": {
-    "compliant": true,
-    "level": 2,
-    "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md"
-  },
   "privacy_policy": "https://opsagents.agency/privacy",
   "terms_of_service": "https://opsagents.agency/terms"
 }
