@@ -44,7 +44,7 @@ We built **SOSA™ (Supervised Orchestrated Secured Agents)** to fix that — a 
 |--------|------------|
 | **🛡️ Supervised** | High-impact actions require human approval. An outreach agent can't send 500 emails without your sign-off. |
 | **⚙️ Orchestrated** | Agents follow Plan → Act → Verify. Token budgets are enforced — bloated skills waste your money. |
-| **🔒 Secured** | No hardcoded credentials. External data is scanned for prompt injection. Package versions pinned. |
+| **🔒 Secured** | No hardcoded credentials (checked in CI). Plugin authors should treat external data as untrusted and pin package versions; neither is enforced here. |
 | **🤖 Agents** | Each agent has a formal role spec, declared tool access, and explicit boundaries. A finance agent can't send emails — period. |
 
 > **📄 Read the whitepaper:** [SOSA™ — Supervised Orchestrated Secured Agents](docs/sosa-whitepaper.pdf) (Shatz, 2026)
@@ -99,7 +99,7 @@ We built **SOSA™ (Supervised Orchestrated Secured Agents)** to fix that — a 
 
 > **Mobile devs:** swift-lsp ships with Xcode — zero extra setup. kotlin-lsp installs via `brew install kotlin-language-server`.
 
-> **Pro tip:** Run `sosa-compliance-checker` on all your installed plugins — not just ours. It catches hardcoded API keys, missing confirmation gates, unpinned packages, and prompt injection vulnerabilities in *any* plugin.
+> **Pro tip:** Run `sosa-compliance-checker` on all your installed plugins — not just ours. It checks for hardcoded API keys, missing confirmation gates, unpinned packages, and prompt injection risks in *any* plugin; it is an audit aid that reports findings, not a guarantee.
 
 ---
 
