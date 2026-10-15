@@ -1094,7 +1094,7 @@
       "name": "agents-md-optimizer",
       "source": "./plugins/agents-md-optimizer",
       "description": "Audit bloated agent-instruction files (CLAUDE.md, AGENTS.md, and their variants) and rewrite them lean, or author a new one from scratch following the 200-line recipe-book principle. Detects antipatterns like embedded API docs, negative rules, tutorials, and preemptive file preloads.",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "platforms": [
         "claude-code",
         "cowork"
