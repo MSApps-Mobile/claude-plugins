@@ -107,7 +107,7 @@ Every SOSA-compliant plugin follows a three-phase execution loop:
 | **Level 2 — Standard** | Level 1 + prompt injection handling, audit logging, declared capability set, token-efficient skill design | — |
 | **Level 3 — Full** | Level 2 + human approval gates for high-impact actions, structured Plan→Act→Verify loop, trust gradient, system-level efficiency auditing | — |
 
-These levels are the requirements a plugin author declares and aims for. This repository does not verify them: CI checks only that a `SKILL.md` exists, a few secret patterns are absent and token budgets are respected (see [SECURITY.md](../SECURITY.md)). Pinned dependencies, prompt injection handling and audit logging are not checked, and no plugin is certified at any level, so no example plugins are listed.
+These levels are the requirements a plugin author declares and aims for. This repository does not verify them. CI checks that a `SKILL.md` exists and that a few secret patterns are absent (see [SECURITY.md](../SECURITY.md)), and runs `scripts/sosa-eval.sh --ci`, which scores each plugin and skill by searching its files for keywords, labels the score Level 1 (70%), Level 2 (85%) or Level 3 (100%), and fails CI below 70%. That label is a keyword heuristic, not verification of the level requirements above. The token budget check only warns; it never fails CI. Pinned dependencies, prompt injection handling and audit logging are not checked, and no plugin is certified at any level, so no example plugins are listed.
 
 ---
 

@@ -47,7 +47,7 @@ other Anthropic products should go to Anthropic through its own disclosure chann
     pattern scan for hardcoded secrets (`api_key`/`api-key`, `secret`, `password` and `token` assignments with
     a quoted value, `sk-…` and `xoxb-…` strings, and committed `.env` files) and a dry-run package build; it also checks that the marketplace manifest covers every plugin
     directory. It does not run `claude plugin validate`;
-  - `sosa-lint.yml` — runs on every PR and every push to `main`: the SOSA™ four-pillar lint and evaluation
+  - `sosa-lint.yml` — runs on every PR to `main` and every push to `main`: the SOSA™ four-pillar lint and evaluation
     scores, a check that every plugin has a `SKILL.md`, and a token-efficiency check. Its own secret scan step is
     narrower than the one above: it flags `api_key=` and `password=` assignments and committed `.env` files.
     The lint script it runs (`scripts/sosa-lint.sh`) also flags `apiKey` and long `token=` assignments. These
