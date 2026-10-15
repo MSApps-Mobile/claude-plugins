@@ -197,6 +197,7 @@ def execute_run(scenarios, send, out_dir, model, key_name):
     finally:
         summary = {"run_id": run_id, "started": started.isoformat(), "model": model,
                    "access_tier": os.environ.get("CVP_ACCESS_TIER", "default"),
+                   "api_base": API_URL.rsplit("/v1/messages", 1)[0],
                    "key_name": key_name, "scenarios": len(scenarios), "completed": done,
                    "counts": counts, "log": os.path.basename(log_path)}
         with open(os.path.join(out_dir, stem + ".summary.json"), "w") as f:
