@@ -1,7 +1,8 @@
 #!/bin/bash
 # ╔═══════════════════════════════════════════════════╗
 # ║  bump-version.sh                                  ║
-# ║  Bumps patch version in .claude-plugin/plugin.json║
+# ║  Bumps version in .claude-plugin/plugin.json AND  ║
+# ║  the matching .claude-plugin/marketplace.json entry║
 # ╚═══════════════════════════════════════════════════╝
 #
 # Usage: ./scripts/bump-version.sh <plugin-name> [major|minor|patch]
@@ -13,6 +14,7 @@ PLUGIN_NAME="${1:?Usage: bump-version.sh <plugin-name> [major|minor|patch]}"
 BUMP_TYPE="${2:-patch}"
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 PLUGIN_JSON="$REPO_ROOT/plugins/$PLUGIN_NAME/.claude-plugin/plugin.json"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [[ ! -f "$PLUGIN_JSON" ]]; then
   echo "::error::plugin.json not found: $PLUGIN_JSON"
@@ -45,6 +47,10 @@ with open(path, 'w') as f:
     f.write('\n')
 print(f"✓ Bumped $PLUGIN_NAME: $CURRENT → $NEW_VERSION")
 PYEOF
+
+# Card okOoGKTA: the marketplace listing must advertise the version that ships.
+# Same commit, same script - this is the only bumper (no second bumper to drift).
+python3 "$SCRIPT_DIR/marketplace-versions.py" --root "$REPO_ROOT" --set "$PLUGIN_NAME" "$NEW_VERSION"
 
 echo "new_version=$NEW_VERSION" >> "${GITHUB_OUTPUT:-/dev/null}" 2>/dev/null || true
 echo "old_version=$CURRENT" >> "${GITHUB_OUTPUT:-/dev/null}" 2>/dev/null || true
