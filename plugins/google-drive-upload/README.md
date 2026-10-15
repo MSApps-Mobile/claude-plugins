@@ -36,6 +36,15 @@ Upload any file from Claude directly to your Google Drive. Free and unlimited.
 
 ## Usage
 
+```
+/google-drive-upload:upload <file path> [Drive folder]
+
+# Examples:
+/google-drive-upload:upload report.pdf
+/google-drive-upload:upload ~/Documents/proposal.docx Clients/Acme
+```
+
+
 Just ask Claude naturally:
 
 - "Upload this to Drive"

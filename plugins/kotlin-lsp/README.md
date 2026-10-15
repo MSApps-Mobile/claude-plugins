@@ -35,6 +35,16 @@ Gives Claude instant diagnostics, go-to-definition, find-references, and type in
 
 **Impact:** Low | **SOSA Level:** 1
 
+## Usage
+
+```
+/kotlin-lsp:setup [project path]
+
+# Examples:
+/kotlin-lsp:setup
+/kotlin-lsp:setup ./android-app
+```
+
 ## License
 
 MIT

@@ -79,3 +79,14 @@ In Claude Code (2.1.275 or later):
 ```
 
 Or install via the Cowork plugin system, or copy `skills/agents-md-optimizer/` into your `.claude/skills/` directory.
+
+## Usage
+
+```
+/agents-md-optimizer:optimize [path to the instruction file, or a description of the project]
+
+# Examples:
+/agents-md-optimizer:optimize
+/agents-md-optimizer:optimize CLAUDE.md
+/agents-md-optimizer:optimize Write a new AGENTS.md for this repo
+```
