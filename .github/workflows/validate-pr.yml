@@ -30,7 +30,12 @@ jobs:
       - name: Detect changed plugins
         id: detect
         run: |
-          CHANGED=$(git diff --name-only origin/main...HEAD | grep '^plugins/' | cut -d'/' -f2 | sort -u || true)
+          # Card 4vgdDPNS: a DELETED plugin dir is not a plugin to validate. Before
+          # this filter a removal PR put the gone dir in the matrix and every
+          # structure check red on a directory that no longer exists. Names can
+          # contain spaces, so read line by line and test each one.
+          CHANGED=$(git diff --name-only origin/main...HEAD | grep '^plugins/' | cut -d'/' -f2 | sort -u \
+            | while IFS= read -r p; do [[ -n "$p" && -d "plugins/$p" ]] && echo "$p"; done || true)
 
           if [[ -z "$CHANGED" ]]; then
             echo "has_plugins=false" >> $GITHUB_OUTPUT

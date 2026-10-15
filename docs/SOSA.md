@@ -61,14 +61,14 @@ A multi-agent system's context window is a shared finite resource. Every token c
 
 ### 3. Secured
 
-Security is not a perimeter — it is a property of every layer. Each agent runs with scoped credentials, zero-trust boundaries, and audit trails.
+Security is not a perimeter — it is a property of every layer. The aim is that each agent runs with scoped credentials and clear boundaries, and that its actions can be audited. This is a design principle for plugin authors; it is not a certification or a guarantee about any plugin.
 
 **How MSApps plugins implement this:**
 - Credentials are **never hardcoded** in skill files — they live in local config files or environment variables
 - Each plugin declares its **capability set** (which tools and APIs it can access)
-- External data is scanned for **prompt injection** before processing (see [SECURITY.md](../SECURITY.md))
-- MCP server package versions are **pinned** to prevent supply chain attacks
-- All plugin actions are logged in daily summary reports
+- Plugin authors are expected to treat external data as untrusted and guard against **prompt injection**; this repository does not scan for it (see [SECURITY.md](../SECURITY.md) for what is and is not checked)
+- Pinning MCP server package versions is recommended practice to limit supply-chain risk; it is not enforced here
+- Logging plugin actions is up to each plugin; there is no repository-wide action log
 - Plugins follow the **principle of least privilege** — they only access what they need
 
 ### 4. Agents
@@ -103,9 +103,11 @@ Every SOSA-compliant plugin follows a three-phase execution loop:
 
 | Level | Requirements | Example Plugins |
 |-------|-------------|-----------------|
-| **Level 1 — Basic** | Role spec in SKILL.md, pinned dependencies, no hardcoded secrets | rtl-chat-fixer, vm-disk-cleanup, mac-disk-cleaner |
-| **Level 2 — Standard** | Level 1 + prompt injection scanning, audit logging, declared capability set, token-efficient skill design | google-drive-upload, youtube-transcriber, session-backup |
-| **Level 3 — Full** | Level 2 + human approval gates for high-impact actions, structured Plan→Act→Verify loop, trust gradient, system-level efficiency auditing | whatsapp-mcp, apollo, apify-scraper, linkedin-scraper, token-efficiency-audit |
+| **Level 1 — Basic** | Role spec in SKILL.md, pinned dependencies, no hardcoded secrets | — |
+| **Level 2 — Standard** | Level 1 + prompt injection handling, audit logging, declared capability set, token-efficient skill design | — |
+| **Level 3 — Full** | Level 2 + human approval gates for high-impact actions, structured Plan→Act→Verify loop, trust gradient, system-level efficiency auditing | — |
+
+These levels are the requirements a plugin author declares and aims for. This repository does not verify them: CI checks only that a `SKILL.md` exists, a few secret patterns are absent and token budgets are respected (see [SECURITY.md](../SECURITY.md)). Pinned dependencies, prompt injection handling and audit logging are not checked, and no plugin is certified at any level, so no example plugins are listed.
 
 ---
 

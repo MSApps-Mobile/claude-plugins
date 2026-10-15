@@ -225,3 +225,22 @@ jobs:
             echo "git push origin $PLUGIN-v$NEW_VERSION" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           fi
+
+  # ── Job 3: Measure the new main head ─────────────────────────────
+  # Card 4LxRLPYZ: the bump commits above are pushed with GITHUB_TOKEN and
+  # carry [skip ci], so no push-triggered workflow ever runs on them and the
+  # main head stays UNMEASURED. workflow_dispatch is the documented exception
+  # that GITHUB_TOKEN may trigger, so dispatch the SOSA check on main once all
+  # release cells are done.
+  measure-main:
+    name: Dispatch SOSA check on main head
+    runs-on: ubuntu-latest
+    needs: [detect, release]
+    if: always() && needs.detect.outputs.has_changes == 'true'
+    permissions:
+      actions: write
+    steps:
+      - name: Dispatch sosa-lint.yml on main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run sosa-lint.yml --repo "${{ github.repository }}" --ref main
