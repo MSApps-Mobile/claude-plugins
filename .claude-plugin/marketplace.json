@@ -1129,7 +1129,7 @@
       "name": "mac-agent-hygiene",
       "source": "./plugins/mac-agent-hygiene",
       "description": "Keeps a Mac that runs Claude Code agents from filling its disk — daily LaunchAgent + MCP server that clear regenerable caches and reap stale, clean, pushed git worktrees (plan first, apply on confirm)",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "platforms": [
         "claude-code",
         "cowork"
