@@ -329,7 +329,7 @@
       "name": "fix-chrome-connection",
       "source": "./plugins/fix-chrome-connection",
       "description": "Diagnoses and repairs broken Claude in Chrome MCP connections in seconds — auto-detects stale extension service workers and fixes them without manual steps",
-      "version": "0.1.30",
+      "version": "0.1.31",
       "platforms": [
         "claude-code",
         "cowork"
@@ -771,7 +771,7 @@
       "name": "sosa-governor",
       "source": "./plugins/sosa-governor",
       "description": "SOSA governance for Claude Code — classifies MCP tool calls by impact level, enforces approval gates, tracks token budgets, and maintains audit logs",
-      "version": "0.1.0",
+      "version": "0.1.2",
       "platforms": [
         "claude-code",
         "cowork"
@@ -806,7 +806,7 @@
       "name": "sosa-orchestrator",
       "source": "./plugins/sosa-orchestrator",
       "description": "Token-aware task prioritization and budget management for Claude sessions — ranks tasks by importance vs. cost and tracks consumption in real time",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "platforms": [
         "claude-code",
         "cowork"
@@ -841,7 +841,7 @@
       "name": "token-efficiency-audit",
       "source": "./plugins/token-efficiency-audit",
       "description": "Audits and optimizes token usage across skills, scheduled tasks, plugins, and MCP connectors — SOSA Supervised pillar enforcement for efficiency requirements",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "platforms": [
         "claude-code",
         "cowork"
@@ -1013,7 +1013,7 @@
       "name": "md-composer",
       "source": "./plugins/md-composer",
       "description": "Audit, compose, and refactor CLAUDE.md files — keep memory files under 200 lines, flip negative rules, split across the 4-level hierarchy. Inspired by Kjramsy's 'CLAUDE.md eating your token budget' post.",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "platforms": [
         "claude-code",
         "cowork"
@@ -1094,7 +1094,7 @@
       "name": "agents-md-optimizer",
       "source": "./plugins/agents-md-optimizer",
       "description": "Audit bloated agent-instruction files (CLAUDE.md, AGENTS.md, and their variants) and rewrite them lean, or author a new one from scratch following the 200-line recipe-book principle. Detects antipatterns like embedded API docs, negative rules, tutorials, and preemptive file preloads.",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "platforms": [
         "claude-code",
         "cowork"
@@ -1129,7 +1129,7 @@
       "name": "mac-agent-hygiene",
       "source": "./plugins/mac-agent-hygiene",
       "description": "Keeps a Mac that runs Claude Code agents from filling its disk — daily LaunchAgent + MCP server that clear regenerable caches and reap stale, clean, pushed git worktrees (plan first, apply on confirm)",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "platforms": [
         "claude-code",
         "cowork"
