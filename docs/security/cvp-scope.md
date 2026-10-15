@@ -1,15 +1,15 @@
 # CVP scope — which tier MSApps needs
 
-Anthropic's Cyber Verification Program (CVP) has four access levels. Source: the brief on card 54ABAl7N, as of 2026-10-15. **This has not been checked against Anthropic's current program page.** Re-check it, and record the URL and date here, before relying on it.
+**UNVERIFIED, source needed.** Every tier fact in the table below (tier names, what each covers, MFA and key-handling requirements, dates) comes from the brief on card 54ABAl7N, as of 2026-10-15. It has **not** been checked against Anthropic's own program page. A web search on 2026-10-15 found only secondary press coverage, and that coverage does not agree with this table on every point (for example, it describes three tiers, not four). Before relying on any row, check it against Anthropic's official CVP page and record that URL and the date checked here.
 
-| Tier | Covers | Application |
+| Tier (UNVERIFIED) | Covers (UNVERIFIED) | Application (UNVERIFIED) |
 |------|--------|-------------|
 | **Default access** | Secure coding, code review, patching, finding vulnerabilities in code you own, alert triage | None |
 | **Defense Access** | Vulnerability validation, malware analysis, detection engineering, SOC work, incident response | Yes. Requires MFA (phishing-resistant from 2026-12-15) and strict API key handling |
 | **Red Team** | Offensive testing | Yes. Named security contacts, per-user attribution, IR, no shared sign-ins |
 | **Specialized** | Case by case | Yes |
 
-All tiers require retention and monitoring of CVP traffic.
+All tiers require retention and monitoring of CVP traffic (UNVERIFIED, source needed).
 
 Policy: **apply for the narrowest tier our real work needs.**
 
