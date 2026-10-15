@@ -431,7 +431,7 @@
       "name": "whatsapp-mcp",
       "source": "./plugins/whatsapp-mcp",
       "description": "Connect Claude to WhatsApp — search messages, read conversations, send texts and media, manage business outreach with persistent conversation memory",
-      "version": "0.2.2",
+      "version": "0.2.3",
       "platforms": [
         "claude-code",
         "cowork"
