@@ -111,6 +111,18 @@ jobs:
           chmod +x scripts/package-plugin.sh
           bash scripts/package-plugin.sh ${{ matrix.plugin }} dist
 
+      # Card 2cbdYCv2: fail the release if the zip is an empty shell
+      # (<= 1 file entry, e.g. only plugin.json).
+      - name: Verify package is not empty
+        run: |
+          ZIP="dist/${{ matrix.plugin }}-${{ steps.bump.outputs.new_version }}.plugin"
+          unzip -l "$ZIP"
+          ENTRIES=$(unzip -Z1 "$ZIP" | grep -vc '/$' || true)
+          if [[ "$ENTRIES" -le 1 ]]; then
+            echo "::error::$ZIP has only $ENTRIES file entries (<= 1)"
+            exit 1
+          fi
+
       # ── Generate release notes ─────────────────────────────────
       - name: Generate release notes
         id: notes
