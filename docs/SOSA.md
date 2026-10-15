@@ -107,7 +107,18 @@ Every SOSA-compliant plugin follows a three-phase execution loop:
 | **Level 2 — Standard** | Level 1 + prompt injection handling, audit logging, declared capability set, token-efficient skill design | — |
 | **Level 3 — Full** | Level 2 + human approval gates for high-impact actions, structured Plan→Act→Verify loop, trust gradient, system-level efficiency auditing | — |
 
-These levels are the requirements a plugin author declares and aims for. This repository does not verify them: CI checks only that a `SKILL.md` exists, a few secret patterns are absent and token budgets are respected (see [SECURITY.md](../SECURITY.md)). Pinned dependencies, prompt injection handling and audit logging are not checked, and no plugin is certified at any level, so no example plugins are listed.
+These levels are the requirements a plugin author declares and aims for. This repository does not verify them, and no plugin is certified at any level, so no example plugins are listed. What CI actually runs (`.github/workflows/`, see also [SECURITY.md](../SECURITY.md)):
+
+- **`sosa-lint.yml`** — on every pull request to `main`, every push to `main`, and on manual/`release.yml` dispatch:
+  - `scripts/sosa-lint.sh`: per plugin, fails if no `SKILL.md` exists, if a `SKILL.md` contains none of the words *trigger*, *when to use*, *use this skill* or *description*, if a `api_key=`/`apiKey:`/`password=`/long `token=` assignment with a quoted value is found, or if a `.env` (or `.env.local`/`.production`/`.staging`/`.development`) file is committed. It only warns on a `SKILL.md` over 2,000 words, a missing manifest, or a missing README.
+  - a repo-wide grep for `api_key=` and `password=` assignments and committed `.env` files;
+  - a check that every plugin directory contains a `SKILL.md`;
+  - a word-count check that only **warns** on a `SKILL.md` over 3,000 words;
+  - `scripts/sosa-eval.sh --ci`: a keyword score per plugin (for example, the word *confirm* or *approval* anywhere in its Markdown earns the "approval gates" point). It fails only if a plugin (or skill or scheduled task) scores below 70%. The "Level" it prints is this keyword score, **not** the compliance levels in the table above.
+- **`validate-pr.yml`** — on pull requests that touch `plugins/`, `scripts/` or `.claude-plugin/`: for each changed plugin, a structure check (`.claude-plugin/plugin.json` and a `SKILL.md` present), a `plugin.json` check (required fields, semver version), a `SKILL.md` frontmatter check, a secret-pattern scan and a dry-run package build; repo-wide, the same `sosa-lint.sh` and `sosa-eval.sh --ci` runs and a check that `.claude-plugin/marketplace.json` lists every plugin directory (with a test proving that check can fail).
+- **`release.yml`** — on pushes to `main` that touch `plugins/`: bumps the changed plugins' patch versions, packages them, tags a GitHub release, and dispatches `sosa-lint.yml` on the new `main` head. It runs no security checks of its own beyond the structure check.
+
+Pinned dependencies, prompt injection handling, audit logging and human approval gates are not checked by any of these. All of them are pattern matches, and because branch protection is not enabled on `main`, a failing check does not block a merge.
 
 ---
 
