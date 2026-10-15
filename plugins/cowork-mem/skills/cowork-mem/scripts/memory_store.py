@@ -495,7 +495,7 @@ def _open_conn(fuse: bool) -> sqlite3.Connection:
 _open_sessions = 0
 
 
-def run_with_db(op=None):
+def run_with_db(op):
     """THE single check -> repair -> retry site. Every caller goes through here.
 
     1. Scheduled integrity check (its connection is closed before any repair).
@@ -504,9 +504,6 @@ def run_with_db(op=None):
     3. On a corruption-class error (at open or mid-command): repair once with no
        connection of ours open, then retry once. Lock/IO errors are never
        repaired and propagate unchanged.
-
-    ``op=None`` returns an open connection for library callers (get_db); the
-    caller owns closing it and must do so before any later run_with_db call.
     """
     global _open_sessions
     fuse = _is_fuse_path(DB_PATH)
@@ -519,8 +516,6 @@ def run_with_db(op=None):
             _auto_repair(trigger)
         try:
             db = _open_conn(fuse)  # closes itself if SCHEMA fails
-            if op is None:
-                return db
             _open_sessions += 1
             try:
                 return op(db)
@@ -531,11 +526,6 @@ def run_with_db(op=None):
             if attempt or not _is_corruption(e):
                 raise
             trigger = f"command: {e}"
-
-
-def get_db() -> sqlite3.Connection:
-    """Open, checked (and if needed repaired) connection. Caller must close it."""
-    return run_with_db()
 
 
 # ---------------------------------------------------------------------------
