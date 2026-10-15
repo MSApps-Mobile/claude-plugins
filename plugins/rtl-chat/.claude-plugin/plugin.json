@@ -1,7 +1,7 @@
 {
   "name": "rtl-chat",
   "version": "0.2.0",
-  "description": "---",
+  "description": "Formats Claude's chat responses so mixed Hebrew and English text stays readable in Cowork and Claude Desktop, which have limited RTL support.",
   "author": {
     "name": "MSApps"
   },
@@ -25,5 +25,6 @@
     "sosa-agents"
   ],
   "privacy_policy": "https://opsagents.agency/privacy",
-  "terms_of_service": "https://opsagents.agency/terms"
+  "terms_of_service": "https://opsagents.agency/terms",
+  "license": "MIT"
 }
