@@ -61,6 +61,28 @@ No UI interaction. Works every time.
 
 ---
 
+## Usage
+
+```
+/fix-chrome-connection:fix-chrome [symptom or error message]
+
+# Examples:
+/fix-chrome-connection:fix-chrome
+/fix-chrome-connection:fix-chrome tabs_context_mcp fails
+/fix-chrome-connection:fix-chrome after switching Claude Desktop accounts
+
+/fix-chrome-connection:check-chrome [no arguments]
+
+# Examples:
+/fix-chrome-connection:check-chrome
+
+/fix-chrome-connection:clean-devtools-mcp [symptom or error message]
+
+# Examples:
+/fix-chrome-connection:clean-devtools-mcp
+/fix-chrome-connection:clean-devtools-mcp The browser is already running for chrome-profile
+```
+
 ## Author
 
 [MSApps](https://msapps.mobi) · [All plugins](https://msapps-mobile.github.io/claude-plugins/)

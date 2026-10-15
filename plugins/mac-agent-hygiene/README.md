@@ -136,6 +136,15 @@ mac-agent-hygiene/
 - **Agents** — R=mac-hygiene · T=bash, launchd, git, gh(read) · M=30-minute plan cache + append-only
   log · P=status-plan-confirm-apply.
 
+## Usage
+
+```
+/mac-agent-hygiene:hygiene-status [no arguments]
+
+# Examples:
+/mac-agent-hygiene:hygiene-status
+```
+
 ## Author
 
 MSApps — https://claudeservices.ai · led by a Claude Certified Architect.

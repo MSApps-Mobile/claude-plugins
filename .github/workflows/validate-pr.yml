@@ -256,3 +256,13 @@ jobs:
       # the bump-version.sh integration run on every build, not once by hand.
       - name: Marketplace versions — prove the guard can FAIL
         run: python3 scripts/marketplace-versions.test.py
+
+      # ── Card NDw31FqM ──────────────────────────────────────────
+      # After install, a plugin with no slash command shows nothing under "/".
+      # Fail a plugin missing a command, an argument-hint, or a README
+      # `## Usage` block; the second step runs the red branch every build.
+      - name: Plugin commands - every plugin has a command, argument-hint, README Usage
+        run: python3 scripts/check-plugin-commands.py --root .
+
+      - name: Plugin commands - prove the guard can FAIL
+        run: python3 scripts/check-plugin-commands.test.py

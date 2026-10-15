@@ -25,6 +25,14 @@ npm install && npm run build
 
 ## Usage
 
+```
+/zoho-mail-health:check [no arguments]
+
+# Examples:
+/zoho-mail-health:check
+```
+
+
 Trigger the skill by saying any of:
 - "Run the Zoho Mail health check"
 - "Check if Zoho Mail is working"
