@@ -87,6 +87,21 @@ class Redact(unittest.TestCase):
             self.assertNotIn(s, out, f"{s[:8]}... survived redaction")
         self.assertIn("[REDACTED]", out)
 
+    def test_secret_cut_by_the_stored_slice_is_still_masked(self):
+        cmd = "x" * 190 + " GH_TOKEN=" + GHP
+        out = self.m.safe(cmd, 200)
+        self.assertLessEqual(len(out), 200)
+        self.assertNotIn(GHP[:6], out)  # not even the head of the key survives the cut
+
+    def test_large_adversarial_input_is_fast(self):
+        import time
+        blobs = ["a" * 1_000_000, "token" * 200_000, ("x_" * 400_000) + "=", "key" + "-" * 1_000_000]
+        t = time.monotonic()
+        for b in blobs:
+            self.m.redact(b)
+            self.m.safe(b, 200)
+        self.assertLess(time.monotonic() - t, 2.0)
+
     def test_plain_text_is_left_alone(self):
         for t in ["git commit -m 'monkey patch the keyboard'", "tokens used: 5", "npm test -- --watch"]:
             self.assertEqual(self.m.redact(t), t)
@@ -106,6 +121,18 @@ class HookStoresNoSecret(unittest.TestCase):
             for s in SECRETS:
                 self.assertNotIn(s, text, f"{s[:8]}... stored in a row")
                 self.assertNotIn(s.encode(), raw, f"{s[:8]}... present in the DB file bytes")
+
+
+class LargePayload(unittest.TestCase):
+    def test_big_write_is_captured_with_its_real_line_count(self):
+        body = ("line with api_key=" + KV + "\n") * 50_000
+        with tempfile.TemporaryDirectory() as home:
+            r = run_hook(home, {"tool_name": "Write", "tool_input": {"file_path": "/tmp/big.txt", "content": body},
+                                "tool_response": "ok"})
+            self.assertEqual(r.returncode, 0, r.stderr)
+            rows, raw = db_dump(Path(home) / ".claude" / ".cowork-mem" / "memory.db")
+            self.assertIn("(50000 lines)", json.dumps(rows, default=str))
+            self.assertNotIn(KV.encode(), raw)
 
 
 class PrivateModes(unittest.TestCase):

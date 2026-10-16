@@ -25,8 +25,8 @@ Deliberately NOT captured:
   Read, Glob, Grep, WebFetch, WebSearch — passive lookups, not state changes
   screenshot, mouse, keyboard — transient UI actions
 
-Secrets (card gFeFnGRA, CTO review 5554454332): every string from the payload is
-passed through redact() BEFORE it is truncated or stored, so a bearer token, a
+Secrets (card gFeFnGRA, CTO review 5554454332): every field that is stored is
+passed through redact() over a bounded window BEFORE it is sliced or stored, so a bearer token, a
 token=/key=/password= value, a user:pass@ URL or a known key shape (ghp_,
 github_pat_, sk-, AIza, xox*) never reaches memory.db. Files are private: the
 process runs under umask 077 (dir 0700, DB and log 0600).
@@ -82,9 +82,9 @@ _REDACTIONS = (
     # credentials in a URL: scheme://user:pass@host
     (re.compile(r"(?i)\b([a-z][a-z0-9+.-]*://)[^\s/@:]+:[^\s/@]+@"), r"\1" + REDACTED + "@"),
     # Authorization header (any scheme) and bare Bearer tokens
-    (re.compile(r"(?i)(\bauthorization[\"']?\s*[:=]\s*[\"']?)(?:(?:bearer|basic|token)\s+)?[^\s\"',;]+"),
+    (re.compile(r"(?i)(\bauthorization[\"']?[ \t]{0,8}[:=][ \t]{0,8}[\"']?)(?:(?:bearer|basic|token)[ \t]{1,8})?[^\s\"',;]+"),
      r"\1" + REDACTED),
-    (re.compile(r"(?i)\b(bearer\s+)[A-Za-z0-9._~+/=-]{6,}"), r"\1" + REDACTED),
+    (re.compile(r"(?i)\b(bearer[ \t]{1,8})[A-Za-z0-9._~+/=-]{6,}"), r"\1" + REDACTED),
     # known key shapes
     (re.compile(r"\bgithub_pat_[A-Za-z0-9_]{10,}"), REDACTED),
     (re.compile(r"\bgh[pousr]_[A-Za-z0-9]{10,}"), REDACTED),
@@ -92,32 +92,32 @@ _REDACTIONS = (
     (re.compile(r"\bAIza[0-9A-Za-z_-]{20,}"), REDACTED),
     (re.compile(r"\bxox[a-z]-[A-Za-z0-9-]{8,}"), REDACTED),
     # name=value / name: value where the name says token, key, secret or password
-    (re.compile(r"(?i)([\"']?\b(?:[A-Za-z0-9_.-]*(?:token|secret|passwd|password|pwd)[A-Za-z0-9_]*"
-                r"|(?:[A-Za-z0-9.-]*[_.-])?key)[\"']?"
-                r"\s*[:=]\s*[\"']?)(?!\[REDACTED\])[^\s\"'&,;}]+"), r"\1" + REDACTED),
+    (re.compile(r"(?i)([\"']?\b(?:[A-Za-z0-9_.-]{0,64}(?:token|secret|passwd|password|pwd)[A-Za-z0-9_]{0,64}"
+                r"|(?:[A-Za-z0-9.-]{0,64}[_.-])?key)[\"']?"
+                r"[ \t]{0,8}[:=][ \t]{0,8}[\"']?)(?!\[REDACTED\])[^\s\"'&,;}]+"), r"\1" + REDACTED),
     # CLI flags: --token X, --password X, -p X is too ambiguous and is left alone
-    (re.compile(r"(?i)(--(?:[a-z0-9-]*-)?(?:token|api-key|key|secret|password)(?:\s+|=))(?!\[REDACTED\])[^\s\"']+"),
+    (re.compile(r"(?i)(--(?:[a-z0-9-]{0,64}-)?(?:token|api-key|key|secret|password)(?:[ \t]{1,8}|=))(?!\[REDACTED\])[^\s\"']+"),
      r"\1" + REDACTED),
 )
 
 
+# redact() only ever sees a bounded window: callers slice a value to what is stored plus
+# this margin, so a secret cut at the stored slice's edge is still matched whole, and
+# the regexes never run over a large Write payload or tool output.
+REDACT_MARGIN = 400
+
+
 def redact(text) -> str:
-    """Mask secrets in text. Applied to every captured string before truncation."""
-    s = str(text)
+    """Mask secrets in text. Callers pass a bounded slice (stored length + REDACT_MARGIN)."""
+    s = str(text)[: MAX_OUTPUT_LEN + 4 * REDACT_MARGIN]
     for pattern, repl in _REDACTIONS:
         s = pattern.sub(repl, s)
     return s
 
 
-def redact_obj(obj):
-    """redact() every string inside a JSON-like payload."""
-    if isinstance(obj, str):
-        return redact(obj)
-    if isinstance(obj, list):
-        return [redact_obj(x) for x in obj]
-    if isinstance(obj, dict):
-        return {k: redact_obj(v) for k, v in obj.items()}
-    return obj
+def safe(value, keep: int) -> str:
+    """The first `keep` chars of value, redacted over a wider window first."""
+    return redact(str(value)[: keep + REDACT_MARGIN])[:keep]
 
 
 def make_private(db_path: str = ""):
@@ -191,7 +191,7 @@ def save_observation(obs_type: str, content: str, tags: str = "auto-capture"):
     script = find_memory_script()
     if not script:
         return  # Plugin not found — silent
-    content = redact(content)  # last line of defence; inputs were redacted already
+    content = redact(content)  # last line of defence; every field was redacted already
 
     db_path = os.environ.get("COWORK_MEM_DB", "")
     env = dict(os.environ)
@@ -237,19 +237,19 @@ def _report_failure(message: str, db_path: str = ""):
 # ---------------------------------------------------------------------------
 
 def handle_edit(tool_input: dict, _response: str):
-    file_path = tool_input.get("file_path", "unknown")
+    file_path = safe(tool_input.get("file_path", "unknown"), 200)
     old = tool_input.get("old_string", "")
     new = tool_input.get("new_string", "")
     # Build a compact diff summary
     old_lines = len(old.splitlines())
     new_lines = len(new.splitlines())
     delta = f"+{new_lines}/-{old_lines} lines"
-    content = truncate(f"Edited {file_path} ({delta}): {new[:120]}", MAX_CONTENT_LEN)
+    content = truncate(f"Edited {file_path} ({delta}): {safe(new, 120)}", MAX_CONTENT_LEN)
     save_observation("file_edit", content, tags="auto-capture,file-edit")
 
 
 def handle_write(tool_input: dict, _response: str):
-    file_path = tool_input.get("file_path", "unknown")
+    file_path = safe(tool_input.get("file_path", "unknown"), 200)
     file_content = tool_input.get("content", "")
     lines = len(file_content.splitlines())
     content = truncate(f"Wrote {file_path} ({lines} lines)", MAX_CONTENT_LEN)
@@ -257,17 +257,17 @@ def handle_write(tool_input: dict, _response: str):
 
 
 def handle_bash(tool_input: dict, response: str):
-    cmd = tool_input.get("command", "").strip()
-    if not is_meaningful_bash(cmd):
+    raw_cmd = tool_input.get("command", "").strip()
+    if not is_meaningful_bash(raw_cmd):
         return  # Skip trivial commands
 
     output_snippet = truncate(response, 150)
-    content = truncate(f"Ran: {cmd[:200]}" + (f" → {output_snippet}" if output_snippet else ""), MAX_CONTENT_LEN)
+    content = truncate(f"Ran: {safe(raw_cmd, 200)}" + (f" → {output_snippet}" if output_snippet else ""), MAX_CONTENT_LEN)
     save_observation("tool_use", content, tags="auto-capture,bash")
 
 
 def handle_task(tool_input: dict, response: str):
-    description = tool_input.get("description", tool_input.get("prompt", ""))[:100]
+    description = safe(tool_input.get("description", tool_input.get("prompt", "")), 100)
     result_snippet = truncate(response, 200)
     content = truncate(f"Agent task: {description}" + (f" → {result_snippet}" if result_snippet else ""), MAX_CONTENT_LEN)
     save_observation("insight", content, tags="auto-capture,agent-task")
@@ -275,7 +275,7 @@ def handle_task(tool_input: dict, response: str):
 
 def handle_todo_write(tool_input: dict, _response: str):
     todos = tool_input.get("todos", [])
-    pending = [t.get("content", "") for t in todos if t.get("status") == "pending"]
+    pending = [safe(t.get("content", ""), 200) for t in todos if t.get("status") == "pending"]
     if not pending:
         return
     items = "; ".join(pending[:3])
@@ -306,14 +306,13 @@ def main():
 
         payload = json.loads(raw)
         tool_name    = payload.get("tool_name", "")
-        tool_input   = redact_obj(payload.get("tool_input", {}))
+        tool_input   = payload.get("tool_input", {})
         tool_response = payload.get("tool_response", "")
 
         if tool_name not in CAPTURE_TOOLS:
             return  # Not a tool we care about
 
-        response_text = redact(extract_response_text(tool_response))
-        response_text = truncate(response_text, MAX_OUTPUT_LEN)
+        response_text = safe(extract_response_text(tool_response), MAX_OUTPUT_LEN)
 
         handler = HANDLERS.get(tool_name)
         if handler:
