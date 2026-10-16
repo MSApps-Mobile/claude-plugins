@@ -1,18 +1,19 @@
 #!/bin/bash
 # ╔═══════════════════════════════════════════════════╗
 # ║  package-plugin.sh                                ║
-# ║  Packages a plugin's .claude-plugin/ directory    ║
-# ║  into a distributable .plugin zip file            ║
+# ║  Packages a whole plugins/<name>/ tree into a     ║
+# ║  distributable .plugin zip file                   ║
 # ╚════════════════════════════════════════════════════╝
 #
 # Usage: ./scripts/package-plugin.sh <plugin-name> [output-dir]
 #
-# Input:  plugins/{name}/.claude-plugin/
+# Input:  plugins/{name}/ (must contain .claude-plugin/plugin.json)
 # Output: {output-dir}/{name}-{version}.plugin
 #
-# The .plugin format is a zip archive of the .claude-plugin/ directory.
-# The root of the zip IS the .claude-plugin/ directory contents
-# (not nested under another folder).
+# The .plugin format is a zip archive of the whole plugin directory.
+# The root of the zip IS the plugin directory contents, i.e.
+# .claude-plugin/plugin.json, skills/, hooks/, ... (not nested under
+# another folder).
 
 set -euo pipefail
 
@@ -53,8 +54,9 @@ OUTPUT_FILE="$OUTPUT_DIR/$PLUGIN_NAME-$VERSION.plugin"
 rm -f "$OUTPUT_FILE"
 
 # ── Create the zip ──────────────────────────────────
-# We zip the CONTENTS of .claude-plugin/ so the archive root
-# contains plugin.json, skills/, agents/, etc. directly.
+# We zip the CONTENTS of the plugin dir so the archive root holds
+# .claude-plugin/, skills/, hooks/, etc. Zipping only .claude-plugin/
+# shipped an archive with just plugin.json (card 2cbdYCv2).
 #
 # OUTPUT_FILE can be absolute (CI passes /tmp/dist-test/...) or
 # relative (the default "dist"). Once we `cd` into the plugin dir
@@ -67,11 +69,13 @@ else
   ZIP_TARGET="$PWD/$OUTPUT_FILE"
 fi
 
-cd "$CLAUDE_PLUGIN_DIR"
-zip -r "$ZIP_TARGET" . \
+cd "$PLUGIN_DIR"
+zip -r -q "$ZIP_TARGET" . \
   --exclude "*.DS_Store" \
+  --exclude "*/__pycache__/*" \
   --exclude "__pycache__/*" \
   --exclude "*.pyc" \
+  --exclude "*/node_modules/*" \
   --exclude "node_modules/*" \
   --exclude ".git/*"
 cd "$OLDPWD"
@@ -81,6 +85,14 @@ if [[ ! -f "$OUTPUT_FILE" ]]; then
   echo "::error::Package creation failed — file not found: $OUTPUT_FILE"
   exit 1
 fi
+
+# Guard: a zip holding <= 1 file is an empty shell (card 2cbdYCv2).
+ENTRIES=$(unzip -Z1 "$OUTPUT_FILE" | grep -vc '/$' || true)
+if [[ "$ENTRIES" -le 1 ]]; then
+  echo "::error::Packaged zip $OUTPUT_FILE has only $ENTRIES file entries (<= 1) - refusing to ship an empty package"
+  exit 1
+fi
+echo "Zip holds $ENTRIES files"
 
 SIZE=$(du -sh "$OUTPUT_FILE" | cut -f1)
 echo "✓ Packaged $PLUGIN_NAME v$VERSION → $OUTPUT_FILE ($SIZE)"

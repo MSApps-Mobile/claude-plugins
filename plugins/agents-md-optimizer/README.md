@@ -72,4 +72,10 @@ python3 skills/agents-md-optimizer/scripts/audit.py path/to/CLAUDE.md --strict
 
 ## Install
 
-Install via the Cowork plugin system or copy `skills/agents-md-optimizer/` into your `.claude/skills/` directory.
+In Claude Code (2.1.275 or later):
+
+```
+/plugin install agents-md-optimizer --marketplace MSApps-Mobile/claude-plugins
+```
+
+Or install via the Cowork plugin system, or copy `skills/agents-md-optimizer/` into your `.claude/skills/` directory.

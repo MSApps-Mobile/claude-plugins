@@ -1,188 +1,70 @@
-# Security Considerations for Claude Plugins Update
+# Security Policy
 
-## Overview
-This document outlines security best practices and considerations for deploying and maintaining the Claude plugins infrastructure as part of the SOSA™ (Supervised Orchestrated Secured Agents) framework.
+This repository is a public marketplace of Claude Code plugins maintained by MSApps / OpsAgents AI,
+built around the SOSA™ (Supervised, Orchestrated, Secured Agents) methodology.
 
-## Security Principles
+This page states only what is actually in place. If something is not listed here, do not assume it exists.
 
-### Defense in Depth
-Implement multiple layers of security controls to protect against various attack vectors:
-- Network-level security (firewalls, VPNs, DDoS protection)
-- Application-level security (authentication, authorization, input validation)
-- Data-level security (encryption, key management, access controls)
-- Process-level security (audit logging, monitoring, incident response)
+## Reporting a vulnerability
 
-### Least Privilege
-Grant only the minimum permissions required for operation:
-- Service accounts with restricted capabilities
-- Role-based access control (RBAC) for users
-- API scopes limited to required operations
-- Environment-specific configurations
+Please report vulnerabilities **privately** through GitHub:
+**[Report a vulnerability](https://github.com/MSApps-Mobile/claude-plugins/security/advisories/new)**
+(the repository's *Security* tab → *Report a vulnerability*).
 
-### Security Monitoring
-Continuous monitoring and alerting for security events:
-- Real-time log analysis for suspicious activity
-- Automated alerting on policy violations
-- Regular security assessments and penetration testing
-- Incident response team on call
+Please include:
+- the affected plugin and version (or commit),
+- steps to reproduce,
+- the impact you observed or expect.
 
-## Plugin Security
+Do not open a public issue for a security problem, and please give us a chance to fix it before you
+disclose it publicly.
 
-### Plugin Isolation
-- Each plugin runs in isolated execution environment
-- No cross-plugin data access without explicit authorization
-- Resource limits enforced per plugin
-- Plugin crashes don't affect host system
+We acknowledge reports on a best-effort basis, normally within a few business days, and we will tell you
+whether we accept the report and what we plan to do about it. We are a small team: there is no 24/7
+on-call rotation, and we do not run a bug bounty.
 
-### Plugin Validation
-- All plugins require code review before deployment
-- Plugins must declare required capabilities
-- Dependencies validated against approved list
-- Digital signatures verify plugin integrity
+This channel is for vulnerabilities in **this repository's plugins**. Issues in Claude, Claude Code or
+other Anthropic products should go to Anthropic through its own disclosure channels, not to us.
 
-### Permission Model
-- Plugins request explicit capabilities
-- User consent required for sensitive operations
-- Audit trail of all capability usage
-- Regular review of granted permissions
+## How these plugins run — read before installing
 
-## Data Security
+- A plugin runs **inside Claude Code on your machine, with your permissions**. Its skills, commands, hooks
+  and MCP servers can do what Claude Code is allowed to do in your session. We do not sandbox plugins
+  from each other or from your system.
+- Review a plugin's files before you install it — especially `hooks/`, any MCP server definitions, and any
+  script a skill tells Claude to run.
+- Plugins that talk to external services expect you to provide your own credentials. Keep them in your own
+  secret store or environment; never commit them to a plugin.
 
-### Encryption
-- **In Transit**: TLS 1.2+ for all network communications
-- **At Rest**: AES-256 encryption for sensitive data
-- **Key Management**: Automated key rotation, secure storage
-- **Deletion**: Secure deletion procedures for sensitive data
+## What we do today
 
-### Access Control
-- Multi-factor authentication (MFA) required for all users
-- Service account credentials in secure vault
-- API keys rotated quarterly minimum
-- Access logs audited weekly
+- **Pull requests are the normal path to `main`, but review is not enforced.** Branch protection is not
+  enabled on `main`, so nothing technically requires a review or a passing check before a merge, and
+  `release.yml` pushes its version-bump commits directly to `main`.
+- **Automated checks on pull requests** (`.github/workflows/`):
+  - `validate-pr.yml` — runs on PRs that touch `plugins/`, `scripts/` or `.claude-plugin/`. For each changed
+    plugin it runs our own structure check and a `plugin.json` schema check, a `SKILL.md` quality check, a
+    pattern scan for hardcoded secrets (`api_key`/`api-key`, `secret`, `password` and `token` assignments with
+    a quoted value, `sk-…` and `xoxb-…` strings, and committed `.env` files) and a dry-run package build; it also checks that the marketplace manifest covers every plugin
+    directory. It does not run `claude plugin validate`;
+  - `sosa-lint.yml` — runs on every PR to `main` and every push to `main`: the SOSA™ four-pillar lint and evaluation
+    scores, a check that every plugin has a `SKILL.md`, and a token-efficiency check. Its own secret scan step is
+    narrower than the one above: it flags `api_key=` and `password=` assignments and committed `.env` files.
+    The lint script it runs (`scripts/sosa-lint.sh`) also flags `apiKey` and long `token=` assignments. These
+    are pattern matches, not a full secret scanner, and a failing check does not block a merge (see above).
+- **GitHub secret scanning** with push protection is enabled on this repository.
+- **Releases** are tagged per plugin by `release.yml` when a plugin changes on `main`. Releases are not
+  cryptographically signed.
+- **Secrets.** No plugin in this repository should contain a credential. If you find one, report it as a
+  vulnerability (above).
 
-### Data Classification
-- **Public**: No restrictions on access or use
-- **Internal**: Restricted to authorized organization members
-- **Confidential**: Restricted to need-to-know basis
-- **Secret**: Highest protection with encryption and logging
+## What we do not have
 
-## Infrastructure Security
+To be explicit: we do not hold a SOC 2, ISO 27001 or similar certification, we have not commissioned a
+third-party penetration test of this repository, and we do not operate a SIEM or a dedicated incident
+response team. If that changes, this page will say so with a date.
 
-### Network Architecture
-- Production systems isolated from development/testing
-- Bastion hosts for remote access
-- VPN required for administrative access
-- Network segmentation by function and trust level
+## Supported versions
 
-### System Hardening
-- Operating systems patched regularly (monthly minimum)
-- Unnecessary services and ports disabled
-- Security updates applied within 72 hours of release
-- Configuration compliance verified automatically
-
-### Backup & Recovery
-- Daily encrypted backups stored in secure location
-- Recovery time objective (RTO): 4 hours
-- Recovery point objective (RPO): 1 hour
-- Quarterly disaster recovery drills
-
-## Supply Chain Security
-
-### Dependency Management
-- All dependencies scanned for known vulnerabilities
-- Dependency updates reviewed and tested before deployment
-- Software Bill of Materials (SBOM) maintained
-- Third-party integrations audited annually
-
-### Code Review
-- All code changes require peer review
-- Security review required for sensitive changes
-- Automated security scanning in CI/CD pipeline
-- Static analysis for common vulnerabilities
-
-### Release Management
-- Signed releases with tamper detection
-- Change log documenting all modifications
-- Release notes include security-related changes
-- Rollback procedure tested before each release
-
-## Incident Response
-
-### Detection
-- SIEM system monitoring all security logs
-- Automated anomaly detection for unusual patterns
-- User behavior analysis for compromised accounts
-- Intrusion detection system (IDS) deployed
-
-### Response Team
-- On-call incident response team (24/7/365)
-- Escalation procedures documented
-- Communication templates for customer notification
-- Post-incident review process
-
-### Recovery
-- Incident runbooks for common scenarios
-- Automated response for certain alert types
-- System restore from known-good backups
-- Forensic analysis for root cause determination
-
-## Compliance
-
-### Standards
-- SOC 2 Type II audit (annual)
-- OWASP Top 10 compliance verified
-- CWE Top 25 vulnerabilities addressed
-- Industry-specific compliance (HIPAA, PCI DSS, etc.)
-
-### Audit Trail
-- All user actions logged with timestamp and identity
-- Configuration changes recorded with approval chain
-- Sensitive data access logged and monitored
-- Audit logs retained for minimum 2 years
-
-### Regular Assessment
-- Quarterly security risk assessments
-- Annual penetration testing
-- Bi-annual code security reviews
-- Continuous vulnerability scanning
-
-## Security Best Practices for Users
-
-### Account Security
-- Use strong, unique passwords (minimum 16 characters)
-- Enable multi-factor authentication (MFA)
-- Regularly review and revoke unused API keys
-- Never share credentials or tokens
-
-### Data Protection
-- Minimize sensitive data in logs
-- Use data masking for PII in transit
-- Apply least privilege to data access
-- Archive sensitive data securely
-
-### Safe Operations
-- Review automated actions before deployment
-- Maintain human oversight of critical decisions
-- Document significant changes for audit trail
-- Report security issues promptly
-
-## Reporting Security Issues
-
-### Vulnerability Disclosure
-Please report security vulnerabilities to: security@anthropic.com
-
-Include:
-- Description of the vulnerability
-- Steps to reproduce
-- Potential impact assessment
-- Suggested remediation (if available)
-
-**Do not disclose vulnerabilities publicly until patches are available.**
-
-## Security Updates
-
-Security updates are released as needed with:
-- Priority: Critical (within 24 hours)
-- Priority: High (within 72 hours)
-- Priority: Medium (within 2 weeks)
-- Priority: Low (in next regular release)
+Only the latest release of each plugin is supported. Fixes are released as new plugin versions; update
+by reinstalling or updating the plugin from the marketplace.
