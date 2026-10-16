@@ -910,7 +910,7 @@
       "name": "cowork-mem",
       "source": "./plugins/cowork-mem",
       "description": "Persistent memory across Cowork sessions — automatically recalls past decisions, file changes, insights, and errors so you never lose context between sessions. SQLite + FTS5, token-efficient 3-layer retrieval.",
-      "version": "0.2.3",
+      "version": "0.2.4",
       "platforms": [
         "claude-code",
         "cowork"
