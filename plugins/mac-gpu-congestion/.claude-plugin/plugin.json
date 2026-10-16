@@ -1,0 +1,15 @@
+{
+  "name": "mac-gpu-congestion",
+  "description": "Diagnose and relieve GPU congestion on Apple Silicon Macs: stuttering, dropped frames, laggy video calls, WindowServer load. Measures GPU utilization without sudo, finds who is loading the GPU, and relieves it least-destructive-first.",
+  "version": "0.1.0",
+  "author": {
+    "name": "MSApps",
+    "url": "https://msapps.mobi"
+  },
+  "license": "MIT",
+  "privacy_policy": "https://opsagents.agency/privacy",
+  "terms_of_service": "https://opsagents.agency/terms",
+  "homepage": "https://msapps.mobi/plugins",
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "keywords": ["macos", "apple-silicon", "gpu", "performance", "windowserver", "metal", "stutter"]
+}
