@@ -1,6 +1,6 @@
 {
   "name": "sosa-compliance-checker",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "SOSA\u2122 compliance auditor for Claude plugins, skills, and coding agents. Scans your entire ecosystem against the four SOSA pillars (Supervised, Orchestrated, Secured, Agents) across both enterprise operations and software engineering domains. Includes SOSA for Code governance: graduated supervision levels, trust gradients, Plan-Code-Verify execution model, codebase knowledge models, and adaptive CLAUDE.md institutional memory.",
   "author": {
     "name": "MSApps",
