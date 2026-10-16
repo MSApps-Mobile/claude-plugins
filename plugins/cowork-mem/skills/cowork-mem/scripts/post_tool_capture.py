@@ -24,12 +24,19 @@ Captured tools and what we save:
 Deliberately NOT captured:
   Read, Glob, Grep, WebFetch, WebSearch — passive lookups, not state changes
   screenshot, mouse, keyboard — transient UI actions
+
+Secrets (card gFeFnGRA, CTO review 5554454332): every string from the payload is
+passed through redact() BEFORE it is truncated or stored, so a bearer token, a
+token=/key=/password= value, a user:pass@ URL or a known key shape (ghp_,
+github_pat_, sk-, AIza, xox*) never reaches memory.db. Files are private: the
+process runs under umask 077 (dir 0700, DB and log 0600).
 """
 
 from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -60,6 +67,72 @@ TRIVIAL_BASH_PREFIXES = (
     "find . -type f", "wc ", "grep ",
 )
 
+
+# capture-errors.log is rotated to capture-errors.log.1 past this size
+MAX_ERROR_LOG_BYTES = 256 * 1024
+
+# ---------------------------------------------------------------------------
+# Redaction
+# ---------------------------------------------------------------------------
+
+REDACTED = "[REDACTED]"
+
+# Order matters: whole-value shapes first, then the name=value forms.
+_REDACTIONS = (
+    # credentials in a URL: scheme://user:pass@host
+    (re.compile(r"(?i)\b([a-z][a-z0-9+.-]*://)[^\s/@:]+:[^\s/@]+@"), r"\1" + REDACTED + "@"),
+    # Authorization header (any scheme) and bare Bearer tokens
+    (re.compile(r"(?i)(\bauthorization[\"']?\s*[:=]\s*[\"']?)(?:(?:bearer|basic|token)\s+)?[^\s\"',;]+"),
+     r"\1" + REDACTED),
+    (re.compile(r"(?i)\b(bearer\s+)[A-Za-z0-9._~+/=-]{6,}"), r"\1" + REDACTED),
+    # known key shapes
+    (re.compile(r"\bgithub_pat_[A-Za-z0-9_]{10,}"), REDACTED),
+    (re.compile(r"\bgh[pousr]_[A-Za-z0-9]{10,}"), REDACTED),
+    (re.compile(r"\bsk-[A-Za-z0-9_-]{10,}"), REDACTED),
+    (re.compile(r"\bAIza[0-9A-Za-z_-]{20,}"), REDACTED),
+    (re.compile(r"\bxox[a-z]-[A-Za-z0-9-]{8,}"), REDACTED),
+    # name=value / name: value where the name says token, key, secret or password
+    (re.compile(r"(?i)([\"']?\b(?:[A-Za-z0-9_.-]*(?:token|secret|passwd|password|pwd)[A-Za-z0-9_]*"
+                r"|(?:[A-Za-z0-9.-]*[_.-])?key)[\"']?"
+                r"\s*[:=]\s*[\"']?)(?!\[REDACTED\])[^\s\"'&,;}]+"), r"\1" + REDACTED),
+    # CLI flags: --token X, --password X, -p X is too ambiguous and is left alone
+    (re.compile(r"(?i)(--(?:[a-z0-9-]*-)?(?:token|api-key|key|secret|password)(?:\s+|=))(?!\[REDACTED\])[^\s\"']+"),
+     r"\1" + REDACTED),
+)
+
+
+def redact(text) -> str:
+    """Mask secrets in text. Applied to every captured string before truncation."""
+    s = str(text)
+    for pattern, repl in _REDACTIONS:
+        s = pattern.sub(repl, s)
+    return s
+
+
+def redact_obj(obj):
+    """redact() every string inside a JSON-like payload."""
+    if isinstance(obj, str):
+        return redact(obj)
+    if isinstance(obj, list):
+        return [redact_obj(x) for x in obj]
+    if isinstance(obj, dict):
+        return {k: redact_obj(v) for k, v in obj.items()}
+    return obj
+
+
+def make_private(db_path: str = ""):
+    """umask 077 for everything this process (and memory_store) creates, and tighten the
+    store a pre-umask install left world-readable (dir 0700, DB/log 0600). Best effort."""
+    os.umask(0o077)
+    d = Path(db_path).parent if db_path else Path.home() / ".claude" / ".cowork-mem"
+    try:
+        if d.is_dir():
+            os.chmod(d, 0o700)
+            for f in d.iterdir():
+                if f.is_file() and (f.name.startswith("memory.db") or f.name.startswith("capture-errors.log")):
+                    os.chmod(f, 0o600)
+    except OSError:
+        pass
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -118,6 +191,7 @@ def save_observation(obs_type: str, content: str, tags: str = "auto-capture"):
     script = find_memory_script()
     if not script:
         return  # Plugin not found — silent
+    content = redact(content)  # last line of defence; inputs were redacted already
 
     db_path = os.environ.get("COWORK_MEM_DB", "")
     env = dict(os.environ)
@@ -141,7 +215,7 @@ def save_observation(obs_type: str, content: str, tags: str = "auto-capture"):
 
 def _report_failure(message: str, db_path: str = ""):
     """Surface a failed write: stderr line + append to capture-errors.log next to the DB."""
-    line = f"[cowork-mem] WRITE FAILED: {message}"
+    line = f"[cowork-mem] WRITE FAILED: {redact(message)}"
     try:
         print(line, file=sys.stderr)
     except Exception:
@@ -149,7 +223,10 @@ def _report_failure(message: str, db_path: str = ""):
     try:
         log_dir = Path(db_path).parent if db_path else Path.home() / ".claude" / ".cowork-mem"
         log_dir.mkdir(parents=True, exist_ok=True)
-        with open(log_dir / "capture-errors.log", "a", encoding="utf-8") as fh:
+        log = log_dir / "capture-errors.log"
+        if log.exists() and log.stat().st_size > MAX_ERROR_LOG_BYTES:
+            os.replace(log, log_dir / "capture-errors.log.1")
+        with open(log, "a", encoding="utf-8") as fh:
             fh.write(f"{datetime.now(timezone.utc).isoformat()} {line}\n")
     except Exception:
         pass
@@ -222,19 +299,20 @@ HANDLERS = {
 
 def main():
     try:
+        make_private(os.environ.get("COWORK_MEM_DB", ""))
         raw = sys.stdin.read()
         if not raw.strip():
             return
 
         payload = json.loads(raw)
         tool_name    = payload.get("tool_name", "")
-        tool_input   = payload.get("tool_input", {})
+        tool_input   = redact_obj(payload.get("tool_input", {}))
         tool_response = payload.get("tool_response", "")
 
         if tool_name not in CAPTURE_TOOLS:
             return  # Not a tool we care about
 
-        response_text = extract_response_text(tool_response)
+        response_text = redact(extract_response_text(tool_response))
         response_text = truncate(response_text, MAX_OUTPUT_LEN)
 
         handler = HANDLERS.get(tool_name)
