@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "COWORK_MEM_DB=~/.claude/.cowork-mem/memory.db python3 ~/.claude/skills/cowork-mem/scripts/post_tool_capture.py 2>/dev/null || true"
+            "command": "D=\"$HOME/.claude/.cowork-mem\"; mkdir -p \"$D\"; COWORK_MEM_DB=\"$D/memory.db\" python3 \"${CLAUDE_PLUGIN_ROOT}/skills/cowork-mem/scripts/post_tool_capture.py\" 2>/dev/null || { rc=$?; echo \"$(date -u +%Y-%m-%dT%H:%M:%SZ) cowork-mem hook: post_tool_capture.py exited $rc (missing or crashed; CLAUDE_PLUGIN_ROOT=${CLAUDE_PLUGIN_ROOT:-unset})\" >> \"$D/capture-errors.log\"; }; exit 0"
           }
         ]
       }
