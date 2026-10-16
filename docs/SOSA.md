@@ -156,7 +156,7 @@ This is **our own reading, not a compliance or alignment claim.** It has not bee
 | Role spec + capability set (A) | Security, Safety | Secure & resilient | Bounds every step | Method (white paper §4); runtime enforcement not measured |
 | Claim protocol + fan-out cap (O) | Reliability, Resiliency | Valid & reliable | Coherent parallel work | Measured 2026-10-12 |
 | Audit trail on the ticket (Sec) | Explainability, Accountability | Accountable & transparent; Explainable | The evidence promotion reads | Partial: completeness not measured; not immutable |
-| Domain reviewers: a security review and an accessibility review, each to run in a fresh context; blocking findings to block the merge (S) | Security, Safety, Objectivity | Secure & resilient; Safe | Raises reviewer expertise (axis B) | In rollout, ruled 2026-10-16 |
+| Domain reviewers: a security review (`/security-review`) and an accessibility review (the `/a11y-debugging` skill), each to run in a fresh context; blocking findings to block the merge (S) | Security, Safety, Objectivity | Secure & resilient; Safe | Raises reviewer expertise (axis B) | In rollout, ruled 2026-10-16 |
 | Trust rating (S) | Objectivity, Explainability | Accountable & transparent | Future input to promotion | In build; changes no permission today |
 
 ### Trust rating (in build)
@@ -240,6 +240,14 @@ The `sosa-compliance-checker` runs the `token-efficiency-audit` as part of its O
 ## Reference Implementation
 
 [OpsAgents AI](https://opsagents.agency) runs its own agent fleet under the SOSA methodology. The framework is presented as a live, citable page — with a real production audit-log proof — at **[opsagents.agency/sosa](https://opsagents.agency/sosa)**.
+
+---
+
+## About the publisher
+
+SOSA is published by MSApps. [MSApps is Certified in the Claude Partner Network.](https://claude.com/partners)
+
+SOSA is published as a plugin in the Claude Directory. To install it, add the marketplace in Claude at *Settings → Plugins → Marketplaces → Add →* `MSApps-Mobile/claude-plugins`.
 
 ---
 
