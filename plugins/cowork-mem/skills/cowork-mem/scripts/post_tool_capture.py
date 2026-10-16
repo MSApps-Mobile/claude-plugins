@@ -79,8 +79,15 @@ REDACTED = "[REDACTED]"
 
 # Order matters: whole-value shapes first, then the name=value forms.
 _REDACTIONS = (
-    # credentials in a URL: scheme://user:pass@host
-    (re.compile(r"(?i)\b([a-z][a-z0-9+.-]*://)[^\s/@:]+:[^\s/@]+@"), r"\1" + REDACTED + "@"),
+    # PEM private keys (OpenSSH, EC, RSA, PKCS#8; also inside a service-account JSON): BEGIN through
+    # END, or through the end of the window when END was cut off. First, so nothing below sees a body.
+    (re.compile(r"-----BEGIN[A-Z0-9 ]{0,64}PRIVATE KEY-----[\s\S]*?(?:-----END[A-Z0-9 ]{0,64}PRIVATE KEY-----|\Z)"),
+     REDACTED),
+    # credentials in a URL: scheme://user:pass@host (a password may itself contain '@')
+    (re.compile(r"(?i)\b([a-z][a-z0-9+.-]*://)[^\s/@:]+:[^\s/]*@"), r"\1" + REDACTED + "@"),
+    # curl -u user:pass, -uuser:pass, --user user:pass, --user=user:pass (quoted or not)
+    (re.compile(r"((?:^|\s)(?:-u\s{0,64}|--user(?:\s{1,64}|=))[\"']?)(?!\[REDACTED\])[^\s\"':]+:[^\s\"']+"),
+     r"\1" + REDACTED),
     # Authorization header (any scheme) and bare Bearer tokens
     (re.compile(r"(?i)(\bauthorization[\"']?\s{0,64}[:=]\s{0,64}[\"']?)(?:(?:bearer|basic|token)\s{1,64})?[^\s\"',;]+"),
      r"\1" + REDACTED),
@@ -91,10 +98,18 @@ _REDACTIONS = (
     (re.compile(r"\bsk-[A-Za-z0-9_-]{10,}"), REDACTED),
     (re.compile(r"\bAIza[0-9A-Za-z_-]{20,}"), REDACTED),
     (re.compile(r"\bxox[a-z]-[A-Za-z0-9-]{8,}"), REDACTED),
+    (re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"), REDACTED),
+    (re.compile(r"\b[rs]k_(?:live|test)_[A-Za-z0-9]{10,}"), REDACTED),
+    (re.compile(r"\bnpm_[A-Za-z0-9]{20,}"), REDACTED),
+    (re.compile(r"\bhf_[A-Za-z0-9]{20,}"), REDACTED),
+    (re.compile(r"\beyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}"), REDACTED),
     # name=value / name: value where the name says token, key, secret or password
     (re.compile(r"(?i)([\"']?\b(?:[A-Za-z0-9_.-]{0,64}(?:token|secret|passwd|password|pwd)[A-Za-z0-9_]{0,64}"
                 r"|(?:[A-Za-z0-9.-]{0,64}[_.-])?key)[\"']?"
                 r"\s{0,64}[:=]\s{0,64}[\"']?)(?!\[REDACTED\])[^\s\"'&,;}]+"), r"\1" + REDACTED),
+    # aws configure set aws_secret_access_key VALUE (a space, no '=' or ':')
+    (re.compile(r"(?i)(\baws_(?:secret_access_key|session_token)[\"']?\s{1,64})(?![=:\s]|\[REDACTED\])[^\s\"']+"),
+     r"\1" + REDACTED),
     # CLI flags: --token X, --password X, -p X is too ambiguous and is left alone
     (re.compile(r"(?i)(--(?:[a-z0-9-]{0,64}-)?(?:token|api-key|key|secret|password)(?:\s{1,64}|=))(?!\[REDACTED\])[^\s\"']+"),
      r"\1" + REDACTED),

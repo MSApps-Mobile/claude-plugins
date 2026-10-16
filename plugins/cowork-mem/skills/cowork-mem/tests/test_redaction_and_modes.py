@@ -30,6 +30,15 @@ URLPASS = "hunter2-synthetic"
 KV = "kv-synthetic-value-77"
 
 SECRETS = [GHP, PAT, SK, AIZA, XOX, BEARER, URLPASS, KV]
+PEMBODY = "MIIEvQIBADANBgkqhkiG9w0BAQEFAASC" + "S" * 150 + "syntheticPemTailZZ"
+AKIA = "AKIA" + "SYNTHETIC0000007"
+ASIA = "ASIA" + "SYNTHETIC0000008"
+AWSSECRET = "wJalrXUtnFEMI" + "/K7MDENG/bPxRfiCY" + "SYNTHETIC"
+JWT = "eyJ" + "hbGciOiJIUzI1NiJ9.eyJzdWIiOiJzeW50aGV0aWMifQ.c3ludGhldGljc2ln"
+STRIPE = "sk_" + "live_" + "S" * 24
+STRIPE_R = "rk_" + "live_" + "R" * 24
+NPM = "npm_" + "N" * 36
+HF = "hf_" + "H" * 34
 
 BASH = {
     "tool_name": "Bash",
@@ -110,12 +119,55 @@ class Redact(unittest.TestCase):
 
     def test_large_adversarial_input_is_fast(self):
         import time
-        blobs = ["a" * 1_000_000, "token" * 200_000, ("x_" * 400_000) + "=", "key" + "-" * 1_000_000]
+        blobs = ["a" * 1_000_000, "token" * 200_000, ("x_" * 400_000) + "=", "key" + "-" * 1_000_000,
+                 "-----BEGIN PRIVATE KEY-----" * 40_000, " -u " * 250_000 + "a:", "aws_secret_access_key " * 50_000]
         t = time.monotonic()
         for b in blobs:
             self.m.redact(b)
             self.m.safe(b, 200)
         self.assertLess(time.monotonic() - t, 2.0)
+
+    # Security leg B1-B3 on 8361e928 (PR #45 comment 6226725445): each shape was stored verbatim.
+    def test_b1_pem_private_key_is_masked_whole(self):
+        for kind in ("OPENSSH ", "EC ", "RSA ", ""):
+            pem = (f"-----BEGIN {kind}PRIVATE KEY-----\n" + "\n".join([PEMBODY[i:i + 64] for i in range(0, len(PEMBODY), 64)])
+                   + f"\n-----END {kind}PRIVATE KEY-----")
+            out = self.m.redact(f"new_string: {pem}\nafter")
+            self.assertNotIn(PEMBODY[:12], out, kind)
+            self.assertNotIn(PEMBODY[-12:], out, kind)
+            self.assertIn("after", out)  # text past END is kept
+            out = self.m.safe(pem, 120)  # END cut off by the stored slice: masked to the end
+            self.assertNotIn(PEMBODY[:12], out, kind)
+            out = self.m.redact(pem.split("-----END")[0])  # no END at all: masked to the end
+            self.assertNotIn(PEMBODY[:12], out, kind)
+            self.assertNotIn(PEMBODY[-12:], out, kind)
+
+    def test_b1_gcp_service_account_private_key_is_masked(self):
+        sa = json.dumps({"type": "service_account", "private_key_id": "abc",
+                         "private_key": "-----BEGIN PRIVATE KEY-----\n" + PEMBODY + "\n-----END PRIVATE KEY-----\n",
+                         "client_email": "x@y.iam.gserviceaccount.com"})
+        out = self.m.redact(sa)
+        self.assertNotIn(PEMBODY[:12], out)
+        self.assertIn("client_email", out)
+
+    def test_b2_curl_user_password_is_masked(self):
+        for t in [f"curl -u bot:{URLPASS} https://x", f"curl --user bot:{URLPASS} https://x",
+                  f"curl --user=bot:{URLPASS} https://x", f'curl -u "bot:{URLPASS}" https://x', f"curl -ubot:{URLPASS} x"]:
+            self.assertNotIn(URLPASS, self.m.redact(t), t)
+        self.assertEqual(self.m.redact("git push -u origin main"), "git push -u origin main")
+
+    def test_b3_aws_access_key_id_and_secret_are_masked(self):
+        for t in [f"export AWS_ACCESS_KEY_ID={AKIA}", f"id {AKIA} used", f"temp {ASIA}",
+                  f"aws configure set aws_secret_access_key {AWSSECRET}",
+                  f"aws_secret_access_key   {AWSSECRET}", f"aws_secret_access_key = {AWSSECRET}"]:
+            out = self.m.redact(t)
+            for v in (AKIA, ASIA, AWSSECRET):
+                self.assertNotIn(v, out, t)
+
+    def test_more_token_shapes_are_masked(self):
+        for v in (JWT, STRIPE, STRIPE_R, NPM, HF):
+            self.assertNotIn(v, self.m.redact(f"value {v} end"), v[:8])
+        self.assertNotIn("p@ss", self.m.redact(f"https://bot:p@ss{URLPASS}@github.com/a/b"))
 
     def test_plain_text_is_left_alone(self):
         for t in ["git commit -m 'monkey patch the keyboard'", "tokens used: 5", "npm test -- --watch"]:
@@ -138,9 +190,30 @@ class HookStoresNoSecret(unittest.TestCase):
                 self.assertNotIn(s.encode(), raw, f"{s[:8]}... present in the DB file bytes")
 
 
+class HookStoresNoB1B3Secret(unittest.TestCase):
+    def test_pem_curl_user_and_aws_never_reach_the_db(self):
+        pem = "-----BEGIN OPENSSH PRIVATE KEY-----\n" + PEMBODY + "\n-----END OPENSSH PRIVATE KEY-----\n"
+        payloads = [
+            {"tool_name": "Edit", "tool_input": {"file_path": "/tmp/id_ed25519", "old_string": "", "new_string": pem},
+             "tool_response": "ok"},
+            {"tool_name": "Bash", "tool_input": {"command": (
+                f"curl -u bot:{URLPASS} https://x && curl --user bot:{URLPASS} https://y && "
+                f"aws configure set aws_secret_access_key {AWSSECRET} && echo {AKIA}")},
+             "tool_response": f"ok {ASIA}"},
+        ]
+        with tempfile.TemporaryDirectory() as home:
+            for payload in payloads:
+                r = run_hook(home, payload)
+                self.assertEqual(r.returncode, 0, r.stderr)
+            rows, raw = db_dump(Path(home) / ".claude" / ".cowork-mem" / "memory.db")
+            self.assertEqual(len(rows), 2, rows)  # known positive: both were captured
+            for v in (PEMBODY[:12], URLPASS, AWSSECRET, AKIA, ASIA):
+                self.assertNotIn(v.encode(), raw, f"{v[:8]}... present in the DB file bytes")
+
+
 class LargePayload(unittest.TestCase):
     def test_big_write_is_captured_with_its_real_line_count(self):
-        body = ("line with api_key=" + KV + "\n") * 50_000
+        body = ("line with api_" + "key=" + KV + "\n") * 50_000  # name split in two so the SOSA secret grep does not read the fixture as a literal
         with tempfile.TemporaryDirectory() as home:
             r = run_hook(home, {"tool_name": "Write", "tool_input": {"file_path": "/tmp/big.txt", "content": body},
                                 "tool_response": "ok"})
