@@ -735,7 +735,7 @@
       "name": "sosa-compliance-checker",
       "source": "./plugins/sosa-compliance-checker",
       "description": "Compliance auditor for Claude plugins, skills, and coding agents — evaluates against SOSA principles (Supervised, Orchestrated, Secured, Agents) with governance features",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "platforms": [
         "claude-code",
         "cowork"
@@ -771,7 +771,7 @@
       "name": "sosa-governor",
       "source": "./plugins/sosa-governor",
       "description": "SOSA governance for Claude Code — classifies MCP tool calls by impact level, enforces approval gates, tracks token budgets, and maintains audit logs",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "platforms": [
         "claude-code",
         "cowork"
@@ -806,7 +806,7 @@
       "name": "sosa-orchestrator",
       "source": "./plugins/sosa-orchestrator",
       "description": "Token-aware task prioritization and budget management for Claude sessions — ranks tasks by importance vs. cost and tracks consumption in real time",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "platforms": [
         "claude-code",
         "cowork"
