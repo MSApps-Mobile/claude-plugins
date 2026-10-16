@@ -82,9 +82,9 @@ _REDACTIONS = (
     # credentials in a URL: scheme://user:pass@host
     (re.compile(r"(?i)\b([a-z][a-z0-9+.-]*://)[^\s/@:]+:[^\s/@]+@"), r"\1" + REDACTED + "@"),
     # Authorization header (any scheme) and bare Bearer tokens
-    (re.compile(r"(?i)(\bauthorization[\"']?[ \t]{0,8}[:=][ \t]{0,8}[\"']?)(?:(?:bearer|basic|token)[ \t]{1,8})?[^\s\"',;]+"),
+    (re.compile(r"(?i)(\bauthorization[\"']?\s{0,64}[:=]\s{0,64}[\"']?)(?:(?:bearer|basic|token)\s{1,64})?[^\s\"',;]+"),
      r"\1" + REDACTED),
-    (re.compile(r"(?i)\b(bearer[ \t]{1,8})[A-Za-z0-9._~+/=-]{6,}"), r"\1" + REDACTED),
+    (re.compile(r"(?i)\b(bearer\s{1,64})[A-Za-z0-9._~+/=-]{6,}"), r"\1" + REDACTED),
     # known key shapes
     (re.compile(r"\bgithub_pat_[A-Za-z0-9_]{10,}"), REDACTED),
     (re.compile(r"\bgh[pousr]_[A-Za-z0-9]{10,}"), REDACTED),
@@ -94,9 +94,9 @@ _REDACTIONS = (
     # name=value / name: value where the name says token, key, secret or password
     (re.compile(r"(?i)([\"']?\b(?:[A-Za-z0-9_.-]{0,64}(?:token|secret|passwd|password|pwd)[A-Za-z0-9_]{0,64}"
                 r"|(?:[A-Za-z0-9.-]{0,64}[_.-])?key)[\"']?"
-                r"[ \t]{0,8}[:=][ \t]{0,8}[\"']?)(?!\[REDACTED\])[^\s\"'&,;}]+"), r"\1" + REDACTED),
+                r"\s{0,64}[:=]\s{0,64}[\"']?)(?!\[REDACTED\])[^\s\"'&,;}]+"), r"\1" + REDACTED),
     # CLI flags: --token X, --password X, -p X is too ambiguous and is left alone
-    (re.compile(r"(?i)(--(?:[a-z0-9-]{0,64}-)?(?:token|api-key|key|secret|password)(?:[ \t]{1,8}|=))(?!\[REDACTED\])[^\s\"']+"),
+    (re.compile(r"(?i)(--(?:[a-z0-9-]{0,64}-)?(?:token|api-key|key|secret|password)(?:\s{1,64}|=))(?!\[REDACTED\])[^\s\"']+"),
      r"\1" + REDACTED),
 )
 
@@ -109,7 +109,15 @@ REDACT_MARGIN = 400
 
 def redact(text) -> str:
     """Mask secrets in text. Callers pass a bounded slice (stored length + REDACT_MARGIN)."""
-    s = str(text)[: MAX_OUTPUT_LEN + 4 * REDACT_MARGIN]
+    return _redact_window(str(text), MAX_OUTPUT_LEN + 4 * REDACT_MARGIN)
+
+
+def _redact_window(s: str, width: int) -> str:
+    """Redact s[:width]. When the window cuts s, the last partial token at the cut is
+    dropped first, so no fragment of a secret that straddles the edge can survive or be
+    shifted into a stored prefix when earlier redactions shorten the text."""
+    if len(s) > width:
+        s = re.sub(r"\S*$", "", s[:width]) + " " + REDACTED
     for pattern, repl in _REDACTIONS:
         s = pattern.sub(repl, s)
     return s
@@ -117,7 +125,7 @@ def redact(text) -> str:
 
 def safe(value, keep: int) -> str:
     """The first `keep` chars of value, redacted over a wider window first."""
-    return redact(str(value)[: keep + REDACT_MARGIN])[:keep]
+    return _redact_window(str(value), keep + REDACT_MARGIN)[:keep]
 
 
 def make_private(db_path: str = ""):

@@ -93,6 +93,21 @@ class Redact(unittest.TestCase):
         self.assertLessEqual(len(out), 200)
         self.assertNotIn(GHP[:6], out)  # not even the head of the key survives the cut
 
+    def test_aligned_and_next_line_values_are_masked(self):
+        for t in [f"password:{' ' * 40}{KV}", f"api_key =\n    {KV}", f"Authorization:    Bearer    {BEARER}",
+                  f"--token\t\t{KV}"]:
+            self.assertNotIn(KV if KV in t else BEARER, self.m.redact(t), t)
+
+    def test_no_fragment_survives_the_window_edge_after_length_shift(self):
+        # many short secrets shrink nothing, many LONG secrets shrink the text a lot,
+        # pulling chars from past the window edge into the stored prefix
+        long_secret = "sk-" + "L" * 300
+        edge = "x" * 5 + "ghp_" + "E" * 600  # a key shape that straddles the window edge
+        value = " ".join([long_secret] * 2) + " " + edge
+        out = self.m.safe(value, 200)
+        self.assertNotIn("EEEEEEEEEE", out)
+        self.assertNotIn("LLLLLLLLLL", out)
+
     def test_large_adversarial_input_is_fast(self):
         import time
         blobs = ["a" * 1_000_000, "token" * 200_000, ("x_" * 400_000) + "=", "key" + "-" * 1_000_000]
