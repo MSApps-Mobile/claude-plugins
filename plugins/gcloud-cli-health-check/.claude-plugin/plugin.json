@@ -5,6 +5,7 @@
   "author": {
     "name": "MSApps"
   },
+  "license": "MIT",
   "keywords": [
     "gcloud",
     "google-cloud",
