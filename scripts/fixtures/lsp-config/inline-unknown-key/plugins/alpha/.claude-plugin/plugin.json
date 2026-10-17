@@ -1,0 +1,11 @@
+{
+  "name": "alpha",
+  "version": "1.0.0",
+  "lspServers": {
+    "alpha": {
+      "command": "alpha-lsp",
+      "extensionToLanguage": { ".al": "alpha" },
+      "restartOnCrashes": true
+    }
+  }
+}
