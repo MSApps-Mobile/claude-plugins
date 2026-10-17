@@ -77,8 +77,25 @@ MAX_ERROR_LOG_BYTES = 256 * 1024
 
 REDACTED = "[REDACTED]"
 
+# mysql / mariadb / mysqldump take the password attached to -p (-pVALUE; `-p VALUE` prompts
+# and VALUE is a database) or as --password=VALUE. A bare -p is ambiguous (mkdir -p, ssh -p 22,
+# pg_dump -p 5432), so -p is only masked inside a command line that one of these names starts:
+# from the name to the next ; | & or newline outside quotes.
+_MYSQL_CMD = re.compile(
+    r"(?<![\w.-])(?:mysql(?:dump|admin|import|check|show)?|mariadb(?:-dump|-admin|-import|-check|-show)?)(?![\w-])"
+    r"(?:\"[^\"\n]*\"?|'[^'\n]*'?|[^;|&\n\"'])*")
+_MYSQL_PW = re.compile(r"(\s(?:-p|--password=))(?!\[REDACTED\])(?:\"[^\"\n]*\"?|'[^'\n]*'?|[^\s\"';|&]+)")
+
+
+def _mask_mysql(m) -> str:
+    return _MYSQL_PW.sub(r"\1" + REDACTED, m.group(0))
+
+
 # Order matters: whole-value shapes first, then the name=value forms.
 _REDACTIONS = (
+    # mysql -pVALUE / --password=VALUE (a quoted value through its closing quote); before the
+    # name=value rule below, which would stop a quoted --password= value at its first space
+    (_MYSQL_CMD, _mask_mysql),
     # PEM private keys (OpenSSH, EC, RSA, PKCS#8; also inside a service-account JSON): BEGIN through
     # END, or through the end of the window when END was cut off. First, so nothing below sees a body.
     (re.compile(r"-----BEGIN[A-Z0-9 ]{0,64}PRIVATE KEY(?: BLOCK)?-----[\s\S]*?"
@@ -114,7 +131,7 @@ _REDACTIONS = (
     # aws configure set aws_secret_access_key VALUE (a space, no '=' or ':')
     (re.compile(r"(?i)(\baws_(?:secret_access_key|session_token)[\"']?\s{1,64})(?![=:\s]|\[REDACTED\])[^\s\"']+"),
      r"\1" + REDACTED),
-    # CLI flags: --token X, --password X, -p X is too ambiguous and is left alone
+    # CLI flags: --token X, --password X (a bare -p X is ambiguous; see _MYSQL_CMD above)
     (re.compile(r"(?i)(--(?:[a-z0-9-]{0,64}-)?(?:token|api-key|key|secret|password)(?:\s{1,64}|=))(?!\[REDACTED\])[^\s\"']+"),
      r"\1" + REDACTED),
 )

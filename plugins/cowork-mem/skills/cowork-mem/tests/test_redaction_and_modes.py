@@ -39,6 +39,7 @@ STRIPE = "sk_" + "live_" + "S" * 24
 STRIPE_R = "rk_" + "live_" + "R" * 24
 NPM = "npm_" + "N" * 36
 HF = "hf_" + "H" * 34
+MYPW = "S3cret" + "-synthetic-" + "my77"
 
 BASH = {
     "tool_name": "Bash",
@@ -188,6 +189,34 @@ class Redact(unittest.TestCase):
             self.assertNotIn(v, self.m.redact(f"value {v} end"), v[:8])
         self.assertNotIn("p@ss", self.m.redact(f"https://bot:p@ss{URLPASS}@github.com/a/b"))
 
+    def test_mysql_attached_password_is_masked(self):
+        for t in [f"mysql -u root -p{MYPW}", f"mysql -uroot -p{MYPW} appdb", f"mariadb -h db -p{MYPW} -e 'select 1'",
+                  f"mysqldump -u root -p{MYPW} appdb > dump.sql", f"/usr/bin/mysql -p{MYPW}",
+                  f"docker exec db mysql -u root -p{MYPW} appdb", f"sudo mysqldump --password={MYPW} appdb",
+                  f"mysql --password={MYPW}", f"mysql -u root -p'{MYPW}'", f'mariadb -p"{MYPW}"',
+                  f"cd /x && mysql -p{MYPW} && echo done", f"mysql -u a -p{MYPW}; mysqldump -p{MYPW} db"]:
+            out = self.m.redact(t)
+            self.assertNotIn(MYPW, out, t)
+            self.assertNotIn("my77", out, t)
+            self.assertIn("[REDACTED]", out, t)
+        for t in [f"mysql -u root -p'{MYPW} with space' db", "mysql --pass" + f"word='{MYPW} with space' db",
+                  f"mysql -p'{MYPW};tail' db"]:
+            out = self.m.redact(t)
+            self.assertNotIn(MYPW, out, t)
+            self.assertNotIn("with space", out, t)
+            self.assertNotIn("tail", out, t)
+            self.assertTrue(out.endswith(" db"), out)
+        self.assertEqual(self.m.redact(f"mysql -u root -p{MYPW} appdb"), "mysql -u root -p[REDACTED] appdb")
+        self.assertEqual(self.m.redact(f"mysql -p{MYPW}\nmkdir -p a"), "mysql -p[REDACTED]\nmkdir -p a")
+        self.assertNotIn("my77", self.m.redact(f"mysql -p'{MYPW}\nnext line"))  # quote left open
+
+    def test_ambiguous_dash_p_is_left_alone(self):
+        for t in ["mkdir -p a/b/c", "ssh -p 22 host", "ssh -p2222 host", "pg_dump -p 5432 appdb",
+                  "pg_dump -p5432 appdb", "scp -P 22 -p a b:", "mkdir -pv out && cp -p a b",
+                  "mysql -u root -p appdb", "mysql -h db -P 3306 -u root -p", "mysqldump -p appdb > a.sql",
+                  "cp -pr mysql/ backup/", "mkdir -p mysql-data", "echo mysql; mkdir -p x"]:
+            self.assertEqual(self.m.redact(t), t)
+
     def test_plain_text_is_left_alone(self):
         for t in ["git commit -m 'monkey patch the keyboard'", "tokens used: 5", "npm test -- --watch"]:
             self.assertEqual(self.m.redact(t), t)
@@ -217,7 +246,8 @@ class HookStoresNoB1B3Secret(unittest.TestCase):
              "tool_response": "ok"},
             {"tool_name": "Bash", "tool_input": {"command": (
                 f"curl -u bot:{URLPASS} https://x && curl --user bot:{URLPASS} https://y && "
-                f"aws configure set aws_secret_access_key {AWS_SAK} && echo {AKIA}")},
+                f"aws configure set aws_secret_access_key {AWS_SAK} && echo {AKIA} && "
+                f"mysql -u root -p{MYPW} appdb && mysqldump --password={MYPW} appdb")},
              "tool_response": f"ok {ASIA}"},
         ]
         with tempfile.TemporaryDirectory() as home:
@@ -226,7 +256,7 @@ class HookStoresNoB1B3Secret(unittest.TestCase):
                 self.assertEqual(r.returncode, 0, r.stderr)
             rows, raw = db_dump(Path(home) / ".claude" / ".cowork-mem" / "memory.db")
             self.assertEqual(len(rows), 2, rows)  # known positive: both were captured
-            for v in (PEMBODY[:12], URLPASS, AWS_SAK, AKIA, ASIA):
+            for v in (PEMBODY[:12], URLPASS, AWS_SAK, AKIA, ASIA, MYPW):
                 self.assertNotIn(v.encode(), raw, f"{v[:8]}... present in the DB file bytes")
 
 
