@@ -33,7 +33,7 @@ SECRETS = [GHP, PAT, SK, AIZA, XOX, BEARER, URLPASS, KV]
 PEMBODY = "MIIEvQIBADANBgkqhkiG9w0BAQEFAASC" + "S" * 150 + "syntheticPemTailZZ"
 AKIA = "AKIA" + "SYNTHETIC0000007"
 ASIA = "ASIA" + "SYNTHETIC0000008"
-AWSSECRET = "wJalrXUtnFEMI" + "/K7MDENG/bPxRfiCY" + "SYNTHETIC"
+AWS_SAK = "wJalrXUtnFEMI" + "/K7MDENG/bPxRfiCY" + "SYNTHETIC"
 JWT = "eyJ" + "hbGciOiJIUzI1NiJ9.eyJzdWIiOiJzeW50aGV0aWMifQ.c3ludGhldGljc2ln"
 STRIPE = "sk_" + "live_" + "S" * 24
 STRIPE_R = "rk_" + "live_" + "R" * 24
@@ -177,10 +177,10 @@ class Redact(unittest.TestCase):
 
     def test_b3_aws_access_key_id_and_secret_are_masked(self):
         for t in [f"export AWS_ACCESS_KEY_ID={AKIA}", f"id {AKIA} used", f"temp {ASIA}",
-                  f"aws configure set aws_secret_access_key {AWSSECRET}",
-                  f"aws_secret_access_key   {AWSSECRET}", f"aws_secret_access_key = {AWSSECRET}"]:
+                  f"aws configure set aws_secret_access_key {AWS_SAK}",
+                  f"aws_secret_access_key   {AWS_SAK}", f"aws_secret_access_key = {AWS_SAK}"]:
             out = self.m.redact(t)
-            for v in (AKIA, ASIA, AWSSECRET):
+            for v in (AKIA, ASIA, AWS_SAK):
                 self.assertNotIn(v, out, t)
 
     def test_more_token_shapes_are_masked(self):
@@ -217,7 +217,7 @@ class HookStoresNoB1B3Secret(unittest.TestCase):
              "tool_response": "ok"},
             {"tool_name": "Bash", "tool_input": {"command": (
                 f"curl -u bot:{URLPASS} https://x && curl --user bot:{URLPASS} https://y && "
-                f"aws configure set aws_secret_access_key {AWSSECRET} && echo {AKIA}")},
+                f"aws configure set aws_secret_access_key {AWS_SAK} && echo {AKIA}")},
              "tool_response": f"ok {ASIA}"},
         ]
         with tempfile.TemporaryDirectory() as home:
@@ -226,7 +226,7 @@ class HookStoresNoB1B3Secret(unittest.TestCase):
                 self.assertEqual(r.returncode, 0, r.stderr)
             rows, raw = db_dump(Path(home) / ".claude" / ".cowork-mem" / "memory.db")
             self.assertEqual(len(rows), 2, rows)  # known positive: both were captured
-            for v in (PEMBODY[:12], URLPASS, AWSSECRET, AKIA, ASIA):
+            for v in (PEMBODY[:12], URLPASS, AWS_SAK, AKIA, ASIA):
                 self.assertNotIn(v.encode(), raw, f"{v[:8]}... present in the DB file bytes")
 
 

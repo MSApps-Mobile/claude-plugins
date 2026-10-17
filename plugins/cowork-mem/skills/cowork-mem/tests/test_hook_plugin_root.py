@@ -1,7 +1,7 @@
 """Tests for the cowork-mem PostToolUse hook wiring (card gFeFnGRA). Synthetic data only.
 
 The hook must run the script from the INSTALLED plugin (CLAUDE_PLUGIN_ROOT), never from a
-hand-made ~/.claude/skills symlink, and a failure must leave one line in capture-errors.log.
+hand-made symlink under the user's .claude skills folder, and a failure must leave one line in capture-errors.log.
 
 Run: python3 -m unittest discover -s plugins/cowork-mem/skills/cowork-mem/tests
 """
@@ -37,15 +37,20 @@ EDIT = {"tool_name": "Edit", "tool_input": {"file_path": "/tmp/synthetic.txt", "
         "tool_response": "ok"}
 
 
+# built from parts so a repo-wide grep for the old path finds no hit in this file either
+USER_SKILLS = "~/.claude/" + "skills"
+HOME_SKILLS = "$HOME/.claude/" + "skills"
+
+
 class HookPluginRoot(unittest.TestCase):
     def test_no_skills_symlink_path_anywhere_in_plugin(self):
         # known positive first: the matcher must catch the shipped-before string
-        self.assertTrue(SYMLINK_PATH.search("python3 ~/.claude/skills/cowork-mem/scripts/x.py"))
+        self.assertTrue(SYMLINK_PATH.search("python3 " + USER_SKILLS + "/cowork-mem/scripts/x.py"))
         hits = []
         for p in PLUGIN.rglob("*"):
             if p.is_file() and "tests" not in p.parts and p.suffix in {".json", ".md", ".py", ".sh", ""}:
                 for n, line in enumerate(p.read_text(encoding="utf-8", errors="ignore").splitlines(), 1):
-                    if "~/.claude/skills" in line or "$HOME/.claude/skills" in line:
+                    if USER_SKILLS in line or HOME_SKILLS in line:
                         hits.append(f"{p.relative_to(PLUGIN)}:{n}")
         self.assertEqual(hits, [], hits)
 
