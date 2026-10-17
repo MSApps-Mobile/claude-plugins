@@ -1,0 +1,30 @@
+{
+  "csharp": {
+    "command": "omnisharp",
+    "args": [
+      "-lsp"
+    ],
+    "extensionToLanguage": {
+      ".cs": "csharp",
+      ".csx": "csharp"
+    },
+    "restartOnCrash": true,
+    "maxRestarts": 3,
+    "startupTimeout": 60000,
+    "shutdownTimeout": 5000,
+    "initializationOptions": {
+      "RoslynExtensionsOptions": {
+        "EnableAnalyzersSupport": false,
+        "EnableImportCompletion": true,
+        "EnableDecompilationSupport": false
+      },
+      "FormattingOptions": {
+        "EnableEditorConfigSupport": true
+      },
+      "MsBuild": {
+        "LoadProjectsOnDemand": false,
+        "EnablePackageAutoRestore": false
+      }
+    }
+  }
+}
