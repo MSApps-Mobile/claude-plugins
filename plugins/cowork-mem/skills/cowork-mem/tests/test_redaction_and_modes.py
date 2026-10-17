@@ -142,6 +142,15 @@ class Redact(unittest.TestCase):
             self.assertNotIn(PEMBODY[:12], out, kind)
             self.assertNotIn(PEMBODY[-12:], out, kind)
 
+    def test_pgp_and_putty_private_keys_are_masked(self):
+        pgp = "-----BEGIN PGP PRIVATE KEY BLOCK-----\n\n" + PEMBODY + "\n-----END PGP PRIVATE KEY BLOCK-----\nafter"
+        putty = ("PuTTY-User-Key-File-3: ssh-ed25519\nEncryption: none\nComment: k\nPublic-Lines: 2\nAAAApub\nAAAApub2\n"
+                 "Private-Lines: 1\n" + PEMBODY + "\nPrivate-MAC: " + "f" * 64 + "\nafter")
+        for t in (pgp, putty):
+            out = self.m.redact(t)
+            self.assertNotIn(PEMBODY[:12], out)
+            self.assertIn("after", out)
+
     def test_b1_gcp_service_account_private_key_is_masked(self):
         sa = json.dumps({"type": "service_account", "private_key_id": "abc",
                          "private_key": "-----BEGIN PRIVATE KEY-----\n" + PEMBODY + "\n-----END PRIVATE KEY-----\n",
@@ -154,6 +163,11 @@ class Redact(unittest.TestCase):
         for t in [f"curl -u bot:{URLPASS} https://x", f"curl --user bot:{URLPASS} https://x",
                   f"curl --user=bot:{URLPASS} https://x", f'curl -u "bot:{URLPASS}" https://x', f"curl -ubot:{URLPASS} x"]:
             self.assertNotIn(URLPASS, self.m.redact(t), t)
+        for t in [f"curl -su bot:{URLPASS} x", f"curl --proxy-user bot:{URLPASS} x", f"curl -U bot:{URLPASS} x",
+                  f'curl -u "bot:{URLPASS} with space" x', f"curl -u 'bot:{URLPASS} with space' x"]:
+            out = self.m.redact(t)
+            self.assertNotIn(URLPASS, out, t)
+            self.assertNotIn("with space", out, t)
         self.assertEqual(self.m.redact("git push -u origin main"), "git push -u origin main")
 
     def test_b3_aws_access_key_id_and_secret_are_masked(self):

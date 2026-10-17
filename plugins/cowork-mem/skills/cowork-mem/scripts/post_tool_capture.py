@@ -81,12 +81,16 @@ REDACTED = "[REDACTED]"
 _REDACTIONS = (
     # PEM private keys (OpenSSH, EC, RSA, PKCS#8; also inside a service-account JSON): BEGIN through
     # END, or through the end of the window when END was cut off. First, so nothing below sees a body.
-    (re.compile(r"-----BEGIN[A-Z0-9 ]{0,64}PRIVATE KEY-----[\s\S]*?(?:-----END[A-Z0-9 ]{0,64}PRIVATE KEY-----|\Z)"),
-     REDACTED),
+    (re.compile(r"-----BEGIN[A-Z0-9 ]{0,64}PRIVATE KEY(?: BLOCK)?-----[\s\S]*?"
+                r"(?:-----END[A-Z0-9 ]{0,64}PRIVATE KEY(?: BLOCK)?-----|\Z)"), REDACTED),
+    # PuTTY .ppk: the private lines through the MAC (or the end of the window)
+    (re.compile(r"Private-Lines:[ \t]{0,64}\d{1,4}[\s\S]*?(?:Private-MAC:[ \t]{0,64}\S{1,256}|\Z)"), REDACTED),
     # credentials in a URL: scheme://user:pass@host (a password may itself contain '@')
     (re.compile(r"(?i)\b([a-z][a-z0-9+.-]*://)[^\s/@:]+:[^\s/]*@"), r"\1" + REDACTED + "@"),
-    # curl -u user:pass, -uuser:pass, --user user:pass, --user=user:pass (quoted or not)
-    (re.compile(r"((?:^|\s)(?:-u\s{0,64}|--user(?:\s{1,64}|=))[\"']?)(?!\[REDACTED\])[^\s\"':]+:[^\s\"']+"),
+    # curl -u / -U user:pass, bundled (-su), --user / --proxy-user with a space or '='; a quoted
+    # value is masked through its closing quote, so a password with spaces does not leak a tail
+    (re.compile(r"((?:^|\s)(?:-[A-Za-z]{0,8}[uU]\s{0,64}|--(?:proxy-)?user(?:\s{1,64}|=)))(?!\[REDACTED\])"
+                r"(?:\"[^\"\n:]{0,128}:[^\"\n]{0,256}\"|'[^'\n:]{0,128}:[^'\n]{0,256}'|[^\s\"':]+:[^\s\"']+)"),
      r"\1" + REDACTED),
     # Authorization header (any scheme) and bare Bearer tokens
     (re.compile(r"(?i)(\bauthorization[\"']?\s{0,64}[:=]\s{0,64}[\"']?)(?:(?:bearer|basic|token)\s{1,64})?[^\s\"',;]+"),
