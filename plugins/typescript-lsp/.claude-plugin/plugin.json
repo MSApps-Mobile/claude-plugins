@@ -1,6 +1,6 @@
 {
   "name": "typescript-lsp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Real-time TypeScript and JavaScript code intelligence for Claude — type errors, go-to-definition, find references, and hover via typescript-language-server.",
   "author": {
     "name": "MSApps",

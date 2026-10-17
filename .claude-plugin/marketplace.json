@@ -1200,7 +1200,7 @@
       "name": "typescript-lsp",
       "source": "./plugins/typescript-lsp",
       "description": "Real-time TypeScript and JavaScript code intelligence for Claude — type errors, go-to-definition, find references, and hover via typescript-language-server",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "platforms": [
         "claude-code"
       ],
