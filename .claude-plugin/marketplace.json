@@ -1237,7 +1237,7 @@
       "name": "csharp-lsp",
       "source": "./plugins/csharp-lsp",
       "description": "Real-time C# code intelligence for Claude — Roslyn diagnostics, go-to-definition, find references, and type info via OmniSharp",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "platforms": [
         "claude-code"
       ],
