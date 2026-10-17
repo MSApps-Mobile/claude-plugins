@@ -1275,7 +1275,7 @@
       "name": "java-lsp",
       "source": "./plugins/java-lsp",
       "description": "Real-time Java code intelligence for Claude — compile errors, go-to-definition, find references, and type info via Eclipse JDT Language Server (jdtls)",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "platforms": [
         "claude-code"
       ],
