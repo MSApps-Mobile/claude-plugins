@@ -1,6 +1,6 @@
 {
   "name": "python-lsp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Real-time Python code intelligence for Claude — type errors, go-to-definition, find references, and hover via Pyright language server.",
   "author": {
     "name": "MSApps",

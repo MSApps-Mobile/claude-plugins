@@ -1166,7 +1166,7 @@
       "name": "python-lsp",
       "source": "./plugins/python-lsp",
       "description": "Real-time Python code intelligence for Claude — type errors, go-to-definition, find references, and hover via Pyright language server",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "platforms": [
         "claude-code"
       ],
