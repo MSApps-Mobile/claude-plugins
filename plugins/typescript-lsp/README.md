@@ -82,8 +82,6 @@ Use this plugin on projects you trust. In a repo you did not write or review, ch
 - **JSX not recognised** — ensure `tsconfig.json` has `"jsx": "react-jsx"` (or `"react"`) and the file uses a `.tsx`/`.jsx` extension.
 - **`@types/node` not found** — run `npm install --save-dev @types/node`.
 
-## Part of the MSApps LSP plugin series
+## Part of the LSP plugin series
 
 Sibling plugins: `kotlin-lsp`, `swift-lsp`, `python-lsp`, `csharp-lsp`, `java-lsp`
-
-All share the same MCP contract so the AI Code Reviewer (LangGraph) can orchestrate them uniformly across multi-language repos.

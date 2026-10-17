@@ -4,7 +4,7 @@ Real-time C# code intelligence for Claude via OmniSharp (OmniSharp-Roslyn).
 
 ## What it does
 
-Gives Claude Roslyn-grade diagnostics, go-to-definition, find-references, and type information for `.cs`, `.csx`, and `.cshtml` files — no Visual Studio required.
+Gives Claude Roslyn-grade diagnostics, go-to-definition, find-references, and type information for `.cs` and `.csx` files — no Visual Studio required.
 
 ## Setup
 
@@ -38,11 +38,11 @@ Gives Claude Roslyn-grade diagnostics, go-to-definition, find-references, and ty
 
 OmniSharp **evaluates the MSBuild project files** (`.csproj`, `Directory.Build.props/targets`) of whatever you open, and MSBuild can run tasks and inline code during evaluation. That is inherent to the server and cannot be switched off from this config.
 
-What this plugin turns off by default, because it would load or fetch **more** code from an untrusted repo:
+What this plugin asks OmniSharp to turn off (via `initializationOptions`), because it would load or fetch **more** code from an untrusted repo:
 - `RoslynExtensionsOptions.EnableAnalyzersSupport: false` — Roslyn analyzers are DLLs shipped in the project's NuGet packages and run inside the server.
 - `MsBuild.EnablePackageAutoRestore: false` — no automatic `dotnet restore` against the opened project.
 
-For a repo you trust, you may re-enable both in `.lsp.json`. Do not enable this plugin while working in a repo you did not write or review.
+These are **best effort**, not a guarantee: OmniSharp may not apply every option passed this way in LSP mode, and a project's own `omnisharp.json` (or `~/.omnisharp/omnisharp.json`) can override them — including re-enabling analyzers or auto-restore. Do not rely on them as a sandbox. For a repo you trust, you may re-enable both in `.lsp.json` or `omnisharp.json`. Do not enable this plugin while working in a repo you did not write or review.
 
 ## SOSA Compliance
 
@@ -61,10 +61,7 @@ For a repo you trust, you may re-enable both in `.lsp.json`. Do not enable this 
 |-----------|---------|
 | `.cs`     | C# (standard) |
 | `.csx`    | C# script |
-| `.cshtml` | Razor (embedded C# blocks) |
 
-## Part of the MSApps LSP plugin series
+## Part of the LSP plugin series
 
 Sibling plugins: `kotlin-lsp`, `swift-lsp`, `python-lsp`, `typescript-lsp`, `java-lsp`
-
-All share the same MCP contract so the AI Code Reviewer (LangGraph) can orchestrate them uniformly across multi-language repos.

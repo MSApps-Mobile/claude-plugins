@@ -61,8 +61,6 @@ Plain `.java` files still get diagnostics and navigation. For a repo you trust a
 - **Workspace cache:** `~/.cache/jdtls/workspace/<hash>/` — safe to delete to force reindex
 - **Android:** jdtls doesn't run the AGP classloader; open in Android Studio first to generate `R.java`, then point jdtls at generated sources
 
-## Part of the MSApps LSP plugin series
+## Part of the LSP plugin series
 
 Sibling plugins: `kotlin-lsp`, `swift-lsp`, `python-lsp`, `typescript-lsp`, `csharp-lsp`
-
-All share the same MCP contract so the AI Code Reviewer (LangGraph) can orchestrate them uniformly across multi-language repos.

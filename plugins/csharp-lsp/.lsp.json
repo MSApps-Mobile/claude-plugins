@@ -6,13 +6,12 @@
     ],
     "extensionToLanguage": {
       ".cs": "csharp",
-      ".csx": "csharp",
-      ".cshtml": "razor"
+      ".csx": "csharp"
     },
     "restartOnCrash": true,
     "maxRestarts": 3,
-    "startupTimeoutMs": 60000,
-    "shutdownTimeoutMs": 5000,
+    "startupTimeout": 60000,
+    "shutdownTimeout": 5000,
     "initializationOptions": {
       "RoslynExtensionsOptions": {
         "EnableAnalyzersSupport": false,

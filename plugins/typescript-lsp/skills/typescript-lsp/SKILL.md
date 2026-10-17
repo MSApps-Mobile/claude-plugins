@@ -9,13 +9,12 @@ description: |
   ".ts diagnostics", "missing @types", "tsconfig", "checkJs",
   "reportMissingImports", "TSError", "TS2345", "JSX not recognised", or any
   question about .ts/.tsx/.js/.jsx files that requires real symbol resolution
-  rather than textual search. Also trigger when the AI Code Reviewer's Phase 3
-  dependency graph needs TypeScript `find-references` across a touched file.
+  rather than textual search.
 ---
 
 # typescript-lsp — TypeScript/JavaScript code intelligence via tsserver
 
-Part of the MSApps LSP plugin series. Wraps **typescript-language-server**
+Part of the LSP plugin series. Wraps **typescript-language-server**
 (tsserver) as a read-only, SOSA Level 1 intelligence source.
 
 ## Workflow Process
@@ -36,7 +35,7 @@ Part of the MSApps LSP plugin series. Wraps **typescript-language-server**
    - `textDocument/references` → all call sites
    - `textDocument/hover` → inferred type / JSDoc
    - `workspace/symbol` → fuzzy symbol search
-6. For cross-file impact (the AI Code Reviewer's use case), iterate
+6. For cross-file impact (e.g. reviewing a change), iterate
    `find-references` over every exported symbol in the touched file.
 7. Treat tsserver answers as authoritative over heuristic search. If tsserver
    returns empty references, *say so* — don't invent them.

@@ -47,7 +47,7 @@ Create a `pyrightconfig.json` in your repo root to control type checking strictn
 }
 ```
 
-Modes: `"off"` → `"basic"` → `"standard"` → `"strict"`. The plugin defaults to `"basic"` to avoid noise on partially-typed codebases.
+Modes: `"off"` → `"basic"` → `"standard"` → `"strict"`. The plugin sends `python.analysis.typeCheckingMode: "basic"` as a server setting to avoid noise on partially-typed codebases; a `pyrightconfig.json` (or `[tool.pyright]` in `pyproject.toml`) in the project takes precedence over it.
 
 ## SOSA Compliance
 
@@ -58,7 +58,7 @@ Modes: `"off"` → `"basic"` → `"standard"` → `"strict"`. The plugin default
 | Secured     | L1 — no credentials, no network, no writes |
 | Agents      | L1 — pure static analysis |
 
-**Level 1** — safe to run autonomously on any codebase.
+**Level 1** — safe to run autonomously on trusted codebases.
 
 ## Supported files
 
@@ -75,8 +75,6 @@ Modes: `"off"` → `"basic"` → `"standard"` → `"strict"`. The plugin default
 - **Type stubs missing for third-party library** — install `types-<package>` from PyPI or add `reportMissingTypeStubs: false` to silence it.
 - **`.pyi` stubs not picked up** — ensure the stub directory is in `stubPath` in `pyrightconfig.json`.
 
-## Part of the MSApps LSP plugin series
+## Part of the LSP plugin series
 
 Sibling plugins: `kotlin-lsp`, `swift-lsp`, `typescript-lsp`, `csharp-lsp`, `java-lsp`
-
-All share the same MCP contract so the AI Code Reviewer (LangGraph) can orchestrate them uniformly across multi-language repos.

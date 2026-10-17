@@ -1,7 +1,9 @@
 {
   "python": {
     "command": "pyright-langserver",
-    "args": ["--stdio"],
+    "args": [
+      "--stdio"
+    ],
     "extensionToLanguage": {
       ".py": "python",
       ".pyi": "python",
@@ -9,14 +11,19 @@
     },
     "restartOnCrash": true,
     "maxRestarts": 3,
-    "startupTimeoutMs": 30000,
-    "shutdownTimeoutMs": 5000,
-    "initializationOptions": {
-      "pythonVersion": "3.11",
-      "typeCheckingMode": "basic",
-      "useLibraryCodeForTypes": true,
-      "reportMissingImports": true,
-      "reportMissingTypeStubs": false
+    "startupTimeout": 30000,
+    "shutdownTimeout": 5000,
+    "settings": {
+      "python": {
+        "analysis": {
+          "typeCheckingMode": "basic",
+          "useLibraryCodeForTypes": true,
+          "diagnosticSeverityOverrides": {
+            "reportMissingImports": "error",
+            "reportMissingTypeStubs": "none"
+          }
+        }
+      }
     }
   }
 }

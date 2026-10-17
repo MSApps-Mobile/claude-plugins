@@ -7,14 +7,12 @@ description: |
   references", "who calls this function", "where is X defined", "why does this
   import fail", ".py diagnostics", "missing type stub", "pyrightconfig",
   "type checking mode", "reportMissingImports", or any question about .py/.pyi
-  files that requires real symbol resolution rather than textual search. Also
-  trigger when the AI Code Reviewer's Phase 3 dependency graph needs Python
-  `find-references` across a touched file.
+  files that requires real symbol resolution rather than textual search.
 ---
 
 # python-lsp — Python code intelligence via Pyright
 
-Part of the MSApps LSP plugin series. Wraps **Pyright** (`pyright-langserver`)
+Part of the LSP plugin series. Wraps **Pyright** (`pyright-langserver`)
 as a read-only, SOSA Level 1 intelligence source.
 
 ## Workflow Process
@@ -35,7 +33,7 @@ as a read-only, SOSA Level 1 intelligence source.
    - `textDocument/references` → all call sites
    - `textDocument/hover` → inferred type / docstring
    - `workspace/symbol` → fuzzy symbol search
-6. For cross-file impact (the AI Code Reviewer's use case), iterate
+6. For cross-file impact (e.g. reviewing a change), iterate
    `find-references` over every public symbol in the touched file.
 7. Treat Pyright answers as authoritative over heuristic search. If Pyright
    returns empty references, *say so* — don't invent them.
@@ -55,7 +53,8 @@ as a read-only, SOSA Level 1 intelligence source.
   (or `pythonPath` for a specific interpreter) so Pyright resolves installed
   packages correctly.
 - **Type checking modes:** `off` → `basic` → `standard` → `strict`. The plugin
-  defaults to `basic`; upgrade to `standard` or `strict` for well-typed
+  sends `basic` via `settings.python.analysis` (a project `pyrightconfig.json`
+  overrides it); upgrade to `standard` or `strict` for well-typed
   codebases where you want exhaustive checking.
 
 ## Example `pyrightconfig.json`

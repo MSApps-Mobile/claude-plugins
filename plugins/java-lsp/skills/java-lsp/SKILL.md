@@ -8,14 +8,12 @@ description: |
   compile", ".java diagnostics", "method signature", "Java type error", "Maven
   build error", "Gradle compile error", "Android Gradle", "classpath issue",
   "Javadoc for", "decompile", or any question about .java files that requires
-  real symbol resolution rather than textual search. Also trigger when the AI
-  Code Reviewer's Phase 3 dependency graph needs Java `find-references` across
-  a touched file.
+  real symbol resolution rather than textual search.
 ---
 
 # java-lsp — Java code intelligence via jdtls
 
-Part of the MSApps LSP plugin series. Wraps **Eclipse JDT Language Server**
+Part of the LSP plugin series. Wraps **Eclipse JDT Language Server**
 (`jdtls`) as a read-only, SOSA Level 1 intelligence source.
 
 ## Workflow Process
@@ -35,7 +33,7 @@ Part of the MSApps LSP plugin series. Wraps **Eclipse JDT Language Server**
    - `textDocument/references` → call sites
    - `textDocument/hover` → type / Javadoc
    - `workspace/symbol` → fuzzy class search
-6. For cross-file impact (the AI Code Reviewer's use case), iterate
+6. For cross-file impact (e.g. reviewing a change), iterate
    `find-references` over every public/protected symbol in the touched file.
 7. Treat jdtls answers as authoritative over heuristic search. If jdtls returns
    empty, *say so* — don't invent references.
@@ -51,8 +49,8 @@ Part of the MSApps LSP plugin series. Wraps **Eclipse JDT Language Server**
 ## `jdtls` startup notes (non-obvious)
 
 - **First-run latency:** the initial workspace build for a large Maven/Gradle
-  project can take 30–90 s. The LSP wrapper's `startupTimeoutMs: 45000` covers
-  small projects; big monorepos may need bumping in a fork.
+  project can take 30–90 s. The plugin's `.lsp.json` sets `startupTimeout: 120000`
+  (milliseconds); very large monorepos may need more in a fork.
 - **Workspace folder:** jdtls writes build artifacts to
   `~/.cache/jdtls/workspace/<hash>/`. Safe to delete to force reindex.
 - **JDK version:** jdtls **runs** on Java 17+. The *target* source can be any
@@ -101,7 +99,7 @@ AARs, then point jdtls at the generated sources. For pure JVM modules (no
 
 **"Kotlin interop — my Java file calls into Kotlin code, refs not found."**
 That's expected — jdtls doesn't parse `.kt`. Pair this plugin with
-`kotlin-lsp`; the AI Code Reviewer already knows how to combine them.
+`kotlin-lsp` for the Kotlin side.
 
 **"Javadoc shows as raw HTML tags."**
 jdtls returns Markdown-rendered Javadoc when the client advertises
@@ -110,7 +108,7 @@ you're probably on a very old jdtls build — upgrade.
 
 **"Groovy / Scala / Clojure?"**
 Out of scope. They'd be sibling plugins (`groovy-lsp`, `metals`,
-`clojure-lsp`). Open an issue if there's MSApps demand.
+`clojure-lsp`). Open an issue if you need one.
 
 ## Out of scope
 

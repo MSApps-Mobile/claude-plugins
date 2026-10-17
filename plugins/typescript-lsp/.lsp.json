@@ -1,7 +1,9 @@
 {
   "typescript": {
     "command": "typescript-language-server",
-    "args": ["--stdio"],
+    "args": [
+      "--stdio"
+    ],
     "extensionToLanguage": {
       ".ts": "typescript",
       ".tsx": "typescriptreact",
@@ -14,8 +16,8 @@
     },
     "restartOnCrash": true,
     "maxRestarts": 3,
-    "startupTimeoutMs": 30000,
-    "shutdownTimeoutMs": 5000,
+    "startupTimeout": 30000,
+    "shutdownTimeout": 5000,
     "initializationOptions": {
       "hostInfo": "claude-plugin",
       "preferences": {

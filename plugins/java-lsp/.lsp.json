@@ -6,11 +6,9 @@
     },
     "restartOnCrash": true,
     "maxRestarts": 3,
-    "startupTimeoutMs": 45000,
-    "shutdownTimeoutMs": 5000,
+    "startupTimeout": 120000,
+    "shutdownTimeout": 5000,
     "initializationOptions": {
-      "bundles": [],
-      "workspaceFolders": [],
       "settings": {
         "java": {
           "import": {
