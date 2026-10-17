@@ -168,6 +168,11 @@ class Redact(unittest.TestCase):
             out = self.m.redact(t)
             self.assertNotIn(URLPASS, out, t)
             self.assertNotIn("with space", out, t)
+        long_pw = URLPASS + " w" * 300  # a quoted password longer than any fixed bound
+        self.assertNotIn(URLPASS, self.m.redact(f'curl -u "bot:{long_pw}" x'))
+        self.assertNotIn("w w w", self.m.redact(f'curl -u "bot:{long_pw}" x'))
+        cut = self.m.safe("x" * 150 + f' curl -u "bot:{URLPASS} {"y" * 600}', 200)  # closing quote past the window
+        self.assertNotIn(URLPASS, cut)
         self.assertEqual(self.m.redact("git push -u origin main"), "git push -u origin main")
 
     def test_b3_aws_access_key_id_and_secret_are_masked(self):

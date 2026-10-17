@@ -90,7 +90,7 @@ _REDACTIONS = (
     # curl -u / -U user:pass, bundled (-su), --user / --proxy-user with a space or '='; a quoted
     # value is masked through its closing quote, so a password with spaces does not leak a tail
     (re.compile(r"((?:^|\s)(?:-[A-Za-z]{0,8}[uU]\s{0,64}|--(?:proxy-)?user(?:\s{1,64}|=)))(?!\[REDACTED\])"
-                r"(?:\"[^\"\n:]{0,128}:[^\"\n]{0,256}\"|'[^'\n:]{0,128}:[^'\n]{0,256}'|[^\s\"':]+:[^\s\"']+)"),
+                r"(?:\"[^\"\n:]{0,128}:[^\"\n]*(?:\"|$)|'[^'\n:]{0,128}:[^'\n]*(?:'|$)|[\"']?[^\s\"':]+:[^\s\"']+)"),
      r"\1" + REDACTED),
     # Authorization header (any scheme) and bare Bearer tokens
     (re.compile(r"(?i)(\bauthorization[\"']?\s{0,64}[:=]\s{0,64}[\"']?)(?:(?:bearer|basic|token)\s{1,64})?[^\s\"',;]+"),
