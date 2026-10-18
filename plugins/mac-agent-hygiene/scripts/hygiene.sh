@@ -120,7 +120,9 @@ wt_root_glob_ok(){ local pair r g; for pair in $HYG_WT_ROOTS; do r="${pair%%:*}"
     [ "$(dirname "$1")" = "$r" ] || continue; case "$(basename "$1")" in $g) return 0;; esac; done; return 1; }
 list_sessions(){ [ -d "$HYG_SESSION_ROOT" ] && /usr/bin/find "$HYG_SESSION_ROOT" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | /usr/bin/sort |
   while IFS= read -r d; do [ -e "$d/.git" ] || printf '%s\n' "$d"; done; }
-nested_repos(){ /usr/bin/find "$1" -mindepth 2 -maxdepth 5 \( -name node_modules -o -name .venv -o -name Pods -o -name build \) -prune -o -name .git -print 2>/dev/null | /usr/bin/sed 's#/\.git$##'; }
+# Every .git at any depth, nothing pruned: a repo the search skipped would be rm -rf'd unchecked, so the
+# search fails closed (slower on a big node_modules, which only runs on folders already idle 24 h).
+nested_repos(){ /usr/bin/find "$1" -mindepth 2 -name .git -print 2>/dev/null | /usr/bin/sed 's#/\.git$##'; }
 # Newest-first listing helpers for "never the newest N" rules
 newest_first(){ /bin/ls -1td "$@" 2>/dev/null; }
 list_clones(){ [ -d "$HYG_PLUGIN_CACHE" ] && /usr/bin/find "$HYG_PLUGIN_CACHE" -maxdepth 1 -mindepth 1 -type d -name 'temp_git_*' 2>/dev/null | /usr/bin/sort; }
@@ -166,15 +168,25 @@ check_worktree(){ local d="$1"
   wt_recently_touched "$d" && { REASON=touched-recently; return 1; }
   cwd_inside "$d" && { REASON=a-process-is-inside; return 1; }
   git_safe "$d"; }
+# git run on repos an agent made: repo-local config must not be able to run a command while we only
+# look (core.fsmonitor and hooks are the command-executing keys `status` would honour).
+GITS(){ GIT_CONFIG_NOSYSTEM=1 "$GIT" -c core.fsmonitor=false -c core.hooksPath=/dev/null -c core.untrackedCache=false \
+  -c diff.external= -c core.pager=cat "$@"; }
 git_safe(){ # repo/worktree dir → 0 clean and on a remote ref or merged-PR head (REASON=pushed|merged-pr-head)
-  local d="$1" b h repo f st
-  st=$("$GIT" -C "$d" status --porcelain 2>/dev/null) || { REASON=git-status-failed; return 1; }
+  local d="$1" b h repo f st br
+  st=$(GITS -C "$d" status --porcelain 2>/dev/null) || { REASON=git-status-failed; return 1; }
   [ -z "$st" ] || { REASON=dirty-uncommitted-work; return 1; }
-  h=$("$GIT" -C "$d" rev-parse HEAD 2>/dev/null) || { REASON=no-head; return 1; }
-  if [ -n "$("$GIT" -C "$d" branch -r --contains "$h" 2>/dev/null | /usr/bin/head -1)" ]; then REASON=pushed; return 0; fi
+  if [ -d "$d/.git" ]; then   # a full clone owns its stash and every local branch; a linked worktree shares them with its parent
+    [ -z "$(GITS -C "$d" stash list 2>/dev/null)" ] || { REASON=clone-has-stash; return 1; }
+    while IFS= read -r br; do [ -n "$br" ] || continue
+      [ -n "$(GITS -C "$d" branch -r --contains "$br" 2>/dev/null | /usr/bin/head -1)" ] || { REASON=clone-has-unpushed-branch; return 1; }
+    done < <(GITS -C "$d" for-each-ref --format='%(objectname)' refs/heads 2>/dev/null)
+  fi
+  h=$(GITS -C "$d" rev-parse HEAD 2>/dev/null) || { REASON=no-head; return 1; }
+  if [ -n "$(GITS -C "$d" branch -r --contains "$h" 2>/dev/null | /usr/bin/head -1)" ]; then REASON=pushed; return 0; fi
   if [ "$HYG_WT_MERGED_PR_CHECK" = 1 ] && [ -n "$GH" ]; then
-    b=$("$GIT" -C "$d" rev-parse --abbrev-ref HEAD 2>/dev/null)
-    repo=$("$GIT" -C "$d" remote get-url origin 2>/dev/null | /usr/bin/sed -E 's#.*github.com[:/]##; s#\.git$##')
+    b=$(GITS -C "$d" rev-parse --abbrev-ref HEAD 2>/dev/null)
+    repo=$(GITS -C "$d" remote get-url origin 2>/dev/null | /usr/bin/sed -E 's#.*github.com[:/]##; s#\.git$##')
     if [ -n "$repo" ]; then
       f="$TMPD/$(echo "$repo" | tr / _)"
       [ -f "$f" ] || "$GH" pr list --repo "$repo" --state merged --limit 3000 --json headRefName,headRefOid \
