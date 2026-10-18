@@ -47,6 +47,7 @@ mksession stale-stash; (cd "$HOME/code/wt/stale-stash/repo" && echo s >> f && gi
 mksession stale-branch; (cd "$HOME/code/wt/stale-branch/repo" && git checkout -qb local-only && echo b > g && git add g && git commit -qm b && git checkout -q -); old "$HOME/code/wt/stale-branch"
 mksession stale-filter; (cd "$HOME/code/wt/stale-filter/repo" && git config filter.evil.clean "touch $FX/PWNED"); old "$HOME/code/wt/stale-filter"
 mksession stale-submod; (cd "$HOME/code/wt/stale-submod/repo" && printf '[submodule "x"]\n\tpath = x\n\turl = ../x\n' > .gitmodules && git add .gitmodules && git commit -qm sm && git push -q origin HEAD:refs/heads/stale-submod 2>/dev/null); old "$HOME/code/wt/stale-submod"
+mksession stale-gitlink; (cd "$HOME/code/wt/stale-gitlink/repo" && git update-index --add --cacheinfo 160000,$(git rev-parse HEAD),sub && git commit -qm gl && git push -q origin HEAD:refs/heads/stale-gitlink 2>/dev/null); old "$HOME/code/wt/stale-gitlink"
 mksession stale-deep; mkdir -p "$HOME/code/wt/stale-deep/a/b/c/d/e/node_modules/pkg"; git init -q "$HOME/code/wt/stale-deep/a/b/c/d/e/node_modules/pkg"; echo u > "$HOME/code/wt/stale-deep/a/b/c/d/e/node_modules/pkg/wip"; old "$HOME/code/wt/stale-deep"
 
 # --- gradle: three old dists with distinct ages; newest two must stay
@@ -70,6 +71,7 @@ bash "$HYG" plan > "$FX/plan.tsv" 2>"$FX/plan.err" || bad "plan exited non-zero:
 [ "$(action_of "$HOME/code/wt/stale-branch")" = keep ] && ok "nested clone with an unpushed local branch → keep" || bad "stale-branch: $(grep stale-branch "$FX/plan.tsv")"
 [ "$(action_of "$HOME/code/wt/stale-filter")" = keep ] && [ ! -e "$FX/PWNED" ] && ok "repo whose config defines a filter driver → keep, driver never ran" || bad "stale-filter: $(grep stale-filter "$FX/plan.tsv") pwned=$( [ -e "$FX/PWNED" ] && echo yes || echo no)"
 [ "$(action_of "$HOME/code/wt/stale-submod")" = keep ] && ok "repo with submodules → keep unread" || bad "stale-submod: $(grep stale-submod "$FX/plan.tsv")"
+[ "$(action_of "$HOME/code/wt/stale-gitlink")" = keep ] && ok "gitlink without .gitmodules → keep unread" || bad "stale-gitlink: $(grep stale-gitlink "$FX/plan.tsv")"
 [ "$(action_of "$HOME/code/wt/stale-deep")" = keep ] && ok "dirty repo deep inside node_modules → keep (search not pruned)" || bad "stale-deep: $(grep stale-deep "$FX/plan.tsv")"
 [ "$(action_of "$HOME/code/wt/fresh")" = keep ] && ok "recently touched session → keep" || bad "fresh: $(grep '/fresh' "$FX/plan.tsv")"
 [ "$(action_of "$HOME/.gradle/wrapper/dists/gradle-8.11.1-bin")" = remove ] && ok "oldest Gradle dist → remove" || bad "gradle 8.11.1: $(grep 8.11.1 "$FX/plan.tsv")"
