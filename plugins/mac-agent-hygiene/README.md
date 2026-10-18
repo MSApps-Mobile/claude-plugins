@@ -1,6 +1,6 @@
 # mac-agent-hygiene
 
-**Keeps a Mac that runs Claude Code agents from filling its disk.** A daily LaunchAgent plus an MCP
+**Keeps a Mac that runs Claude Code agents from filling its disk.** A LaunchAgent (every 4 hours) plus an MCP
 server that clear regenerable caches and reap stale git worktrees — after a dry run, with per-item
 reasons, and only for things that are already somewhere else.
 
@@ -25,8 +25,13 @@ This plugin turns the fix into a routine any Mac can install:
 - **`hygiene_plan`** — dry run: every candidate with `remove` / `keep`, size and reason.
 - **`hygiene_apply`** — removes only the planned items, re-checking each one at apply time; needs the
   `plan_id` and `confirm: true`.
-- **`hygiene_schedule`** — install / inspect / remove the daily LaunchAgent (`com.msapps.mac-agent-hygiene`,
-  04:30 by default).
+- **`hygiene_schedule`** — install / inspect / remove the LaunchAgent (`com.msapps.mac-agent-hygiene`,
+  every 4 hours and at login by default; `every_hours`, or `hour`/`minute` for once a day).
+
+Since 0.2.0 it also covers stale agent session folders under `~/code/wt` (only when every nested repo is
+clean and pushed), old Gradle wrapper/daemon versions, old iOS DeviceSupport, simulators whose runtime is
+gone, `~/.android/cache` and the CocoaPods cache. Android AVDs, SDK images and live simulators are sized by
+`hygiene_status` and never removed.
 
 A worktree is removed only when it is untouched for 7 days, clean, nobody's current directory, and
 its HEAD is pushed (or is the head of a merged pull request). Browser profiles are logins: only their
@@ -66,7 +71,7 @@ routine protecting work in progress.
 
 ### 3. Apply, then schedule
 
-*"apply the plan"* removes the planned items. *"install the hygiene agent"* schedules the daily run.
+*"apply the plan"* removes the planned items. *"install the hygiene agent"* schedules the run every 4 hours.
 The log is `~/Library/Logs/mac-agent-hygiene.log`.
 
 ### Optional configuration
@@ -109,7 +114,7 @@ mac-agent-hygiene/
 ├── server/index.js                # zero-dependency MCP server: 4 tools, plan→confirm gate
 ├── scripts/
 │   ├── hygiene.sh                 # status | plan | apply <planfile> | run — ONE eligibility function
-│   ├── install-launchd.sh         # install | status | uninstall the daily agent
+│   ├── install-launchd.sh         # install | status | uninstall the agent (every 4h)
 │   └── launchagent.plist.template # rendered (bash substitution) from $HOME + detected Homebrew path
 ├── skills/mac-agent-hygiene/
 │   ├── SKILL.md
