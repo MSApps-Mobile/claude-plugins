@@ -184,6 +184,9 @@ repo_config_runs_commands(){ local gd f
 git_safe(){ # repo/worktree dir → 0 clean and on a remote ref or merged-PR head (REASON=pushed|merged-pr-head)
   local d="$1" b h repo f st br
   repo_config_runs_commands "$d" && { REASON=repo-config-can-run-commands; return 1; }
+  # status recurses into submodules under THEIR config, which the scan above never read: keep, unread.
+  { [ -e "$d/.gitmodules" ] || [ -d "$(GITS -C "$d" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)/modules" ]; } \
+    && { REASON=has-submodules; return 1; }
   st=$(GITS -C "$d" status --porcelain 2>/dev/null) || { REASON=git-status-failed; return 1; }
   [ -z "$st" ] || { REASON=dirty-uncommitted-work; return 1; }
   if [ -d "$d/.git" ]; then   # a full clone owns its stash and every local branch; a linked worktree shares them with its parent
