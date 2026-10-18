@@ -6,6 +6,7 @@
 #   KNOWN-NEGATIVE  a stale session dir with ONE dirty nested repo is kept whole
 #   KNOWN-NEGATIVE  a session dir with a file touched in the last 24 h is kept
 #   KNOWN-NEGATIVE  a nested full clone with a stash, or with a local branch on no remote, keeps the folder
+#   KNOWN-NEGATIVE  a nested repo whose config defines a filter driver is kept, and the driver never runs
 #   KNOWN-NEGATIVE  a dirty repo 7 levels deep inside node_modules keeps the folder (the search is not pruned)
 #   KNOWN-POSITIVE  the oldest of three old Gradle dists is removed; KNOWN-NEGATIVE the newest two are kept
 #   KNOWN-POSITIVE  old iOS DeviceSupport is removed; KNOWN-NEGATIVE the newest one is kept even when old
@@ -43,6 +44,7 @@ mksession stale-dirty; echo wip > "$HOME/code/wt/stale-dirty/repo/wip.txt"; old 
 mksession fresh                                   # files touched now
 mksession stale-stash; (cd "$HOME/code/wt/stale-stash/repo" && echo s >> f && git stash -q); old "$HOME/code/wt/stale-stash"
 mksession stale-branch; (cd "$HOME/code/wt/stale-branch/repo" && git checkout -qb local-only && echo b > g && git add g && git commit -qm b && git checkout -q -); old "$HOME/code/wt/stale-branch"
+mksession stale-filter; (cd "$HOME/code/wt/stale-filter/repo" && git config filter.evil.clean "touch $FX/PWNED"); old "$HOME/code/wt/stale-filter"
 mksession stale-deep; mkdir -p "$HOME/code/wt/stale-deep/a/b/c/d/e/node_modules/pkg"; git init -q "$HOME/code/wt/stale-deep/a/b/c/d/e/node_modules/pkg"; echo u > "$HOME/code/wt/stale-deep/a/b/c/d/e/node_modules/pkg/wip"; old "$HOME/code/wt/stale-deep"
 
 # --- gradle: three old dists with distinct ages; newest two must stay
@@ -64,6 +66,7 @@ bash "$HYG" plan > "$FX/plan.tsv" 2>"$FX/plan.err" || bad "plan exited non-zero:
 [ "$(action_of "$HOME/code/wt/stale-dirty")" = keep ] && ok "stale session with a dirty nested repo → keep" || bad "stale-dirty: $(grep stale-dirty "$FX/plan.tsv")"
 [ "$(action_of "$HOME/code/wt/stale-stash")" = keep ] && ok "nested clone with a stash → keep" || bad "stale-stash: $(grep stale-stash "$FX/plan.tsv")"
 [ "$(action_of "$HOME/code/wt/stale-branch")" = keep ] && ok "nested clone with an unpushed local branch → keep" || bad "stale-branch: $(grep stale-branch "$FX/plan.tsv")"
+[ "$(action_of "$HOME/code/wt/stale-filter")" = keep ] && [ ! -e "$FX/PWNED" ] && ok "repo whose config defines a filter driver → keep, driver never ran" || bad "stale-filter: $(grep stale-filter "$FX/plan.tsv") pwned=$( [ -e "$FX/PWNED" ] && echo yes || echo no)"
 [ "$(action_of "$HOME/code/wt/stale-deep")" = keep ] && ok "dirty repo deep inside node_modules → keep (search not pruned)" || bad "stale-deep: $(grep stale-deep "$FX/plan.tsv")"
 [ "$(action_of "$HOME/code/wt/fresh")" = keep ] && ok "recently touched session → keep" || bad "fresh: $(grep '/fresh' "$FX/plan.tsv")"
 [ "$(action_of "$HOME/.gradle/wrapper/dists/gradle-8.11.1-bin")" = remove ] && ok "oldest Gradle dist → remove" || bad "gradle 8.11.1: $(grep 8.11.1 "$FX/plan.tsv")"

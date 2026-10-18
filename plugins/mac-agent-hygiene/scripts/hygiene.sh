@@ -170,10 +170,20 @@ check_worktree(){ local d="$1"
   git_safe "$d"; }
 # git run on repos an agent made: repo-local config must not be able to run a command while we only
 # look (core.fsmonitor and hooks are the command-executing keys `status` would honour).
-GITS(){ GIT_CONFIG_NOSYSTEM=1 "$GIT" -c core.fsmonitor=false -c core.hooksPath=/dev/null -c core.untrackedCache=false \
-  -c diff.external= -c core.pager=cat "$@"; }
+GITS(){ GIT_CONFIG_NOSYSTEM=1 "$GIT" --no-optional-locks -c core.fsmonitor=false -c core.hooksPath=/dev/null \
+  -c core.untrackedCache=false -c diff.external= -c core.pager=cat "$@"; }
+# Repo-local config keys that can make git run a program (filter drivers run during `status`). A repo
+# carrying any of them is KEPT unread: fail closed rather than try to neutralise every driver.
+CMD_CONFIG_RE='^(filter\.|include\.|includeif\.|core\.fsmonitor|core\.sshcommand|core\.gitproxy|core\.askpass|core\.editor|core\.pager|core\.hookspath|diff\.[^.]*\.(textconv|command)|merge\.[^.]*\.driver|credential\.|uploadpack\.|protocol\.)'
+repo_config_runs_commands(){ local gd f
+  gd=$(GITS -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 0
+  for f in "$gd/config" "$(GITS -C "$1" rev-parse --path-format=absolute --git-dir 2>/dev/null)/config.worktree"; do
+    [ -f "$f" ] || continue
+    "$GIT" config --file "$f" --name-only --list 2>/dev/null | /usr/bin/grep -qiE "$CMD_CONFIG_RE" && return 0
+  done; return 1; }
 git_safe(){ # repo/worktree dir → 0 clean and on a remote ref or merged-PR head (REASON=pushed|merged-pr-head)
   local d="$1" b h repo f st br
+  repo_config_runs_commands "$d" && { REASON=repo-config-can-run-commands; return 1; }
   st=$(GITS -C "$d" status --porcelain 2>/dev/null) || { REASON=git-status-failed; return 1; }
   [ -z "$st" ] || { REASON=dirty-uncommitted-work; return 1; }
   if [ -d "$d/.git" ]; then   # a full clone owns its stash and every local branch; a linked worktree shares them with its parent
