@@ -1,0 +1,7 @@
+{
+  "alpha": {
+    "command": "alpha-language-server",
+    "extensionToLanguage": { ".al": "alpha" },
+    "startupTimeoutMs": 30000
+  }
+}

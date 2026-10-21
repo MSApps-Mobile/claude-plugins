@@ -34,6 +34,21 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+
+def _utc_now() -> datetime:
+    """Current UTC time as a naive datetime (card YAp0c1za).
+
+    Replaces the naive-UTC datetime call deprecated in Python 3.12. Naive on
+    purpose: stored timestamps keep their existing shape, isoformat() + "Z"
+    with no "+00:00", so old and new rows still sort and compare as strings.
+    """
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _utc_now_iso() -> str:
+    """_utc_now() in the stored shape, e.g. 2026-10-17T01:02:03.456789Z."""
+    return _utc_now().isoformat() + "Z"
+
 # ---------------------------------------------------------------------------
 # Database location â lives in the user's workspace folder so it persists
 # ---------------------------------------------------------------------------
@@ -495,7 +510,7 @@ def _open_conn(fuse: bool) -> sqlite3.Connection:
 _open_sessions = 0
 
 
-def run_with_db(op=None):
+def run_with_db(op):
     """THE single check -> repair -> retry site. Every caller goes through here.
 
     1. Scheduled integrity check (its connection is closed before any repair).
@@ -504,9 +519,6 @@ def run_with_db(op=None):
     3. On a corruption-class error (at open or mid-command): repair once with no
        connection of ours open, then retry once. Lock/IO errors are never
        repaired and propagate unchanged.
-
-    ``op=None`` returns an open connection for library callers (get_db); the
-    caller owns closing it and must do so before any later run_with_db call.
     """
     global _open_sessions
     fuse = _is_fuse_path(DB_PATH)
@@ -519,8 +531,6 @@ def run_with_db(op=None):
             _auto_repair(trigger)
         try:
             db = _open_conn(fuse)  # closes itself if SCHEMA fails
-            if op is None:
-                return db
             _open_sessions += 1
             try:
                 return op(db)
@@ -533,11 +543,6 @@ def run_with_db(op=None):
             trigger = f"command: {e}"
 
 
-def get_db() -> sqlite3.Connection:
-    """Open, checked (and if needed repaired) connection. Caller must close it."""
-    return run_with_db()
-
-
 # ---------------------------------------------------------------------------
 # Commands
 # ---------------------------------------------------------------------------
@@ -545,7 +550,7 @@ def get_db() -> sqlite3.Connection:
 def cmd_add(db, args):
     """Add an observation to memory."""
     obs_id = f"obs_{uuid.uuid4().hex[:12]}"
-    now = datetime.utcnow().isoformat() + "Z"
+    now = _utc_now_iso()
 
     # Find current session
     session_id = None
@@ -635,7 +640,7 @@ def cmd_timeline(db, args):
     """Get recent observations in chronological order."""
     hours = args.hours or 72
     limit = args.limit or 50
-    since = (datetime.utcnow() - timedelta(hours=hours)).isoformat() + "Z"
+    since = (_utc_now() - timedelta(hours=hours)).isoformat() + "Z"
 
     rows = db.execute(
         """SELECT id, type, content, tags, created_at, session_id
@@ -653,7 +658,7 @@ def cmd_timeline(db, args):
 def cmd_session_start(db, args):
     """Start a new memory session."""
     session_id = f"sess_{uuid.uuid4().hex[:12]}"
-    now = datetime.utcnow().isoformat() + "Z"
+    now = _utc_now_iso()
 
     # Close any open sessions
     db.execute("UPDATE sessions SET ended_at = ? WHERE ended_at IS NULL", (now,))
@@ -704,7 +709,7 @@ def cmd_session_start(db, args):
 
 def cmd_session_end(db, args):
     """End the current session with an optional summary."""
-    now = datetime.utcnow().isoformat() + "Z"
+    now = _utc_now_iso()
 
     row = db.execute(
         "SELECT id FROM sessions WHERE ended_at IS NULL ORDER BY started_at DESC LIMIT 1"
@@ -791,7 +796,7 @@ def cmd_compact(db, args):
     keeping the originals' key information but reducing row count.
     """
     days = args.before_days or 30
-    cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat() + "Z"
+    cutoff = (_utc_now() - timedelta(days=days)).isoformat() + "Z"
 
     # Group old observations by date
     rows = db.execute(
@@ -848,14 +853,14 @@ def cmd_export(db, args):
 
     if fmt == "json":
         print(json.dumps({
-            "exported_at": datetime.utcnow().isoformat() + "Z",
+            "exported_at": _utc_now_iso(),
             "observations": [dict(r) for r in observations],
             "sessions": [dict(r) for r in sessions],
         }, indent=2))
     else:
         # Markdown export
         print("# Cowork Memory Export\n")
-        print(f"*Exported: {datetime.utcnow().isoformat()}Z*\n")
+        print(f"*Exported: {_utc_now_iso()}*\n")
         for s in sessions:
             print(f"## Session: {s['project'] or 'unnamed'} ({s['started_at'][:10]})")
             if s["summary"]:

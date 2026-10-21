@@ -86,8 +86,15 @@ trap '/bin/rm -rf "$TMPD"' EXIT
 list_worktrees(){ [ -d "$HYG_WT_ROOT" ] && /usr/bin/find "$HYG_WT_ROOT" -maxdepth 1 -mindepth 1 -type d -name "$HYG_WT_GLOB" 2>/dev/null | /usr/bin/sort; }
 list_clones(){ [ -d "$HYG_PLUGIN_CACHE" ] && /usr/bin/find "$HYG_PLUGIN_CACHE" -maxdepth 1 -mindepth 1 -type d -name 'temp_git_*' 2>/dev/null | /usr/bin/sort; }
 list_profiles(){ local p; for p in $HYG_PW_GLOB; do [ -d "$p" ] && printf '%s\n' "$p"; done; }
-wt_recently_touched(){  # any regular file (outside .git) newer than the age → touched
-  [ -n "$(/usr/bin/find "$1" -path '*/.git' -prune -o -type f -mtime -"$HYG_WT_AGE_DAYS" -print -quit 2>/dev/null)" ] ||
+# Directories a human does not edit — dependency trees, VCS internals, build output. Pruned from the
+# recency walk (card ugCwRX0v): a file under node_modules is not a human touch, and walking every idle
+# worktree's node_modules is what kept the first scheduled run in plan for >50 min (355 worktrees).
+WT_RECENCY_PRUNE=( .git node_modules .venv venv Pods build DerivedData )
+wt_recently_touched(){  # any regular file (outside the pruned dirs) newer than the age → touched
+  local n expr=()
+  for n in "${WT_RECENCY_PRUNE[@]}"; do expr+=( -name "$n" -o ); done
+  unset 'expr[${#expr[@]}-1]'
+  [ -n "$(/usr/bin/find "$1" \( "${expr[@]}" \) -prune -o -type f -mtime -"$HYG_WT_AGE_DAYS" -print -quit 2>/dev/null)" ] ||
   [ -n "$(/usr/bin/find "$1" -maxdepth 0 -mtime -"$HYG_WT_AGE_DAYS" 2>/dev/null)" ]; }
 
 # ---------- eligibility (the SAME function decides in plan and in apply) ----------
@@ -156,11 +163,17 @@ candidates(){  # category<TAB>path
   list_worktrees | while IFS= read -r d; do printf 'worktrees\t%s\n' "$d"; done
 }
 
-plan(){ local cat p k
+plan(){ local cat p k prev="" n=0 r=0 t0=$SECONDS
+  # One log line per category as it finishes (card ugCwRX0v), so a slow or stuck plan is visible
+  # from `log_tail` / hygiene_status instead of a silent gap after "=== scheduled run".
+  plan_mark(){ [ -n "$prev" ] && log "plan: $prev $n candidates ($r remove) in $((SECONDS-t0))s"; }
   while IFS=$'\t' read -r cat p; do
-    [ -n "$p" ] || continue; k=$(kb "$p"); [ -n "$k" ] || k=0
-    if check_item "$cat" "$p"; then emit "$cat" remove "$k" "$REASON" "$p"; else emit "$cat" keep "$k" "$REASON" "$p"; fi
+    [ -n "$p" ] || continue
+    if [ "$cat" != "$prev" ]; then plan_mark; prev="$cat"; n=0; r=0; t0=$SECONDS; fi
+    n=$((n+1)); k=$(kb "$p"); [ -n "$k" ] || k=0
+    if check_item "$cat" "$p"; then r=$((r+1)); emit "$cat" remove "$k" "$REASON" "$p"; else emit "$cat" keep "$k" "$REASON" "$p"; fi
   done < <(candidates)
+  plan_mark
 }
 
 remove_item(){ local cat="$1" p="$2" common

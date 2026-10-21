@@ -18,6 +18,10 @@ of that site, and re-login is a human action (passkeys, 2FA, bot checks). So:
   routine skip that profile forever — a silent no-op, not data loss. Never delete the lock to "fix"
   it; clearing a lock a live sibling holds kills that session's in-flight work.
 
+These rules are enforced by `tests/hygiene-keeps-logins.test.sh` (macOS only; fixture HOME, touches nothing
+real): known-positive caches are planned, known-negative login paths are never listed and `apply` refuses a
+hand-written plan naming them, and a `SingletonLock` profile is kept whole. Run it before loosening any rule above.
+
 ## Worktrees may be the only copy of something
 
 Agents create linked worktrees (`git worktree add`) per task. On the reference machine 774 of them

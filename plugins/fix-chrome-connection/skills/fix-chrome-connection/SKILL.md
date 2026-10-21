@@ -1,6 +1,13 @@
 ---
-
-## name: fix-chrome-connection description: &gt; Use when: tabs_context_mcp fails, Chrome MCP is broken, user says "fix Chrome", "reconnect Chrome", "Chrome extension not responding", or after switching Claude Desktop accounts. Diagnoses and repairs broken Claude-in-Chrome MCP connections step by step, then commits any new learnings to GitHub. metadata: version: "1.1.4" author: "MSApps"
+name: fix-chrome-connection
+description: >
+  Use when: tabs_context_mcp fails, Chrome MCP is broken, user says "fix Chrome", "reconnect Chrome",
+  "Chrome extension not responding", or after switching Claude Desktop accounts. Diagnoses and repairs
+  broken Claude-in-Chrome MCP connections step by step, then commits any new learnings to GitHub.
+metadata:
+  version: "1.1.4"
+  author: "MSApps"
+---
 
 ## Purpose
 

@@ -25,14 +25,15 @@ def load(db_path):
 
 
 def seed(m, n=200):
-    db = m.get_db()
-    for i in range(n):
-        db.execute(
-            "INSERT INTO observations (id,type,content,tags,created_at) VALUES (?,?,?,?,?)",
-            (f"obs_{i:04d}", "note", f"synthetic row {i} alpha{i % 7} widget", "t", "2026-01-01T00:00:00Z"),
-        )
-    db.commit()
-    db.close()
+    def op(db):
+        for i in range(n):
+            db.execute(
+                "INSERT INTO observations (id,type,content,tags,created_at) VALUES (?,?,?,?,?)",
+                (f"obs_{i:04d}", "note", f"synthetic row {i} alpha{i % 7} widget", "t", "2026-01-01T00:00:00Z"),
+            )
+        db.commit()
+
+    m.run_with_db(op)
 
 
 def corrupt_fts(path, tag=None):
@@ -49,7 +50,7 @@ def corrupt_fts(path, tag=None):
     c.execute("DELETE FROM observations WHERE id IN ('obs_0001','obs_0002','obs_0003')")
     c.commit()
     c.close()
-    # Triggers are recreated by the next get_db() via SCHEMA (IF NOT EXISTS).
+    # Triggers are recreated by the next run_with_db() via SCHEMA (IF NOT EXISTS).
 
 
 class RepairTests(unittest.TestCase):
@@ -81,7 +82,7 @@ class RepairTests(unittest.TestCase):
         self.assertTrue(self.m._integrity_problems(c), "fixture must actually be corrupt")
         c.close()
         self.marker_clear()
-        self.m.get_db().close()
+        self.m.run_with_db(lambda db: None)
         self.assertEqual(before, self.rows())
         c = sqlite3.connect(str(self.db))
         self.assertEqual([], self.m._integrity_problems(c))
@@ -106,27 +107,29 @@ class RepairTests(unittest.TestCase):
 
     def test_healthy_db_uses_marker_and_skips_check(self):
         seed(self.m, 5)
-        self.m.get_db().close()
+        self.m.run_with_db(lambda db: None)
         self.assertTrue(self.m._marker_path().exists())
         calls = []
         orig = self.m._integrity_problems
         self.m._integrity_problems = lambda c: calls.append(1) or orig(c)
-        self.m.get_db().close()
+        self.m.run_with_db(lambda db: None)
         self.assertEqual([], calls)
 
     def test_durable_journal_and_synchronous_normal(self):
-        db = self.m.get_db()
-        self.assertEqual("truncate", db.execute("PRAGMA journal_mode").fetchone()[0])
-        self.assertEqual(1, db.execute("PRAGMA synchronous").fetchone()[0])  # NORMAL
-        db.close()
+        def op(db):
+            self.assertEqual("truncate", db.execute("PRAGMA journal_mode").fetchone()[0])
+            self.assertEqual(1, db.execute("PRAGMA synchronous").fetchone()[0])  # NORMAL
+
+        self.m.run_with_db(op)
 
     def test_fuse_falls_back_to_memory_journal(self):
         os.environ["COWORK_MEM_FORCE_FUSE"] = "1"
         try:
-            db = self.m.get_db()
-            self.assertEqual("memory", db.execute("PRAGMA journal_mode").fetchone()[0])
-            self.assertEqual(1, db.execute("PRAGMA synchronous").fetchone()[0])
-            db.close()
+            def op(db):
+                self.assertEqual("memory", db.execute("PRAGMA journal_mode").fetchone()[0])
+                self.assertEqual(1, db.execute("PRAGMA synchronous").fetchone()[0])
+
+            self.m.run_with_db(op)
         finally:
             del os.environ["COWORK_MEM_FORCE_FUSE"]
 
@@ -201,7 +204,7 @@ class LockAndBackoffTests(unittest.TestCase):
         holder = self.lock()
         try:
             with self.assertRaises(sqlite3.OperationalError) as cm:
-                self.m.get_db()
+                self.m.run_with_db(lambda db: None)
             self.assertIn("locked", str(cm.exception))
             self.assertEqual([], self.repairs, "repair must not run on a locked DB")
             with self.assertRaises(self.m.DBBusy):
@@ -251,7 +254,7 @@ class LockAndBackoffTests(unittest.TestCase):
         seen = []
         orig = self.m._configure
         self.m._configure = lambda conn, fuse, tolerant=False: seen.append((fuse, tolerant)) or orig(conn, fuse, tolerant)
-        self.m.get_db().close()
+        self.m.run_with_db(lambda db: None)
         self.assertIn((True, True), seen)  # check + repair connections got fuse=True
         self.assertTrue(all(f for f, _ in seen))
         self.assertEqual(before, self.rows())
@@ -262,7 +265,7 @@ class LockAndBackoffTests(unittest.TestCase):
         self.db.write_bytes(b"this is not a sqlite database" * 100)
         for _ in range(3):
             with self.assertRaises(Exception):
-                self.m.get_db()
+                self.m.run_with_db(lambda db: None)
         self.assertEqual(1, len(self.backups()), "back-off must stop repeated full copies")
         self.assertTrue(self.m._fail_marker_path().exists())
 
@@ -271,7 +274,7 @@ class LockAndBackoffTests(unittest.TestCase):
         for _ in range(self.m.KEEP_PRE_REPAIR_COPIES + 3):
             corrupt_fts(self.db, tag=str(_))
             self.clear_marker()
-            self.m.get_db().close()
+            self.m.run_with_db(lambda db: None)
         self.assertLessEqual(len(self.backups()), self.m.KEEP_PRE_REPAIR_COPIES)
 
     def test_backup_runs_under_held_write_lock(self):
@@ -293,7 +296,7 @@ class LockAndBackoffTests(unittest.TestCase):
 
         self.m.backup_db = spy
         self.clear_marker()
-        self.m.get_db().close()
+        self.m.run_with_db(lambda db: None)
         self.assertEqual(["locked"], outcome)
 
 

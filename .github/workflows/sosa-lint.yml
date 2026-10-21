@@ -5,6 +5,11 @@ on:
     branches: [main]
   push:
     branches: [main]
+  # Card 4LxRLPYZ: release.yml's version-bump commits carry [skip ci] (and are
+  # pushed with GITHUB_TOKEN, which never fires push workflows), so every bump
+  # head on main had NO run of this workflow — base CI was unmeasured.
+  # workflow_dispatch lets release.yml (and a human/agent) measure main's head.
+  workflow_dispatch:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
