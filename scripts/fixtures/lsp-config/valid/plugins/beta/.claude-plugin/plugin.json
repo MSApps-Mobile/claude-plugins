@@ -1,0 +1,10 @@
+{
+  "name": "beta",
+  "version": "1.0.0",
+  "lspServers": {
+    "beta": {
+      "command": "beta-lsp",
+      "extensionToLanguage": { ".bt": "beta" }
+    }
+  }
+}

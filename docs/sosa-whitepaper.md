@@ -128,6 +128,8 @@ In software engineering contexts, the orchestrator additionally enforces **merge
 
 ### 4.3 Secured
 
+> *Note: this section describes the SOSA target model. The plugins in this repository do not implement the isolated execution, zero-trust boundaries or immutable audit store described here; see [SECURITY.md](../SECURITY.md) for what is actually in place.*
+
 Security in SOSA is not a perimeter — it is a property of every layer. Each agent runs in an isolated execution environment with scoped credentials, zero-trust network boundaries, and cryptographically verifiable audit trails. No agent can access resources beyond its declared permission set, and all inter-agent communication passes through authenticated channels.
 
 > *Each agent Aᵢ is assigned a capability set Cᵢ ⊆ C enforced at runtime. Cross-agent communication requires mutual attestation: msg(Aᵢ, Aⱼ) is valid iff auth(Aᵢ) ∧ auth(Aⱼ) = true.*

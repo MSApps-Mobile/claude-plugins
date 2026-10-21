@@ -1,6 +1,6 @@
 {
   "name": "whatsapp-mcp",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Connect Claude to WhatsApp — search messages, read conversations, send texts and media, and manage business outreach. Works in any language.",
   "author": {
     "name": "MSApps",
@@ -33,7 +33,7 @@
     "pillars": {
       "supervised": "Message confirmation before sending, rate limiting for outreach",
       "orchestrated": "Contact lookup → message compose → send → verify delivery",
-      "secured": "Local bridge on localhost, SQLite contact DB, prompt injection scanning on incoming messages",
+      "secured": "Local bridge on localhost, SQLite contact DB. Incoming messages are not scanned for prompt injection; treat their content as untrusted",
       "agents": "R=whatsapp-messaging, T=WhatsApp-bridge+Contacts-DB, M=chat-history, P=compose-confirm-send-verify"
     }
   },

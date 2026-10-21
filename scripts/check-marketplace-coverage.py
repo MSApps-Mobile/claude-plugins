@@ -9,7 +9,7 @@ and the board anchor said 29. Three numbers, three sources, one live defect.
     In the repo, absent from the manifest (DISPOSED 2026-09-18 on card 1zBkhSZm):
       opsagent-shopify       <- PUBLISHED into marketplace.json (tag opsagent-shopify-v0.3.7)
       agents-md-optimizer    <- PUBLISHED into marketplace.json (v1.0.1, shippable plugin.json)
-      'msapps-public plugins' <- EXCLUDE/DELETE recorded — physical delete deferred (CI detect+workflow scope)
+      'msapps-public plugins' <- DELETED 2026-09-25 (card 4vgdDPNS), once detect skipped removed dirs
 
 WHY NOTHING CAUGHT IT. release.yml, sosa-lint.yml and validate-pr.yml all exist
 and all pass. Not one of them compares the directory set to the manifest set, so
@@ -42,15 +42,10 @@ import sys
 # exists — a stale exclusion reads as "we know about this one" long after the
 # code changed, which is the same rot the manifest itself suffered.
 # 2026-09-18: all three prior exclusions disposed (publish / publish / delete).
-PENDING_DISPOSITION = {
-    "msapps-public plugins": (
-        "DELETE pending — directory name CONTAINS A SPACE; confirmed stale nested mirror "
-        "of fix-chrome-connection (plugins/msapps-public plugins/plugins/fix-chrome-connection/). "
-        "Not a plugin. Physical delete deferred: Validate Plugin PR detect puts removed paths "
-        "in the matrix and reds; fixing detect requires workflow-scope (card 1zBkhSZm). "
-        "Do not publish."
-    ),
-}
+# 2026-09-25 (card 4vgdDPNS): "msapps-public plugins" physically DELETED — the
+# Validate Plugin PR detect step now skips removed plugin dirs, which was the
+# workflow-scope blocker recorded here. The list is empty and may stay empty.
+PENDING_DISPOSITION = {}
 
 # A scan that finds nothing is indistinguishable from a scan that finds no
 # problems. This repo ships 30+ plugins; if we ever see fewer than this many

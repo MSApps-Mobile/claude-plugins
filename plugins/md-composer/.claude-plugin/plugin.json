@@ -1,0 +1,26 @@
+{
+  "name": "md-composer",
+  "version": "1.0.3",
+  "description": "Audit, compose, and refactor CLAUDE.md files using the 'recipe book, not filing cabinet' pattern — keep memory files scannable, token-lean, and organized across the 4-level hierarchy (enterprise → project → user → local).",
+  "author": {
+    "name": "MSApps",
+    "url": "https://msapps.mobi"
+  },
+  "homepage": "https://github.com/MSApps-Mobile/claude-plugins/tree/main/plugins/md-composer",
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "license": "MIT",
+  "keywords": [
+    "claude-md",
+    "CLAUDE.md",
+    "memory",
+    "token-optimization",
+    "context-budget",
+    "audit",
+    "composer",
+    "refactor",
+    "recipe-book",
+    "200-line-rule",
+    "hierarchy",
+    "skills"
+  ]
+}

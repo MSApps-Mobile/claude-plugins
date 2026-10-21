@@ -1,0 +1,13 @@
+{
+  "alpha": {
+    "command": "alpha-language-server",
+    "args": ["--stdio"],
+    "extensionToLanguage": { ".al": "alpha" },
+    "transport": "stdio",
+    "restartOnCrash": true,
+    "maxRestarts": 3,
+    "startupTimeout": 30000,
+    "shutdownTimeout": 5000,
+    "requestTimeout": 10000
+  }
+}
