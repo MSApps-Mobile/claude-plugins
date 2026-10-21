@@ -14,6 +14,11 @@ on:
       # coverage check below, whose whole subject is that file.
       - '.claude-plugin/**'
 
+# Card DMqfyLzZ: no job here writes to the repo or the PR, so the token gets
+# read-only scope instead of the repo default.
+permissions:
+  contents: read
+
 jobs:
   # ── Job 1: Detect which plugins are in this PR ───────────────────
   detect:
