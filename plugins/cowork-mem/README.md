@@ -95,7 +95,9 @@ Memories are stored in `~/.cowork-mem/memory.db` (in your Cowork workspace folde
 - On a regular filesystem the database uses a durable on-disk rollback journal (`TRUNCATE`) with `synchronous=NORMAL`, so an interrupted write is rolled back on the next open.
 - On the Cowork workspace mount (FUSE/network filesystem) SQLite cannot keep an on-disk journal, so it falls back to `journal_mode=MEMORY` + `locking_mode=EXCLUSIVE`. **There, an interrupted write can still damage the full-text index: corruption is detected and repaired, not prevented.**
 - Detection: a `quick_check` + FTS5 integrity check at most once a day, and on any "malformed" error during a command. Repair copies the database aside (`memory.db.pre-repair-*`, the newest 3 are kept), rebuilds the FTS index from the base table and re-checks, all under a held write lock. Lock/busy errors are never treated as corruption. If a repair fails, auto-repair backs off for an hour (`memory.db.repair-failed`).
-- Failed writes from the auto-capture hook are logged to `capture-errors.log` next to the database instead of being lost silently.
+- Failed writes from the auto-capture hook are logged to `capture-errors.log` next to the database instead of being lost silently. The log rotates to `capture-errors.log.1` past 256 KB.
+- The auto-capture hook masks secrets before anything is stored: Authorization/Bearer headers, `token=`/`key=`/`password=` values, `user:pass@` URLs and known key shapes (`ghp_`, `github_pat_`, `sk-`, `AIza`, `xox*`) become `[REDACTED]`.
+- The store is private to your user: the hook runs under `umask 077`, so `~/.claude/.cowork-mem` is 0700 and the database and log are 0600 (an older, world-readable store is tightened on the next capture).
 
 ## Requirements
 

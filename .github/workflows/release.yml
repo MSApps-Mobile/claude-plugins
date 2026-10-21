@@ -76,7 +76,6 @@ jobs:
       # ── Validate plugin structure ──────────────────────────────
       - name: Validate plugin structure
         run: |
-          PLUGIN="${{ matrix.plugin }}"
           echo "Validating $PLUGIN..."
 
           if [[ ! -d "plugins/$PLUGIN/.claude-plugin" ]]; then
@@ -90,6 +89,8 @@ jobs:
           fi
 
           echo "✓ Plugin structure valid"
+        env:
+          PLUGIN: ${{ matrix.plugin }}
 
       # ── Bump patch version ─────────────────────────────────────
       # Modifies plugin.json in place. NOT committed yet — we package and
@@ -100,7 +101,9 @@ jobs:
         id: bump
         run: |
           chmod +x scripts/bump-version.sh
-          bash scripts/bump-version.sh ${{ matrix.plugin }} patch
+          bash scripts/bump-version.sh "$PLUGIN" patch
+        env:
+          PLUGIN: ${{ matrix.plugin }}
 
       # ── Package the plugin ─────────────────────────────────────
       # Runs BEFORE the git push so a packaging failure doesn't leave
@@ -109,13 +112,19 @@ jobs:
         id: package
         run: |
           chmod +x scripts/package-plugin.sh
-          bash scripts/package-plugin.sh ${{ matrix.plugin }} dist
+          bash scripts/package-plugin.sh "$PLUGIN" dist
+        env:
+          PLUGIN: ${{ matrix.plugin }}
+
+      # Card 2cbdYCv2: package-plugin.sh already fails on a zip with <= 1
+      # file entries; just log the listing here.
+      - name: List package contents
+        run: unzip -l "${{ steps.package.outputs.plugin_file }}"
 
       # ── Generate release notes ─────────────────────────────────
       - name: Generate release notes
         id: notes
         run: |
-          PLUGIN="${{ matrix.plugin }}"
           VERSION="${{ steps.bump.outputs.new_version }}"
           OLD_VERSION="${{ steps.bump.outputs.old_version }}"
 
@@ -146,6 +155,8 @@ jobs:
             echo "Or install the \`.plugin\` file directly for offline use."
           } > /tmp/release_notes.md
           echo "notes_file=/tmp/release_notes.md" >> $GITHUB_OUTPUT
+        env:
+          PLUGIN: ${{ matrix.plugin }}
 
       # ── Commit version bump ────────────────────────────────────
       # Runs AFTER packaging + notes succeed, so a failure up to this
@@ -155,7 +166,6 @@ jobs:
       # our push; rebase-retry keeps the release robust.
       - name: Commit version bump
         run: |
-          PLUGIN="${{ matrix.plugin }}"
           NEW_VERSION="${{ steps.bump.outputs.new_version }}"
           git add "plugins/$PLUGIN/.claude-plugin/plugin.json"
           # Card okOoGKTA: bump-version.sh also rewrites the marketplace entry.
@@ -175,6 +185,8 @@ jobs:
             fi
             sleep $((attempt * 2))
           done
+        env:
+          PLUGIN: ${{ matrix.plugin }}
 
       # ── Create GitHub Release ──────────────────────────────────
       # Last step that mutates remote state. Creates the tag on the bump
@@ -194,18 +206,19 @@ jobs:
       - name: Success summary
         if: success()
         run: |
-          echo "### ✅ Released ${{ matrix.plugin }} v${{ steps.bump.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Released $PLUGIN v${{ steps.bump.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Previous version:** ${{ steps.bump.outputs.old_version }}" >> $GITHUB_STEP_SUMMARY
           echo "- **New version:** ${{ steps.bump.outputs.new_version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Package:** \`${{ matrix.plugin }}-${{ steps.bump.outputs.new_version }}.plugin\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Package:** \`$PLUGIN-${{ steps.bump.outputs.new_version }}.plugin\`" >> $GITHUB_STEP_SUMMARY
+        env:
+          PLUGIN: ${{ matrix.plugin }}
 
       # Prints a ready-to-paste recovery command when any prior step failed.
       # Cuts MTTR and makes the failure mode self-documenting on every run.
       - name: Failure summary
         if: failure()
         run: |
-          PLUGIN="${{ matrix.plugin }}"
           NEW_VERSION="${{ steps.bump.outputs.new_version }}"
           echo "### ❌ Release failed for $PLUGIN" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -225,6 +238,8 @@ jobs:
             echo "git push origin $PLUGIN-v$NEW_VERSION" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
           fi
+        env:
+          PLUGIN: ${{ matrix.plugin }}
 
   # ── Job 3: Measure the new main head ─────────────────────────────
   # Card 4LxRLPYZ: the bump commits above are pushed with GITHUB_TOKEN and

@@ -266,3 +266,16 @@ jobs:
 
       - name: Plugin commands - prove the guard can FAIL
         run: python3 scripts/check-plugin-commands.test.py
+
+      # ── Card czICbElh ──────────────────────────────────────────
+      # Nothing here ever read .lsp.json or an inline lspServers block, so an
+      # LSP plugin with a key Claude Code rejects (startupTimeoutMs for
+      # startupTimeout) merged and published green while the loader dropped
+      # the whole file. The allowed-key list is pinned in the script.
+      - name: LSP server configs — schema check
+        run: python3 scripts/check-lsp-config.py --root .
+
+      # Negative control: committed fixtures (startupTimeoutMs, missing
+      # command, unknown inline key, ...) must red on every run.
+      - name: LSP server configs — prove the guard can FAIL
+        run: python3 scripts/check-lsp-config.test.py
