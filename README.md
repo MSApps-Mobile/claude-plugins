@@ -44,7 +44,7 @@ We built **SOSA™ (Supervised Orchestrated Secured Agents)** to fix that — a 
 |--------|------------|
 | **🛡️ Supervised** | High-impact actions require human approval. An outreach agent can't send 500 emails without your sign-off. |
 | **⚙️ Orchestrated** | Agents follow Plan → Act → Verify. Token budgets are enforced — bloated skills waste your money. |
-| **🔒 Secured** | No hardcoded credentials. External data is scanned for prompt injection. Package versions pinned. |
+| **🔒 Secured** | No hardcoded credentials (checked in CI). Plugin authors should treat external data as untrusted and pin package versions; neither is enforced here. |
 | **🤖 Agents** | Each agent has a formal role spec, declared tool access, and explicit boundaries. A finance agent can't send emails — period. |
 
 > **📄 Read the whitepaper:** [SOSA™ — Supervised Orchestrated Secured Agents](docs/sosa-whitepaper.pdf) (Shatz, 2026)
@@ -61,6 +61,7 @@ We built **SOSA™ (Supervised Orchestrated Secured Agents)** to fix that — a 
 | [**session-backup**](./plugins/session-backup) | Daily backups of sessions, skills & configs to Drive | `session-backup@msapps-plugins` |
 | [**notion-memory**](./plugins/notion-memory) | Long-term memory + the 4 official Anthropic Notion skills (knowledge-capture, meeting-intelligence, research-documentation, spec-to-implementation) bundled in | `notion-memory@msapps-plugins` |
 | [**mac-disk-cleaner**](./plugins/mac-disk-cleaner) | Reclaim disk space on macOS — clean caches, find bloat | `mac-disk-cleaner@msapps-plugins` |
+| [**mac-agent-hygiene**](./plugins/mac-agent-hygiene) | Daily LaunchAgent + MCP server that keeps agent Macs from filling up — caches and stale pushed worktrees, plan → confirm → apply | `mac-agent-hygiene@msapps-plugins` |
 | [**whatsapp-mcp**](./plugins/whatsapp-mcp) | Connect Claude to WhatsApp — search, read, send | `whatsapp-mcp@msapps-plugins` |
 | [**apify-scraper**](./plugins/apify-scraper) | Full Apify web scraping — run Actors, manage datasets | `apify-scraper@msapps-plugins` |
 | [**apollo**](./plugins/apollo) | Prospect leads & enrich contacts with Apollo.io | `apollo@msapps-plugins` |
@@ -93,12 +94,12 @@ We built **SOSA™ (Supervised Orchestrated Secured Agents)** to fix that — a 
 |--------|-------------|---------|
 | [**swift-lsp**](./plugins/swift-lsp) | Real-time Swift code intelligence — diagnostics, go-to-definition, hover types via SourceKit-LSP | `swift-lsp@msapps-plugins` |
 | [**kotlin-lsp**](./plugins/kotlin-lsp) | Real-time Kotlin code intelligence — diagnostics, go-to-definition, hover types via kotlin-language-server | `kotlin-lsp@msapps-plugins` |
-| [**claude-md-composer**](./plugins/claude-md-composer) | Audit, compose, and refactor CLAUDE.md files — keeps memory under 200 lines, flips negative rules, splits across the 4-level hierarchy ([inspiration](https://medium.com/@kjramsy/your-claude-md-is-eating-your-token-budget-heres-how-to-fix-it-b8d6c4d1c986)) | `claude-md-composer@msapps-plugins` |
+| [**md-composer**](./plugins/md-composer) | Audit, compose, and refactor CLAUDE.md files — keeps memory under 200 lines, flips negative rules, splits across the 4-level hierarchy ([inspiration](https://medium.com/@kjramsy/your-claude-md-is-eating-your-token-budget-heres-how-to-fix-it-b8d6c4d1c986)) | `md-composer@msapps-plugins` |
 | [**agents-md-optimizer**](./plugins/agents-md-optimizer) | Audit bloated CLAUDE.md / AGENTS.md files and rewrite them lean, or author a new one using the 200-line "recipe book" principle | `agents-md-optimizer@msapps-plugins` |
 
 > **Mobile devs:** swift-lsp ships with Xcode — zero extra setup. kotlin-lsp installs via `brew install kotlin-language-server`.
 
-> **Pro tip:** Run `sosa-compliance-checker` on all your installed plugins — not just ours. It catches hardcoded API keys, missing confirmation gates, unpinned packages, and prompt injection vulnerabilities in *any* plugin.
+> **Pro tip:** Run `sosa-compliance-checker` on all your installed plugins — not just ours. It checks for hardcoded API keys, missing confirmation gates, unpinned packages, and prompt injection risks in *any* plugin; it is an audit aid that reports findings, not a guarantee.
 
 ---
 

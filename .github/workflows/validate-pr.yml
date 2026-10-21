@@ -30,7 +30,12 @@ jobs:
       - name: Detect changed plugins
         id: detect
         run: |
-          CHANGED=$(git diff --name-only origin/main...HEAD | grep '^plugins/' | cut -d'/' -f2 | sort -u || true)
+          # Card 4vgdDPNS: a DELETED plugin dir is not a plugin to validate. Before
+          # this filter a removal PR put the gone dir in the matrix and every
+          # structure check red on a directory that no longer exists. Names can
+          # contain spaces, so read line by line and test each one.
+          CHANGED=$(git diff --name-only origin/main...HEAD | grep '^plugins/' | cut -d'/' -f2 | sort -u \
+            | while IFS= read -r p; do [[ -n "$p" && -d "plugins/$p" ]] && echo "$p"; done || true)
 
           if [[ -z "$CHANGED" ]]; then
             echo "has_plugins=false" >> $GITHUB_OUTPUT
@@ -239,3 +244,28 @@ jobs:
       # EXECUTES the red branch on every run, against committed fixtures.
       - name: Marketplace coverage — prove the guard can FAIL
         run: python3 scripts/check-marketplace-coverage.test.py
+
+      # ── Card okOoGKTA ──────────────────────────────────────────
+      # release.yml bumped plugin.json but never marketplace.json, so 17 of 33
+      # listings advertised a stale version with every build green. Fail a PR
+      # where any marketplace.json version differs from its plugin.json.
+      - name: Marketplace versions — manifest vs plugin.json
+        run: python3 scripts/marketplace-versions.py --root .
+
+      # Negative control: the red branch (a deliberately drifted fixture) and
+      # the bump-version.sh integration run on every build, not once by hand.
+      - name: Marketplace versions — prove the guard can FAIL
+        run: python3 scripts/marketplace-versions.test.py
+
+      # ── Card czICbElh ──────────────────────────────────────────
+      # Nothing here ever read .lsp.json or an inline lspServers block, so an
+      # LSP plugin with a key Claude Code rejects (startupTimeoutMs for
+      # startupTimeout) merged and published green while the loader dropped
+      # the whole file. The allowed-key list is pinned in the script.
+      - name: LSP server configs — schema check
+        run: python3 scripts/check-lsp-config.py --root .
+
+      # Negative control: committed fixtures (startupTimeoutMs, missing
+      # command, unknown inline key, ...) must red on every run.
+      - name: LSP server configs — prove the guard can FAIL
+        run: python3 scripts/check-lsp-config.test.py
