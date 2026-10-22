@@ -18,7 +18,9 @@
     "prompt-engineering",
     "msapps"
   ],
-  "privacy_policy": "https://opsagents.agency/privacy",
-  "terms_of_service": "https://opsagents.agency/terms",
-  "homepage": "https://claudeservices.ai/plugins"
+  "homepage": "https://claudeservices.ai/plugins",
+  "documentationUrl": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/agents-md-optimizer/README.md",
+  "supportUrl": "https://github.com/MSApps-Mobile/claude-plugins/issues",
+  "privacyPolicyUrl": "https://opsagents.agency/privacy",
+  "termsOfServiceUrl": "https://opsagents.agency/terms"
 }

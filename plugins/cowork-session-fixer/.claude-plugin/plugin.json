@@ -35,7 +35,9 @@
   "topics": [
     "sosa-agents"
   ],
-  "privacy_policy": "https://opsagents.agency/privacy",
-  "terms_of_service": "https://opsagents.agency/terms",
-  "license": "MIT"
+  "license": "MIT",
+  "documentationUrl": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/cowork-session-fixer/README.md",
+  "supportUrl": "https://github.com/MSApps-Mobile/claude-plugins/issues",
+  "privacyPolicyUrl": "https://opsagents.agency/privacy",
+  "termsOfServiceUrl": "https://opsagents.agency/terms"
 }

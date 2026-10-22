@@ -11,8 +11,6 @@
   "homepage": "https://claudeservices.ai/plugins",
   "repository": "https://github.com/MSApps-Mobile/claude-plugins",
   "license": "MIT",
-  "privacy_policy": "https://opsagents.agency/privacy",
-  "terms_of_service": "https://opsagents.agency/terms",
   "keywords": [
     "typescript",
     "javascript",
@@ -41,5 +39,9 @@
   },
   "topics": [
     "sosa-agents"
-  ]
+  ],
+  "documentationUrl": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/typescript-lsp/README.md",
+  "supportUrl": "https://github.com/MSApps-Mobile/claude-plugins/issues",
+  "privacyPolicyUrl": "https://opsagents.agency/privacy",
+  "termsOfServiceUrl": "https://opsagents.agency/terms"
 }

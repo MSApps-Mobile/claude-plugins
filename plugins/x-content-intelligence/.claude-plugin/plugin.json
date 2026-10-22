@@ -9,8 +9,6 @@
   },
   "repository": "https://github.com/MSApps-Mobile/claude-plugins",
   "license": "MIT",
-  "privacy_policy": "https://opsagents.agency/privacy",
-  "terms_of_service": "https://opsagents.agency/terms",
   "keywords": [
     "x",
     "twitter",
@@ -37,5 +35,9 @@
   "topics": [
     "sosa-agents"
   ],
-  "homepage": "https://claudeservices.ai/plugins"
+  "homepage": "https://claudeservices.ai/plugins",
+  "documentationUrl": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/x-content-intelligence/README.md",
+  "supportUrl": "https://github.com/MSApps-Mobile/claude-plugins/issues",
+  "privacyPolicyUrl": "https://opsagents.agency/privacy",
+  "termsOfServiceUrl": "https://opsagents.agency/terms"
 }

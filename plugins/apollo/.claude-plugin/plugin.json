@@ -10,8 +10,6 @@
   "repository": "https://github.com/MSApps-Mobile/claude-plugins",
   "homepage": "https://www.apollo.io/",
   "license": "MIT",
-  "privacy_policy": "https://opsagents.agency/privacy",
-  "terms_of_service": "https://opsagents.agency/terms",
   "keywords": [
     "apollo",
     "sales",
@@ -37,5 +35,9 @@
   },
   "topics": [
     "sosa-agents"
-  ]
+  ],
+  "documentationUrl": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/apollo/README.md",
+  "supportUrl": "https://github.com/MSApps-Mobile/claude-plugins/issues",
+  "privacyPolicyUrl": "https://opsagents.agency/privacy",
+  "termsOfServiceUrl": "https://opsagents.agency/terms"
 }

@@ -10,8 +10,6 @@
   },
   "homepage": "https://claudeservices.ai/plugins",
   "license": "MIT",
-  "privacy_policy": "https://opsagents.agency/privacy",
-  "terms_of_service": "https://opsagents.agency/terms",
   "sosa": {
     "level": 3,
     "impact": "high",
@@ -32,5 +30,17 @@
     "notion_read_write",
     "present_files"
   ],
-  "repository": "https://github.com/MSApps-Mobile/claude-plugins"
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "documentationUrl": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/token-efficiency-audit/README.md",
+  "supportUrl": "https://github.com/MSApps-Mobile/claude-plugins/issues",
+  "privacyPolicyUrl": "https://opsagents.agency/privacy",
+  "termsOfServiceUrl": "https://opsagents.agency/terms",
+  "keywords": [
+    "tokens",
+    "cost",
+    "context-window",
+    "efficiency",
+    "audit",
+    "claude-code"
+  ]
 }

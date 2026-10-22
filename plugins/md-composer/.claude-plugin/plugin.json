@@ -23,5 +23,9 @@
     "200-line-rule",
     "hierarchy",
     "skills"
-  ]
+  ],
+  "documentationUrl": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/md-composer/README.md",
+  "supportUrl": "https://github.com/MSApps-Mobile/claude-plugins/issues",
+  "privacyPolicyUrl": "https://opsagents.agency/privacy",
+  "termsOfServiceUrl": "https://opsagents.agency/terms"
 }

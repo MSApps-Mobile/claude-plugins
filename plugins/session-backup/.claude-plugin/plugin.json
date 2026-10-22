@@ -8,8 +8,6 @@
     "url": "https://claudeservices.ai"
   },
   "license": "MIT",
-  "privacy_policy": "https://opsagents.agency/privacy",
-  "terms_of_service": "https://opsagents.agency/terms",
   "keywords": [
     "backup",
     "session",
@@ -41,5 +39,9 @@
     "sosa-agents"
   ],
   "homepage": "https://claudeservices.ai/plugins",
-  "repository": "https://github.com/MSApps-Mobile/claude-plugins"
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "documentationUrl": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/session-backup/README.md",
+  "supportUrl": "https://github.com/MSApps-Mobile/claude-plugins/issues",
+  "privacyPolicyUrl": "https://opsagents.agency/privacy",
+  "termsOfServiceUrl": "https://opsagents.agency/terms"
 }
