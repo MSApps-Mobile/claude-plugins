@@ -2,11 +2,11 @@
   "mcpServers": {
     "zoho-mail": {
       "command": "node",
-      "args": ["${ZOHO_MAIL_MCP_PATH}/dist/index.js"],
+      "args": ["${user_config.ZOHO_MAIL_MCP_PATH}/dist/index.js"],
       "env": {
-        "ZOHO_CLIENT_ID": "${ZOHO_CLIENT_ID}",
-        "ZOHO_CLIENT_SECRET": "${ZOHO_CLIENT_SECRET}",
-        "ZOHO_ACCOUNTS": "${ZOHO_ACCOUNTS}"
+        "ZOHO_CLIENT_ID": "${user_config.ZOHO_CLIENT_ID}",
+        "ZOHO_CLIENT_SECRET": "${user_config.ZOHO_CLIENT_SECRET}",
+        "ZOHO_ACCOUNTS": "${user_config.ZOHO_ACCOUNTS}"
       }
     }
   }
