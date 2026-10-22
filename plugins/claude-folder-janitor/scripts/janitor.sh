@@ -136,6 +136,11 @@ rule_changelog() {
 #   1. the cwd recorded inside its transcripts (if any) does not exist, and
 #   2. no existing directory on disk encodes to its name (a walk from / that follows every child whose
 #      encoding is a prefix of the remaining name).
+#   3. "gone" is only believed when it is provable: a missing path on an unmounted volume, a network share, an
+#      encrypted or removable disk, or behind a folder macOS will not let us read looks exactly like a deleted
+#      project, and /janitor apply would rm -rf its transcripts. So a project counts as orphaned only when its
+#      nearest existing parent folder is readable and on the same disk as / or $HOME, and it does not sit
+#      under a mount root (/Volumes, /mnt, /media) whose mount is missing. Anything unclear is KEPT.
 # Pure bash (no fork per child): the walk below runs this once per directory entry it visits.
 encode() { local s="$1"; printf '%s' "${s//[^A-Za-z0-9]/-}"; }
 
@@ -155,6 +160,43 @@ path_exists_for() {  # dir remaining-encoded-name → 0 if some existing dir und
   return 1
 }
 
+# Overridable so the fixture test is deterministic (no real /Volumes needed, any tmp filesystem layout).
+MOUNT_ROOTS="${JANITOR_MOUNT_ROOTS:-/Volumes /mnt /media}"
+DISK_REFS="${JANITOR_DISK_REFS:-/ $HOME}"
+
+devid() {  # path → numeric device id (GNU stat -c, then BSD/macOS stat -f); empty when unknown
+  local id
+  id="$(stat -c %d -- "$1" 2>/dev/null)" || id="$(stat -f %d "$1" 2>/dev/null)" || return 0
+  case "$id" in ''|*[!0-9]*) return 0 ;; esac
+  printf '%s' "$id"
+}
+
+# 0 only when a cwd that failed the existence check is PROVABLY gone (not merely unreachable).
+cwd_provably_gone() {
+  local cwd="$1" r rest mount p pd rd ref
+  case "$cwd" in /*) ;; *) return 1 ;; esac
+  for r in $MOUNT_ROOTS; do
+    r="${r%/}"
+    case "$cwd" in
+      "$r"/*) rest="${cwd#"$r"/}"; mount="$r/${rest%%/*}"; [ -d "$mount" ] || return 1 ;;
+    esac
+  done
+  p="$cwd"
+  while [ ! -e "$p" ] && [ ! -L "$p" ]; do
+    p="${p%/*}"
+    [ -n "$p" ] || p=/
+  done
+  [ "$p" != "$cwd" ] || return 1                  # it exists after all (a file, a dangling link)
+  [ -d "$p" ] && [ -r "$p" ] && [ -x "$p" ] || return 1   # cannot see inside the nearest parent: unknown
+  pd="$(devid "$p")"
+  [ -n "$pd" ] || return 1
+  for ref in $DISK_REFS; do
+    rd="$(devid "$ref")"
+    [ -n "$rd" ] && [ "$rd" = "$pd" ] && return 0
+  done
+  return 1
+}
+
 recorded_cwd() {  # first "cwd" found in the first lines of the project's transcripts
   local f c
   for f in "$1"/*.jsonl; do
@@ -166,7 +208,7 @@ recorded_cwd() {  # first "cwd" found in the first lines of the project's transc
 }
 
 rule_orphans() {
-  local dir="$CLAUDE_DIR/projects" p name cwd
+  local dir="$CLAUDE_DIR/projects" p name cwd r
   [ -d "$dir" ] || return 0
   for p in "$dir"/*/; do
     p="${p%/}"
@@ -175,6 +217,14 @@ rule_orphans() {
     case "$name" in -*) ;; *) continue ;; esac   # not a path encoding we understand — keep it
     cwd="$(recorded_cwd "$p")"
     if [ -n "$cwd" ] && [ -d "$cwd" ]; then continue; fi
+    if [ -n "$cwd" ]; then
+      cwd_provably_gone "$cwd" || continue
+    else
+      # no recorded cwd: the name alone cannot say which mount it lived on — keep anything under a mount root
+      for r in $MOUNT_ROOTS; do
+        case "$name" in "$(encode "${r%/}")"-*) continue 2 ;; esac
+      done
+    fi
     if path_exists_for "" "$name"; then continue; fi
     untouched "$p" || continue
     add orphan "$p" "project path ${cwd:-(decoded from $name)} no longer exists; transcripts untouched ${MIN_AGE_DAYS}+ days"

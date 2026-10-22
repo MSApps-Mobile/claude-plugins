@@ -49,13 +49,30 @@ old "$C/projects/$(enc "$GONE")/s.jsonl" "$C/projects/$(enc "$GONE")" \
     "$C/projects/$(enc "$LIVE")-nocwd/s.jsonl" "$C/projects/$(enc "$LIVE")-nocwd" \
     "$C/projects/not-an-encoding/s.jsonl" "$C/projects/not-an-encoding"
 
+# rule 4, safety — projects whose "no longer exists" cannot be trusted must never be listed:
+#   a) the cwd sits under a mount root (/Volumes, /mnt, /media; overridden here) whose mount is missing
+#   b) the nearest existing parent of the cwd cannot be searched, so existence cannot be determined
+MNT="$ROOT/Volumes"   # stands in for /Volumes; NotMounted is deliberately absent
+UNMOUNTED="$MNT/NotMounted/proj"
+LOCKED="$ROOT/locked"; LOCKED_CWD="$LOCKED/proj"
+mkdir -p "$C/projects/$(enc "$UNMOUNTED")" "$C/projects/$(enc "$LOCKED_CWD")"
+printf '{"cwd":"%s"}\n' "$UNMOUNTED" > "$C/projects/$(enc "$UNMOUNTED")/s.jsonl"
+printf '{"cwd":"%s"}\n' "$LOCKED_CWD" > "$C/projects/$(enc "$LOCKED_CWD")/s.jsonl"
+old "$C/projects/$(enc "$UNMOUNTED")/s.jsonl" "$C/projects/$(enc "$UNMOUNTED")" \
+    "$C/projects/$(enc "$LOCKED_CWD")/s.jsonl" "$C/projects/$(enc "$LOCKED_CWD")"
+mkdir -p "$LOCKED"; chmod 000 "$LOCKED"
+trap 'chmod 755 "$LOCKED" 2>/dev/null; rm -rf "$ROOT"' EXIT
+
 # protected — all old, none may ever be listed
 mkdir -p "$C/skills/a" "$C/plugins/b" "$C/scheduled-tasks/c"
 for f in CLAUDE.md settings.json settings.local.json history.jsonl skills/a/SKILL.md plugins/b/p.json scheduled-tasks/c/t.md; do
   echo x > "$C/$f"; old "$C/$f"
 done
 
-export JANITOR_CLAUDE_DIR="$C" JANITOR_CLAUDE_VERSION="2.1.203" JANITOR_MIN_AGE_DAYS=7
+# JANITOR_MOUNT_ROOTS / JANITOR_DISK_REFS keep the fixture deterministic on macOS and Linux CI: no real
+# /Volumes is needed, and the temp dir counts as "the same disk" even when /tmp is its own tmpfs.
+export JANITOR_CLAUDE_DIR="$C" JANITOR_CLAUDE_VERSION="2.1.203" JANITOR_MIN_AGE_DAYS=7 \
+       JANITOR_MOUNT_ROOTS="$MNT" JANITOR_DISK_REFS="$ROOT"
 EXPECTED="backup	$C/backups/.claude.json.backup.170000000001
 backup	$C/backups/.claude.json.backup.170000000002
 changelog	$C/cache/changelog.md
@@ -71,6 +88,14 @@ printf '%s\n' "$OUT" | grep -q $'^summary\tmode=dry-run\tcandidates=5\tremoved=0
 [ -e "$C/backups/.claude.json.backup.170000000001" ] && [ -d "$C/session-env/empty-old" ] && [ -f "$C/cache/changelog.md" ] \
   && ok "dry run deleted nothing" || fail "dry run deleted something"
 
+echo "unmounted volume / unreadable parent"
+printf '%s\n' "$GOT" | grep -qF -- "$(enc "$UNMOUNTED")" && fail "project on an unmounted volume was listed as an orphan" || ok "unmounted-volume project is not an orphan"
+if [ "$(id -u)" -ne 0 ]; then
+  printf '%s\n' "$GOT" | grep -qF -- "$(enc "$LOCKED_CWD")" && fail "project under an unreadable parent was listed" || ok "unreadable-parent project is not an orphan"
+else
+  echo "  - skipped unreadable-parent check (running as root)"
+fi
+
 echo "changelog tolerance"
 JANITOR_CLAUDE_VERSION="2.1.201" "$JANITOR" 2>/dev/null | grep -q '^changelog' && fail "one release behind was flagged" || ok "one release behind is kept"
 JANITOR_CLAUDE_VERSION="2.1.199" "$JANITOR" 2>/dev/null | grep -q '^changelog' && fail "a newer cache was flagged" || ok "a cache newer than the install is kept"
@@ -85,6 +110,8 @@ done
 for kept in "$C/backups/.claude.json.backup.170000000003" "$C/session-env/empty-fresh" "$C/session-env/full-old/env" \
             "$C/projects/$(enc "$LIVE")/s.jsonl" "$C/projects/$(enc "$ROOT/gone-but-fresh")/s.jsonl" \
             "$C/projects/$(enc "$LIVE")-nocwd/s.jsonl" "$C/projects/not-an-encoding/s.jsonl" \
+            "$C/projects/$(enc "$UNMOUNTED")/s.jsonl" "$C/projects/$(enc "$LOCKED_CWD")/s.jsonl" \
+            "$C/projects/$(enc "$UNMOUNTED")/s.jsonl" \
             "$C/CLAUDE.md" "$C/settings.json" "$C/settings.local.json" "$C/history.jsonl" \
             "$C/skills/a/SKILL.md" "$C/plugins/b/p.json" "$C/scheduled-tasks/c/t.md"; do
   [ -e "$kept" ] || fail "removed something it must keep: $kept"
