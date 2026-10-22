@@ -19,7 +19,7 @@ const plans = new Map(); // plan_id → { at, items }
 const TOOLS = [
   {
     name: 'hygiene_status', annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    description: 'Read-only snapshot: disk free, Xcode DerivedData size, leftover plugin clone count, Playwright profile count (locked / in use), stale worktree census, Xcode build state, LaunchAgent state, last log lines. Never changes anything.',
+    description: 'Read-only snapshot: disk free, Xcode DerivedData size, leftover plugin clone count, Playwright profile count (locked / in use), stale worktree and agent session-dir census, Gradle / iOS DeviceSupport / simulator / Android AVD + SDK sizes (AVDs and SDK images are reported, never removed), Xcode build state, LaunchAgent state, last log lines. Never changes anything.',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
   },
   {
@@ -28,7 +28,7 @@ const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        categories: { type: 'array', items: { type: 'string', enum: ['derived-data', 'plugin-clones', 'browser-caches', 'model-caches', 'worktrees'] }, description: 'Restrict the plan to these categories (default: all).' },
+        categories: { type: 'array', items: { type: 'string', enum: ['derived-data', 'plugin-clones', 'browser-caches', 'model-caches', 'worktrees', 'session-dirs', 'gradle', 'ios', 'android', 'pkg-caches'] }, description: 'Restrict the plan to these categories (default: all).' },
         worktree_age_days: { type: 'integer', minimum: 1, description: 'Override HYG_WT_AGE_DAYS for this plan (default 7).' },
       },
       additionalProperties: false,
@@ -46,12 +46,13 @@ const TOOLS = [
   },
   {
     name: 'hygiene_schedule', annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-    description: 'Manage the daily LaunchAgent (com.msapps.mac-agent-hygiene). action=status reads it; install renders the plist from this plugin path and the current $HOME, unloads a legacy com.opsagents.dev-cache-cleanup agent if present, bootstraps and verifies; uninstall removes only this agent.',
+    description: 'Manage the LaunchAgent (com.msapps.mac-agent-hygiene). action=status reads it; install renders the plist from this plugin path and the current $HOME (default: every 4 hours and at login; every_hours changes the interval; hour/minute switches to once a day), unloads a legacy com.opsagents.dev-cache-cleanup agent if present, bootstraps and verifies; uninstall removes only this agent. Overlapping runs are prevented by a lock.',
     inputSchema: {
       type: 'object',
       properties: {
         action: { type: 'string', enum: ['status', 'install', 'uninstall'] },
-        hour: { type: 'integer', minimum: 0, maximum: 23 }, minute: { type: 'integer', minimum: 0, maximum: 59 },
+        every_hours: { type: 'integer', minimum: 1, maximum: 24, description: 'Run every N hours (default 4). Ignored when hour is given.' },
+        hour: { type: 'integer', minimum: 0, maximum: 23, description: 'Run once a day at this hour instead of every N hours.' }, minute: { type: 'integer', minimum: 0, maximum: 59 },
       },
       required: ['action'],
       additionalProperties: false,
@@ -78,7 +79,7 @@ function toolStatus() {
   o.log_tail = tail;
   return o;
 }
-const CATS = ['derived-data', 'plugin-clones', 'browser-caches', 'model-caches', 'worktrees'];
+const CATS = ['derived-data', 'plugin-clones', 'browser-caches', 'model-caches', 'worktrees', 'session-dirs', 'gradle', 'ios', 'android', 'pkg-caches'];
 function toolPlan(args = {}) {
   if (args.categories !== undefined && !(Array.isArray(args.categories) && args.categories.every((c) => CATS.includes(c)))) return { isError: true, text: `categories must be a subset of ${CATS.join(', ')}` };
   if (args.worktree_age_days !== undefined && !(Number.isInteger(args.worktree_age_days) && args.worktree_age_days >= 1)) return { isError: true, text: 'worktree_age_days must be an integer >= 1' };
@@ -114,7 +115,8 @@ function toolApply(args = {}) {
 function toolSchedule(args = {}) {
   if (!['status', 'install', 'uninstall'].includes(args.action)) return { isError: true, text: 'action must be status | install | uninstall' };
   for (const [k, max] of [['hour', 23], ['minute', 59]]) if (args[k] !== undefined && !(Number.isInteger(args[k]) && args[k] >= 0 && args[k] <= max)) return { isError: true, text: `${k} must be an integer 0-${max}` };
-  const a = ['hour', 'minute'].flatMap((k) => (args[k] !== undefined ? [`--${k}`, String(args[k])] : []));
+  if (args.every_hours !== undefined && !(Number.isInteger(args.every_hours) && args.every_hours >= 1 && args.every_hours <= 24)) return { isError: true, text: 'every_hours must be an integer 1-24' };
+  const a = [['hour', 'hour'], ['minute', 'minute'], ['every_hours', 'every-hours']].flatMap(([k, f]) => (args[k] !== undefined ? [`--${f}`, String(args[k])] : []));
   const r = spawnSync('/bin/bash', [LAUNCHD, args.action, ...a], { encoding: 'utf8' });
   if (r.error) throw r.error;
   const o = {}; for (const [k, v] of tsv(r.stdout)) o[k] = v;
