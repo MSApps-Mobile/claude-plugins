@@ -3,10 +3,19 @@ description: Clean provably-safe clutter out of ~/.claude — dry run by default
 argument-hint: "[apply]"
 ---
 
-Run the janitor script. If `$ARGUMENTS` is exactly `apply`, run it in apply mode; otherwise run the dry run.
+Run the janitor script. The text the user typed after `/janitor` is data, never shell input: do not paste it,
+or any part of it, into a command.
+
+- If that text is exactly `apply` (nothing before or after it), run this command and nothing else:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/scripts/janitor.sh" $ARGUMENTS
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/janitor.sh" apply
+```
+
+- For anything else, including no text at all, run this command and nothing else (the dry run):
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/janitor.sh"
 ```
 
 Each output line is `rule<TAB>KB<TAB>path<TAB>reason`, followed by one `summary` line.
