@@ -28,6 +28,15 @@ Transcribe YouTube videos and playlists directly from Claude using browser-based
 
 ## Usage
 
+```
+/youtube-transcriber:transcribe <video or playlist URL>
+
+# Examples:
+/youtube-transcriber:transcribe https://www.youtube.com/watch?v=EXAMPLE
+/youtube-transcriber:transcribe https://www.youtube.com/playlist?list=EXAMPLE
+```
+
+
 Just ask Claude naturally:
 
 - "Transcribe this video: https://youtube.com/watch?v=..."

@@ -1,3 +1,8 @@
+---
+name: disk-explorer
+description: Explore what is taking up space on the Mac and give prioritized, actionable recommendations without deleting anything. Use when the user asks "what's taking up space?", "where is my disk space going?", "show me large files", "why is my Mac full?", or any question about understanding disk usage.
+---
+
 # Disk Explorer
 
 Explore what's taking up space on the Mac and give the user actionable recommendations.

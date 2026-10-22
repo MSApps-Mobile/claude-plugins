@@ -30,3 +30,13 @@ Hebrew, Arabic, Persian (Farsi), Urdu, Pashto, Sindhi, Kurdish (Sorani), Yiddish
 ## Setup
 
 No configuration needed. Install the plugin and the skill activates automatically whenever RTL text appears in the conversation.
+
+## Usage
+
+```
+/rtl-chat-fixer:format-rtl [text to format]
+
+# Examples:
+/rtl-chat-fixer:format-rtl
+/rtl-chat-fixer:format-rtl shalom, here is the status of PR #42 in Hebrew
+```

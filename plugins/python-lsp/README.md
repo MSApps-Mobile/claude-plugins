@@ -75,6 +75,16 @@ Modes: `"off"` → `"basic"` → `"standard"` → `"strict"`. The plugin sends `
 - **Type stubs missing for third-party library** — install `types-<package>` from PyPI or add `reportMissingTypeStubs: false` to silence it.
 - **`.pyi` stubs not picked up** — ensure the stub directory is in `stubPath` in `pyrightconfig.json`.
 
+## Usage
+
+```
+/python-lsp:setup [project path]
+
+# Examples:
+/python-lsp:setup
+/python-lsp:setup ./services/api
+```
+
 ## Part of the LSP plugin series
 
 Sibling plugins: `kotlin-lsp`, `swift-lsp`, `typescript-lsp`, `csharp-lsp`, `java-lsp`
