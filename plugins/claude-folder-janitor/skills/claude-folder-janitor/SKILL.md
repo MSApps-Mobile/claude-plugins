@@ -41,6 +41,17 @@ The orphan rule needs both checks because a project folder name replaces every n
 with `-`, so `/a/b-c` and `/a/b/c` encode the same. The janitor walks the disk following every folder
 whose encoding matches; if any exists, the project is kept.
 
+**Unclear means keep.** A missing folder on an unmounted disk looks exactly like a deleted one, so the
+janitor believes "missing" only when it can prove it:
+
+- the nearest existing parent of the recorded `cwd` is readable and on the same device as one of
+  `JANITOR_DISK_REFS` (default `/` and `$HOME`), and
+- if the `cwd` is under a mount root in `JANITOR_MOUNT_ROOTS` (default `/Volumes /mnt /media`), that
+  volume is provably mounted: its folder exists and its device id is known and differs from the mount
+  root's. An empty leftover folder (an unmounted `/mnt/data`, a stale `/Volumes/X`) shares the root
+  disk's device id, so its projects are kept.
+- a project with no recorded `cwd` whose name starts with a mount root is always kept.
+
 ## Never touched
 
 `skills/`, `plugins/`, `scheduled-tasks/`, `CLAUDE.md`, `settings*.json`, `history.jsonl`, and anything
@@ -53,6 +64,8 @@ removed; a path that fails is reported on stderr and skipped.
 - `JANITOR_KEEP_BACKUPS` — backups to keep (default `1`)
 - `JANITOR_MIN_AGE_DAYS` — age threshold for `session-env` and `orphan` (default `7`)
 - `JANITOR_CLAUDE_VERSION` — overrides `claude --version` for the changelog rule
+- `JANITOR_MOUNT_ROOTS` — space-separated folders whose children are mount points (default `/Volumes /mnt /media`)
+- `JANITOR_DISK_REFS` — space-separated paths that define "the local disk" for the orphan rule (default `/ $HOME`)
 
 ## Not in this version
 

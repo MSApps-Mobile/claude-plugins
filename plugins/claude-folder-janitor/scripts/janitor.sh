@@ -140,7 +140,10 @@ rule_changelog() {
 #      encrypted or removable disk, or behind a folder macOS will not let us read looks exactly like a deleted
 #      project, and /janitor apply would rm -rf its transcripts. So a project counts as orphaned only when its
 #      nearest existing parent folder is readable and on the same disk as / or $HOME, and it does not sit
-#      under a mount root (/Volumes, /mnt, /media) whose mount is missing. Anything unclear is KEPT.
+#      under a mount root (/Volumes, /mnt, /media) whose mount is not provably mounted. A mount counts as
+#      mounted only when its device id is KNOWN and DIFFERS from its mount root's: an unmounted static mount
+#      (Linux /mnt/data) or a stale /Volumes/X leaves an empty folder on the root disk that would otherwise
+#      look like a live, readable volume. Anything unclear is KEPT.
 # Pure bash (no fork per child): the walk below runs this once per directory entry it visits.
 encode() { local s="$1"; printf '%s' "${s//[^A-Za-z0-9]/-}"; }
 
@@ -171,6 +174,15 @@ devid() {  # path → numeric device id (GNU stat -c, then BSD/macOS stat -f); e
   printf '%s' "$id"
 }
 
+# 0 only when $2 (a direct child of mount root $1) is provably a mounted volume: it exists, and both
+# device ids are known and differ. An empty folder left on the root disk shares its root's device id.
+mount_present() {
+  local md rd
+  [ -d "$2" ] || return 1
+  md="$(devid "$2")"; rd="$(devid "$1")"
+  [ -n "$md" ] && [ -n "$rd" ] && [ "$md" != "$rd" ]
+}
+
 # 0 only when a cwd that failed the existence check is PROVABLY gone (not merely unreachable).
 cwd_provably_gone() {
   local cwd="$1" r rest mount p pd rd ref
@@ -178,7 +190,7 @@ cwd_provably_gone() {
   for r in $MOUNT_ROOTS; do
     r="${r%/}"
     case "$cwd" in
-      "$r"/*) rest="${cwd#"$r"/}"; mount="$r/${rest%%/*}"; [ -d "$mount" ] || return 1 ;;
+      "$r"/*) rest="${cwd#"$r"/}"; mount="$r/${rest%%/*}"; mount_present "$r" "$mount" || return 1 ;;
     esac
   done
   p="$cwd"

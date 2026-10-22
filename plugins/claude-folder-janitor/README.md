@@ -28,6 +28,17 @@ A project is an orphan only when the `cwd` recorded in its transcripts is missin
 folder on disk encodes to its name. The name encoding is lossy (`/a/b-c` and `/a/b/c` look the same), so
 the janitor checks every possible match before calling a project orphaned.
 
+**Unclear means keep.** A missing folder on an unmounted disk looks exactly like a deleted one, so "missing"
+is only believed when it is provable:
+
+- the nearest existing parent folder is readable and on the same disk as `/` or `$HOME`, and
+- the project does not sit under a mount root (`/Volumes`, `/mnt`, `/media`) whose volume is not provably
+  mounted. A volume counts as mounted only when its folder's device id is known and differs from the mount
+  root's. An empty leftover folder (an unmounted `/mnt/data`, a stale `/Volumes/X`) sits on the root disk,
+  so its projects are kept.
+
+If any of this cannot be determined, the project is kept.
+
 ## Never touched
 
 `skills/`, `plugins/`, `scheduled-tasks/`, `CLAUDE.md`, `settings*.json`, `history.jsonl`, and anything
@@ -41,7 +52,11 @@ outside `~/.claude`. Each path is checked before it is listed and again before i
 ## Settings
 
 Environment variables: `JANITOR_CLAUDE_DIR`, `JANITOR_KEEP_BACKUPS` (1), `JANITOR_MIN_AGE_DAYS` (7),
-`JANITOR_CLAUDE_VERSION`.
+`JANITOR_CLAUDE_VERSION`, plus two for the orphan rule's mount check:
+
+- `JANITOR_MOUNT_ROOTS` (`/Volumes /mnt /media`): space-separated folders whose children are mount points.
+- `JANITOR_DISK_REFS` (`/ $HOME`): space-separated paths; a missing project counts as gone only when its
+  nearest existing parent is on the same device as one of them.
 
 ## Tests
 
@@ -50,7 +65,8 @@ bash plugins/claude-folder-janitor/tests/janitor.test.sh
 ```
 
 Builds a fake `~/.claude` with one eligible and one ineligible case per rule, plus every protected path,
-all aged past the threshold. Checks that the dry run lists exactly the eligible five and deletes nothing,
+all aged past the threshold. It also covers the keep cases: a missing mount, an empty stale mount folder on
+the root disk, and an unreadable parent. Checks that the dry run lists exactly the eligible five and deletes nothing,
 that apply removes exactly those five, and that every protected and ineligible path survives.
 
 ## Install
