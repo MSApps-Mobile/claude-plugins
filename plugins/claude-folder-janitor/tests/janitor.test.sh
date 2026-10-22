@@ -52,13 +52,19 @@ old "$C/projects/$(enc "$GONE")/s.jsonl" "$C/projects/$(enc "$GONE")" \
 # rule 4, safety — projects whose "no longer exists" cannot be trusted must never be listed:
 #   a) the cwd sits under a mount root (/Volumes, /mnt, /media; overridden here) whose mount is missing
 #   b) the nearest existing parent of the cwd cannot be searched, so existence cannot be determined
+#   c) the mount folder EXISTS but is an empty leftover on the root disk (an unmounted static mount such as
+#      Linux /mnt/data, or a stale /Volumes/X): it sits on the same device as its mount root, so the volume
+#      is not mounted and the project's absence proves nothing
 MNT="$ROOT/Volumes"   # stands in for /Volumes; NotMounted is deliberately absent
 UNMOUNTED="$MNT/NotMounted/proj"
+STALE="$MNT/StaleMount/proj"; mkdir -p "$MNT/StaleMount"   # exists, empty, same device as $MNT
 LOCKED="$ROOT/locked"; LOCKED_CWD="$LOCKED/proj"
-mkdir -p "$C/projects/$(enc "$UNMOUNTED")" "$C/projects/$(enc "$LOCKED_CWD")"
+mkdir -p "$C/projects/$(enc "$UNMOUNTED")" "$C/projects/$(enc "$STALE")" "$C/projects/$(enc "$LOCKED_CWD")"
 printf '{"cwd":"%s"}\n' "$UNMOUNTED" > "$C/projects/$(enc "$UNMOUNTED")/s.jsonl"
+printf '{"cwd":"%s"}\n' "$STALE" > "$C/projects/$(enc "$STALE")/s.jsonl"
 printf '{"cwd":"%s"}\n' "$LOCKED_CWD" > "$C/projects/$(enc "$LOCKED_CWD")/s.jsonl"
 old "$C/projects/$(enc "$UNMOUNTED")/s.jsonl" "$C/projects/$(enc "$UNMOUNTED")" \
+    "$C/projects/$(enc "$STALE")/s.jsonl" "$C/projects/$(enc "$STALE")" \
     "$C/projects/$(enc "$LOCKED_CWD")/s.jsonl" "$C/projects/$(enc "$LOCKED_CWD")"
 mkdir -p "$LOCKED"; chmod 000 "$LOCKED"
 trap 'chmod 755 "$LOCKED" 2>/dev/null; rm -rf "$ROOT"' EXIT
@@ -88,8 +94,9 @@ printf '%s\n' "$OUT" | grep -q $'^summary\tmode=dry-run\tcandidates=5\tremoved=0
 [ -e "$C/backups/.claude.json.backup.170000000001" ] && [ -d "$C/session-env/empty-old" ] && [ -f "$C/cache/changelog.md" ] \
   && ok "dry run deleted nothing" || fail "dry run deleted something"
 
-echo "unmounted volume / unreadable parent"
+echo "unmounted volume / stale mount folder / unreadable parent"
 printf '%s\n' "$GOT" | grep -qF -- "$(enc "$UNMOUNTED")" && fail "project on an unmounted volume was listed as an orphan" || ok "unmounted-volume project is not an orphan"
+printf '%s\n' "$GOT" | grep -qF -- "$(enc "$STALE")" && fail "project under an empty stale mount folder (same device as its mount root) was listed as an orphan" || ok "stale-empty-mount-folder project is not an orphan"
 if [ "$(id -u)" -ne 0 ]; then
   printf '%s\n' "$GOT" | grep -qF -- "$(enc "$LOCKED_CWD")" && fail "project under an unreadable parent was listed" || ok "unreadable-parent project is not an orphan"
 else
@@ -111,7 +118,7 @@ for kept in "$C/backups/.claude.json.backup.170000000003" "$C/session-env/empty-
             "$C/projects/$(enc "$LIVE")/s.jsonl" "$C/projects/$(enc "$ROOT/gone-but-fresh")/s.jsonl" \
             "$C/projects/$(enc "$LIVE")-nocwd/s.jsonl" "$C/projects/not-an-encoding/s.jsonl" \
             "$C/projects/$(enc "$UNMOUNTED")/s.jsonl" "$C/projects/$(enc "$LOCKED_CWD")/s.jsonl" \
-            "$C/projects/$(enc "$UNMOUNTED")/s.jsonl" \
+            "$C/projects/$(enc "$STALE")/s.jsonl" \
             "$C/CLAUDE.md" "$C/settings.json" "$C/settings.local.json" "$C/history.jsonl" \
             "$C/skills/a/SKILL.md" "$C/plugins/b/p.json" "$C/scheduled-tasks/c/t.md"; do
   [ -e "$kept" ] || fail "removed something it must keep: $kept"
