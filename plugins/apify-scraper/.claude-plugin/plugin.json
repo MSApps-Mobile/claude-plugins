@@ -1,9 +1,11 @@
 {
   "name": "apify-scraper",
+  "displayName": "Apify Scraper",
   "version": "0.1.0",
-  "description": "Full Apify web scraping platform integration \u2014 run Actors, manage datasets, key-value stores, schedules, webhooks, and tasks directly from Claude.",
+  "description": "Full Apify web scraping platform integration — run Actors, manage datasets, key-value stores, schedules, webhooks, and tasks directly from Claude.",
   "author": {
-    "name": "MSApps"
+    "name": "MSApps",
+    "url": "https://claudeservices.ai"
   },
   "keywords": [
     "apify",
@@ -31,5 +33,8 @@
     "sosa-agents"
   ],
   "privacy_policy": "https://opsagents.agency/privacy",
-  "terms_of_service": "https://opsagents.agency/terms"
+  "terms_of_service": "https://opsagents.agency/terms",
+  "homepage": "https://claudeservices.ai/plugins",
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "license": "MIT"
 }

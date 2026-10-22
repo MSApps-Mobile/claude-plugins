@@ -1,12 +1,14 @@
 {
   "name": "opsagent-shopify",
+  "displayName": "OpsAgent Shopify",
   "version": "0.3.7",
   "description": "MSApps OpsAgents Shopify plugin — full Admin API + Storefront MCP tools (products CRUD, files, orders, customers, themes, metafields), go-to-market guidance, and @opsagents/shopify-sdk typed contracts.",
   "author": {
-    "name": "Michal Shatz / MSApps",
+    "name": "MSApps",
+    "url": "https://claudeservices.ai",
     "email": "michal@opsagents.agency"
   },
-  "homepage": "https://github.com/MSApps-Mobile/claude-plugins",
+  "homepage": "https://claudeservices.ai/plugins",
   "repository": "https://github.com/MSApps-Mobile/claude-plugins",
   "license": "MIT",
   "keywords": [

@@ -1,10 +1,11 @@
 {
   "name": "fix-chrome-connection",
+  "displayName": "Fix Chrome Connection",
   "description": "Diagnoses and repairs broken Claude in Chrome MCP connections — most common after switching macOS users. Includes an on-demand fix skill, a quick health check, and a pre-configured daily scheduled task.",
   "version": "0.1.31",
   "author": {
     "name": "MSApps",
-    "url": "https://msapps.mobi"
+    "url": "https://claudeservices.ai"
   },
   "license": "MIT",
   "privacy_policy": "https://opsagents.agency/privacy",
@@ -18,7 +19,7 @@
     "extension",
     "sosa-agents"
   ],
-  "homepage": "https://msapps.mobi/plugins",
+  "homepage": "https://claudeservices.ai/plugins",
   "platforms": [
     "claude-code",
     "cowork"
@@ -38,5 +39,6 @@
   },
   "topics": [
     "sosa-agents"
-  ]
+  ],
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins"
 }

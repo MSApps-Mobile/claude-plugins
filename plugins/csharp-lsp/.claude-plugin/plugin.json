@@ -1,13 +1,14 @@
 {
   "name": "csharp-lsp",
+  "displayName": "C# LSP",
   "version": "1.0.1",
   "description": "Real-time C# code intelligence for Claude — Roslyn diagnostics, go-to-definition, find references, and type info via OmniSharp.",
   "author": {
     "name": "MSApps",
-    "email": "michal@msapps.mobi",
-    "url": "https://msapps.mobi"
+    "url": "https://claudeservices.ai",
+    "email": "michal@msapps.mobi"
   },
-  "homepage": "https://msapps.mobi/plugins",
+  "homepage": "https://claudeservices.ai/plugins",
   "repository": "https://github.com/MSApps-Mobile/claude-plugins",
   "license": "MIT",
   "privacy_policy": "https://opsagents.agency/privacy",

@@ -1,9 +1,11 @@
 {
   "name": "wordpress-mcp",
+  "displayName": "WordPress MCP",
   "version": "0.1.0",
-  "description": "Manage WordPress sites through the WordPress MCP Adapter \u2014 content, admin, WooCommerce, and more",
+  "description": "Manage WordPress sites through the WordPress MCP Adapter — content, admin, WooCommerce, and more",
   "author": {
-    "name": "MSApps"
+    "name": "MSApps",
+    "url": "https://claudeservices.ai"
   },
   "keywords": [
     "wordpress",
@@ -30,5 +32,8 @@
     "sosa-agents"
   ],
   "privacy_policy": "https://opsagents.agency/privacy",
-  "terms_of_service": "https://opsagents.agency/terms"
+  "terms_of_service": "https://opsagents.agency/terms",
+  "homepage": "https://claudeservices.ai/plugins",
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "license": "MIT"
 }

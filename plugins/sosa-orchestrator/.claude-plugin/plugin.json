@@ -1,10 +1,11 @@
 {
   "name": "sosa-orchestrator",
+  "displayName": "SOSA Orchestrator",
   "version": "1.0.1",
   "description": "SOSA Orchestrator — token-aware task prioritization and budget management for Claude sessions. Ranks tasks by importance vs. cost, tracks consumption in real time, and pauses work before budget boundaries are crossed.",
   "author": {
-    "name": "MSApps Research",
-    "url": "https://msapps.mobi"
+    "name": "MSApps",
+    "url": "https://claudeservices.ai"
   },
   "repository": "https://github.com/MSApps-Mobile/claude-plugins",
   "license": "MIT",
@@ -38,5 +39,6 @@
       "sosa-governor",
       "token-efficiency-audit"
     ]
-  }
+  },
+  "homepage": "https://claudeservices.ai/plugins"
 }
