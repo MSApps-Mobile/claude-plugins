@@ -15,10 +15,14 @@
 #   model-caches     whole directories listed in HYG_MODEL_CACHES, not MODIFIED for HYG_MODEL_CACHE_AGE_DAYS
 #                    (directory mtime — a model that is only read is still removed after the window and
 #                    re-downloaded on next use; raise the window for models that must stay warm)
-#   worktrees        linked git worktrees under HYG_WT_ROOT matching HYG_WT_GLOB with no file newer
-#                    than HYG_WT_AGE_DAYS, clean, nobody's cwd, HEAD on a remote ref or a merged-PR
-#                    head. Dirty / unpushed / in-use: KEPT. Note: "clean" is `git status --porcelain`,
-#                    so gitignored files (a local .env, node_modules) go with the worktree.
+#   worktrees        linked git worktrees (.git is a FILE) up to HYG_WT_DEPTH levels under HYG_WT_ROOT:
+#                    a direct child matching HYG_WT_GLOB, or anything below a top-level dir named in
+#                    HYG_WT_NESTED (default "wt": ~/code/wt/{sup,ref,pipe}-*/...). No file newer than
+#                    HYG_WT_AGE_DAYS, clean, nobody's cwd, and HEAD on a remote ref, or a merged PR for
+#                    the branch: exact head SHA, or (rebased / force-pushed heads) every local-only
+#                    commit subject matches one of the PR's commits. Dirty / unpushed / in-use: KEPT.
+#                    Note: "clean" is `git status --porcelain`, so gitignored files (a local .env,
+#                    node_modules) go with the worktree. The branch ref stays — nothing is unrecoverable.
 #
 # Config: ~/.config/mac-agent-hygiene/config.env (optional). Environment variables win over the
 # config file, so an MCP call can override one value for one run.
@@ -27,7 +31,7 @@ set -u
 umask 077
 
 # ---------- configuration: defaults < config file < environment ----------
-VARS="HYG_LOG HYG_DERIVED_DATA HYG_PLUGIN_CACHE HYG_PLUGIN_CLONE_MIN_AGE_MIN HYG_PW_GLOB HYG_MODEL_CACHES HYG_MODEL_CACHE_AGE_DAYS HYG_WT_ROOT HYG_WT_GLOB HYG_WT_AGE_DAYS HYG_WT_MERGED_PR_CHECK HYG_GIT HYG_GH"
+VARS="HYG_LOG HYG_DERIVED_DATA HYG_PLUGIN_CACHE HYG_PLUGIN_CLONE_MIN_AGE_MIN HYG_PW_GLOB HYG_MODEL_CACHES HYG_MODEL_CACHE_AGE_DAYS HYG_WT_ROOT HYG_WT_GLOB HYG_WT_NESTED HYG_WT_DEPTH HYG_WT_AGE_DAYS HYG_WT_MERGED_PR_CHECK HYG_GIT HYG_GH"
 for v in $VARS; do eval "ENV_$v=\"\${$v-}\""; done
 CONF="${XDG_CONFIG_HOME:-$HOME/.config}/mac-agent-hygiene/config.env"
 # shellcheck disable=SC1090
@@ -43,10 +47,12 @@ HYG_MODEL_CACHES="${HYG_MODEL_CACHES:-$HOME/.cache/whisper $HOME/.cache/codex-ru
 HYG_MODEL_CACHE_AGE_DAYS="${HYG_MODEL_CACHE_AGE_DAYS:-7}"
 HYG_WT_ROOT="${HYG_WT_ROOT:-$HOME/code}"; HYG_WT_ROOT="${HYG_WT_ROOT%/}"
 HYG_WT_GLOB="${HYG_WT_GLOB:-*wt-*}"
+HYG_WT_NESTED="${HYG_WT_NESTED-wt}"   # set to "" to scan direct children only
+HYG_WT_DEPTH="${HYG_WT_DEPTH:-3}"
 HYG_WT_AGE_DAYS="${HYG_WT_AGE_DAYS:-7}"
 HYG_WT_MERGED_PR_CHECK="${HYG_WT_MERGED_PR_CHECK:-1}"
 HYG_DERIVED_DATA="${HYG_DERIVED_DATA%/}"; HYG_PLUGIN_CACHE="${HYG_PLUGIN_CACHE%/}"
-case "$HYG_WT_AGE_DAYS$HYG_MODEL_CACHE_AGE_DAYS$HYG_PLUGIN_CLONE_MIN_AGE_MIN" in *[!0-9]*) echo "age settings must be integers" >&2; exit 2;; esac
+case "$HYG_WT_AGE_DAYS$HYG_MODEL_CACHE_AGE_DAYS$HYG_PLUGIN_CLONE_MIN_AGE_MIN$HYG_WT_DEPTH" in *[!0-9]*) echo "age settings must be integers" >&2; exit 2;; esac
 
 GIT="${HYG_GIT:-}"
 if [ -z "$GIT" ]; then GIT=/usr/bin/git; [ -x "$HOME/.local/bin/git" ] && GIT="$HOME/.local/bin/git"; fi   # honour a user's git shim unless HYG_GIT is explicit
@@ -83,7 +89,23 @@ TMPD=$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/mac-agent-hygiene.XXXXXX") || { echo 
 trap '/bin/rm -rf "$TMPD"' EXIT
 
 # ---------- enumerators (shared by status, plan and the candidate list) ----------
-list_worktrees(){ [ -d "$HYG_WT_ROOT" ] && /usr/bin/find "$HYG_WT_ROOT" -maxdepth 1 -mindepth 1 -type d -name "$HYG_WT_GLOB" 2>/dev/null | /usr/bin/sort; }
+# Is $1 a place agent worktrees live? A direct child of HYG_WT_ROOT whose name matches HYG_WT_GLOB, or
+# a path at most HYG_WT_DEPTH levels deep under a top-level dir listed in HYG_WT_NESTED (card SIDmENpf:
+# phase sessions put them under ~/code/wt/{sup,ref,pipe}-*/..., 163 GB the direct-child scan never saw).
+# A human's own ~/code/project/feature worktree stays out of scope.
+wt_in_scope(){ local rel top slashes n
+  case "$1" in "$HYG_WT_ROOT"/*) ;; *) return 1;; esac
+  rel="${1#"$HYG_WT_ROOT"/}"; top="${rel%%/*}"
+  slashes="${rel//[!\/]/}"; [ $(( ${#slashes} + 1 )) -le "$HYG_WT_DEPTH" ] || return 1
+  if [ "$rel" = "$top" ]; then case "$top" in $HYG_WT_GLOB) return 0;; esac; fi
+  for n in $HYG_WT_NESTED; do [ "$top" = "$n" ] && [ "$rel" != "$top" ] && return 0; done
+  return 1; }
+# Linked worktrees only (.git is a FILE); a full clone's .git DIR is pruned, never listed.
+list_worktrees(){ local g d
+  [ -d "$HYG_WT_ROOT" ] || return 0
+  /usr/bin/find "$HYG_WT_ROOT" -mindepth 2 -maxdepth $((HYG_WT_DEPTH+1)) \( -type d \( -name .git -o -name node_modules \) -prune \) \
+      -o \( -type f -name .git -print \) 2>/dev/null | /usr/bin/sort |
+  while IFS= read -r g; do d="${g%/.git}"; wt_in_scope "$d" && printf '%s\n' "$d"; done; }
 list_clones(){ [ -d "$HYG_PLUGIN_CACHE" ] && /usr/bin/find "$HYG_PLUGIN_CACHE" -maxdepth 1 -mindepth 1 -type d -name 'temp_git_*' 2>/dev/null | /usr/bin/sort; }
 list_profiles(){ local p; for p in $HYG_PW_GLOB; do [ -d "$p" ] && printf '%s\n' "$p"; done; }
 # Directories a human does not edit — dependency trees, VCS internals, build output. Pruned from the
@@ -121,10 +143,39 @@ check_model(){ local m; for m in $HYG_MODEL_CACHES; do
     [ -n "$(/usr/bin/find "$1" -maxdepth 0 -mtime +"$HYG_MODEL_CACHE_AGE_DAYS" 2>/dev/null)" ] || { REASON=used-recently; return 1; }
     REASON=re-downloadable-model-cache; return 0; done
   REASON=not-a-listed-model-cache; return 1; }
-check_worktree(){ local d="$1" b h repo f st
-  [ "$(dirname "$d")" = "$HYG_WT_ROOT" ] || { REASON=outside-worktree-root; return 1; }
-  case "$(basename "$d")" in $HYG_WT_GLOB) ;; *) REASON=name-does-not-match-glob; return 1;; esac
+# Every subject in file $1 equals a headline in file $2, or starts with a headline gh truncated ("…").
+subjects_all_in(){ local s p pp hit
+  while IFS= read -r s; do hit=1
+    while IFS= read -r p; do [ -n "$p" ] || continue
+      [ "$s" = "$p" ] && { hit=0; break; }
+      case "$p" in *…) ;; *) continue;; esac
+      pp="${p%…}"; pp="${pp%"${pp##*[! ]}"}"                       # drop the ellipsis and trailing blanks
+      [ ${#pp} -ge 20 ] || continue                                   # never match on a stub prefix
+      case "$s" in "$pp"*) hit=0; break;; esac
+    done < "$2"
+    [ $hit = 0 ] || return 1
+  done < "$1"; return 0; }
+# A rebased / force-pushed branch: its MERGED PR's head SHA is not our HEAD, but every commit we hold
+# that no remote has must appear among the PR's commits by subject. Any doubt (no commits, gh failure,
+# one subject without a match) ⇒ 1 ⇒ KEEP.
+merged_pr_commits_match(){ local d="$1" repo="$2" f="$3" b="$4" ls="$TMPD/local-subjects" rb ro rn pf
+  "$GIT" -C "$d" log --format=%s HEAD --not --remotes > "$ls" 2>/dev/null || return 1
+  [ -s "$ls" ] || return 1
+  [ "$(/usr/bin/wc -l < "$ls")" -le 200 ] || return 1
+  while read -r rb ro rn; do
+    [ "$rb" = "$b" ] && [ -n "$rn" ] || continue
+    case "$rn" in *[!0-9]*) continue;; esac
+    pf="$f.pr$rn"
+    [ -f "$pf" ] || "$GH" pr view "$rn" --repo "$repo" --json commits --jq '.commits[].messageHeadline' > "$pf" 2>/dev/null || : > "$pf"
+    subjects_all_in "$ls" "$pf" && return 0
+  done < "$f"
+  return 1; }
+check_worktree(){ local d="$1" b h repo f st rb ro rn gd cdir
+  wt_in_scope "$d" || { REASON=outside-worktree-scope; return 1; }
   [ -f "$d/.git" ] || { REASON=not-a-linked-worktree; return 1; }        # a full clone has a .git DIR — left alone
+  gd=$("$GIT" -C "$d" rev-parse --path-format=absolute --git-dir 2>/dev/null)
+  cdir=$("$GIT" -C "$d" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
+  [ -n "$gd" ] && [ "$gd" != "$cdir" ] || { REASON=not-a-linked-worktree; return 1; }   # submodule / separate git-dir
   wt_recently_touched "$d" && { REASON=touched-recently; return 1; }
   cwd_inside "$d" && { REASON=a-process-is-inside; return 1; }
   st=$("$GIT" -C "$d" status --porcelain 2>/dev/null) || { REASON=git-status-failed; return 1; }
@@ -136,9 +187,10 @@ check_worktree(){ local d="$1" b h repo f st
     repo=$("$GIT" -C "$d" remote get-url origin 2>/dev/null | /usr/bin/sed -E 's#.*github.com[:/]##; s#\.git$##')
     if [ -n "$repo" ]; then
       f="$TMPD/$(echo "$repo" | tr / _)"
-      [ -f "$f" ] || "$GH" pr list --repo "$repo" --state merged --limit 3000 --json headRefName,headRefOid \
-          --jq '.[] | "\(.headRefName) \(.headRefOid)"' > "$f" 2>/dev/null || : > "$f"   # gh failure ⇒ empty ⇒ KEEP
-      /usr/bin/grep -qxF "$b $h" "$f" && { REASON=merged-pr-head; return 0; }
+      [ -f "$f" ] || "$GH" pr list --repo "$repo" --state merged --limit 3000 --json headRefName,headRefOid,number \
+          --jq '.[] | "\(.headRefName) \(.headRefOid) \(.number)"' > "$f" 2>/dev/null || : > "$f"   # gh failure ⇒ empty ⇒ KEEP
+      while read -r rb ro rn; do [ "$rb" = "$b" ] && [ "$ro" = "$h" ] && { REASON=merged-pr-head; return 0; }; done < "$f"
+      if [ -n "$b" ] && [ "$b" != HEAD ] && merged_pr_commits_match "$d" "$repo" "$f" "$b"; then REASON=merged-pr-commits; return 0; fi
     fi
   fi
   REASON=unpushed-commits; return 1; }
