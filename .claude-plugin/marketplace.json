@@ -1308,6 +1308,38 @@
         "diagnostics",
         "free"
       ]
+    },
+    {
+      "name": "directory-manager",
+      "source": "./plugins/directory-manager",
+      "description": "Lint plugins against the Claude directory's listing rules, read submission status, request publishes and track installs.",
+      "version": "0.1.0",
+      "platforms": [
+        "claude-code",
+        "cowork"
+      ],
+      "author": {
+        "name": "MSApps",
+        "email": "michal@msapps.mobi"
+      },
+      "homepage": "https://claudeservices.ai/plugins",
+      "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+      "license": "MIT",
+      "keywords": [
+        "plugin-directory",
+        "marketplace",
+        "listing",
+        "lint",
+        "publishing",
+        "sosa-agents"
+      ],
+      "category": "developer-tools",
+      "tags": [
+        "plugins",
+        "directory",
+        "lint",
+        "free"
+      ]
     }
   ]
 }
