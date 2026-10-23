@@ -598,7 +598,7 @@
       "name": "gcloud-cli-health-check",
       "source": "./plugins/gcloud-cli-health-check",
       "description": "Comprehensive Google Cloud CLI validation — checks installation, authentication, project config, enabled APIs, billing, and Cloud Run availability",
-      "version": "1.1.4",
+      "version": "1.1.5",
       "platforms": [
         "claude-code",
         "cowork"
