@@ -806,7 +806,7 @@
       "name": "sosa-orchestrator",
       "source": "./plugins/sosa-orchestrator",
       "description": "Token-aware task prioritization and budget management for Claude sessions — ranks tasks by importance vs. cost and tracks consumption in real time",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "platforms": [
         "claude-code",
         "cowork"
