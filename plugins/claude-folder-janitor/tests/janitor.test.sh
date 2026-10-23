@@ -66,6 +66,20 @@ printf '{"cwd":"%s"}\n' "$LOCKED_CWD" > "$C/projects/$(enc "$LOCKED_CWD")/s.json
 old "$C/projects/$(enc "$UNMOUNTED")/s.jsonl" "$C/projects/$(enc "$UNMOUNTED")" \
     "$C/projects/$(enc "$STALE")/s.jsonl" "$C/projects/$(enc "$STALE")" \
     "$C/projects/$(enc "$LOCKED_CWD")/s.jsonl" "$C/projects/$(enc "$LOCKED_CWD")"
+#   d) the recorded cwd reaches an empty stale mount folder through a SYMLINK (~/ext -> /Volumes/Stale, cwd
+#      ~/ext/proj): the text of the cwd is not under a mount root, but the place it really leads to is
+#   e) memory-only projects (a memory/ folder, no transcript, so no recorded cwd) under that same symlink and
+#      under an unreadable parent: with no cwd there is nothing to prove "gone" with, so they are kept
+ALIAS="$ROOT/ext"; mkdir -p "$MNT/StaleAlias"; ln -s "$MNT/StaleAlias" "$ALIAS"   # empty, same device as $MNT
+ALIAS_CWD="$ALIAS/proj"
+MEM_ALIAS="$ALIAS/memproj"; MEM_LOCKED="$LOCKED/memproj"
+mkdir -p "$C/projects/$(enc "$ALIAS_CWD")" "$C/projects/$(enc "$MEM_ALIAS")/memory" "$C/projects/$(enc "$MEM_LOCKED")/memory"
+printf '{"cwd":"%s"}\n' "$ALIAS_CWD" > "$C/projects/$(enc "$ALIAS_CWD")/s.jsonl"
+echo '# memory' > "$C/projects/$(enc "$MEM_ALIAS")/memory/MEMORY.md"
+echo '# memory' > "$C/projects/$(enc "$MEM_LOCKED")/memory/MEMORY.md"
+old "$C/projects/$(enc "$ALIAS_CWD")/s.jsonl" "$C/projects/$(enc "$ALIAS_CWD")" \
+    "$C/projects/$(enc "$MEM_ALIAS")/memory/MEMORY.md" "$C/projects/$(enc "$MEM_ALIAS")/memory" "$C/projects/$(enc "$MEM_ALIAS")" \
+    "$C/projects/$(enc "$MEM_LOCKED")/memory/MEMORY.md" "$C/projects/$(enc "$MEM_LOCKED")/memory" "$C/projects/$(enc "$MEM_LOCKED")"
 mkdir -p "$LOCKED"; chmod 000 "$LOCKED"
 trap 'chmod 755 "$LOCKED" 2>/dev/null; rm -rf "$ROOT"' EXIT
 
@@ -103,6 +117,15 @@ else
   echo "  - skipped unreadable-parent check (running as root)"
 fi
 
+echo "symlink alias to a stale mount / memory-only projects"
+printf '%s\n' "$GOT" | grep -qF -- "$(enc "$ALIAS_CWD")" && fail "project reached through a symlink to an empty stale mount folder was listed as an orphan" || ok "symlink-to-stale-mount project is not an orphan"
+printf '%s\n' "$GOT" | grep -qF -- "$(enc "$MEM_ALIAS")" && fail "memory-only project (no recorded cwd) under the symlink was listed as an orphan" || ok "memory-only project under the symlink is not an orphan"
+if [ "$(id -u)" -ne 0 ]; then
+  printf '%s\n' "$GOT" | grep -qF -- "$(enc "$MEM_LOCKED")" && fail "memory-only project (no recorded cwd) under an unreadable parent was listed as an orphan" || ok "memory-only project under an unreadable parent is not an orphan"
+else
+  echo "  - skipped memory-only unreadable-parent check (running as root)"
+fi
+
 echo "changelog tolerance"
 JANITOR_CLAUDE_VERSION="2.1.201" "$JANITOR" 2>/dev/null | grep -q '^changelog' && fail "one release behind was flagged" || ok "one release behind is kept"
 JANITOR_CLAUDE_VERSION="2.1.199" "$JANITOR" 2>/dev/null | grep -q '^changelog' && fail "a newer cache was flagged" || ok "a cache newer than the install is kept"
@@ -118,7 +141,8 @@ for kept in "$C/backups/.claude.json.backup.170000000003" "$C/session-env/empty-
             "$C/projects/$(enc "$LIVE")/s.jsonl" "$C/projects/$(enc "$ROOT/gone-but-fresh")/s.jsonl" \
             "$C/projects/$(enc "$LIVE")-nocwd/s.jsonl" "$C/projects/not-an-encoding/s.jsonl" \
             "$C/projects/$(enc "$UNMOUNTED")/s.jsonl" "$C/projects/$(enc "$LOCKED_CWD")/s.jsonl" \
-            "$C/projects/$(enc "$STALE")/s.jsonl" \
+            "$C/projects/$(enc "$STALE")/s.jsonl" "$C/projects/$(enc "$ALIAS_CWD")/s.jsonl" \
+            "$C/projects/$(enc "$MEM_ALIAS")/memory/MEMORY.md" "$C/projects/$(enc "$MEM_LOCKED")/memory/MEMORY.md" \
             "$C/CLAUDE.md" "$C/settings.json" "$C/settings.local.json" "$C/history.jsonl" \
             "$C/skills/a/SKILL.md" "$C/plugins/b/p.json" "$C/scheduled-tasks/c/t.md"; do
   [ -e "$kept" ] || fail "removed something it must keep: $kept"
