@@ -37,5 +37,20 @@
   "documentationUrl": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/wordpress-mcp/README.md",
   "supportUrl": "https://github.com/MSApps-Mobile/claude-plugins/issues",
   "privacyPolicyUrl": "https://opsagents.agency/privacy",
-  "termsOfServiceUrl": "https://opsagents.agency/terms"
+  "termsOfServiceUrl": "https://opsagents.agency/terms",
+  "userConfig": {
+    "WP_MCP_URL": {
+      "type": "string",
+      "title": "WordPress MCP endpoint",
+      "description": "Your site's MCP Adapter HTTP endpoint, for example https://yoursite.com/wp-json/mcp/v1",
+      "required": true
+    },
+    "WP_MCP_AUTH": {
+      "type": "string",
+      "title": "WordPress credentials",
+      "description": "Base64 of username:application_password for a WordPress user.",
+      "required": true,
+      "sensitive": true
+    }
+  }
 }

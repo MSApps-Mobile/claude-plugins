@@ -2,9 +2,13 @@
   "mcpServers": {
     "apify": {
       "command": "npx",
-      "args": ["tsx", "${CLAUDE_PLUGIN_ROOT}/servers/apify/src/index.ts"],
+      "args": [
+        "--yes",
+        "tsx@4.19.2",
+        "${CLAUDE_PLUGIN_ROOT}/servers/apify/src/index.ts"
+      ],
       "env": {
-        "APIFY_API_TOKEN": "${APIFY_API_TOKEN}"
+        "APIFY_API_TOKEN": "${user_config.APIFY_API_TOKEN}"
       }
     }
   }

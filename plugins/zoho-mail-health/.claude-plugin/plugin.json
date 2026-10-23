@@ -31,5 +31,33 @@
   "documentationUrl": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/zoho-mail-health/README.md",
   "supportUrl": "https://github.com/MSApps-Mobile/claude-plugins/issues",
   "privacyPolicyUrl": "https://opsagents.agency/privacy",
-  "termsOfServiceUrl": "https://opsagents.agency/terms"
+  "termsOfServiceUrl": "https://opsagents.agency/terms",
+  "userConfig": {
+    "ZOHO_MAIL_MCP_PATH": {
+      "type": "directory",
+      "title": "Zoho Mail MCP folder",
+      "description": "Folder of your local Zoho Mail MCP server (the one holding dist/index.js).",
+      "required": true
+    },
+    "ZOHO_CLIENT_ID": {
+      "type": "string",
+      "title": "Zoho client ID",
+      "description": "OAuth client ID from api-console.zoho.com.",
+      "required": true
+    },
+    "ZOHO_CLIENT_SECRET": {
+      "type": "string",
+      "title": "Zoho client secret",
+      "description": "OAuth client secret from api-console.zoho.com.",
+      "required": true,
+      "sensitive": true
+    },
+    "ZOHO_ACCOUNTS": {
+      "type": "string",
+      "title": "Zoho accounts",
+      "description": "The mailbox accounts to check, in the format your Zoho Mail MCP server expects.",
+      "required": true,
+      "sensitive": true
+    }
+  }
 }

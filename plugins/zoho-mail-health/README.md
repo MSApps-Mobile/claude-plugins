@@ -15,6 +15,8 @@ Verifies that both Zoho Mail accounts (`michal@msapps.mobi` and `jobs@msapps.mob
 
 ## Setup
 
+> **Settings:** when you turn this plugin on, Claude asks for ZOHO_MAIL_MCP_PATH, ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET and ZOHO_ACCOUNTS. Secret values are stored in secure storage, not in a settings file. You no longer need to export them as environment variables. Change them later from `/config` (Claude Code) or the plugin's settings.
+
 The `.mcp.json` is pre-configured for MSApps accounts. No additional environment variables are required — credentials are embedded.
 
 If the Zoho MCP server is not installed, build it first:

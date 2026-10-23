@@ -13,6 +13,8 @@ This plugin gives Claude full access to your WhatsApp account through an MCP bri
 
 ## Install (marketplace first)
 
+> **Settings:** when you turn this plugin on, Claude asks for WHATSAPP_MCP_PATH. Secret values are stored in secure storage, not in a settings file. You no longer need to export them as environment variables. Change them later from `/config` (Claude Code) or the plugin's settings.
+
 This plugin ships in the **[MSApps-Mobile/claude-plugins](https://github.com/MSApps-Mobile/claude-plugins)** marketplace.
 
 **Claude Code (CLI):**

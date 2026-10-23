@@ -2,9 +2,9 @@
   "mcpServers": {
     "wordpress": {
       "type": "http",
-      "url": "${WP_MCP_URL}",
+      "url": "${user_config.WP_MCP_URL}",
       "headers": {
-        "Authorization": "Basic ${WP_MCP_AUTH}"
+        "Authorization": "Basic ${user_config.WP_MCP_AUTH}"
       }
     }
   }

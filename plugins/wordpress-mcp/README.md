@@ -16,6 +16,8 @@ Connect Claude to any WordPress 6.9+ site and manage content, users, settings, a
 
 ## Setup
 
+> **Settings:** when you turn this plugin on, Claude asks for WP_MCP_URL and WP_MCP_AUTH. Secret values are stored in secure storage, not in a settings file. You no longer need to export them as environment variables. Change them later from `/config` (Claude Code) or the plugin's settings.
+
 ### 1. Install the WordPress MCP Adapter
 
 Install the [WordPress MCP Adapter](https://github.com/developer-wordpress-org/wp-mcp-adapter) plugin on your WordPress site from the GitHub releases page.
