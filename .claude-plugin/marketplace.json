@@ -771,7 +771,7 @@
       "name": "sosa-governor",
       "source": "./plugins/sosa-governor",
       "description": "SOSA governance for Claude Code — classifies MCP tool calls by impact level, enforces approval gates, tracks token budgets, and maintains audit logs",
-      "version": "0.1.3",
+      "version": "0.1.4",
       "platforms": [
         "claude-code",
         "cowork"
