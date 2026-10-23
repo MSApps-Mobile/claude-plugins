@@ -735,7 +735,7 @@
       "name": "sosa-compliance-checker",
       "source": "./plugins/sosa-compliance-checker",
       "description": "Compliance auditor for Claude plugins, skills, and coding agents — evaluates against SOSA principles (Supervised, Orchestrated, Secured, Agents) with governance features",
-      "version": "0.2.1",
+      "version": "0.2.2",
       "platforms": [
         "claude-code",
         "cowork"
