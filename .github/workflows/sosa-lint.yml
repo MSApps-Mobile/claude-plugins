@@ -26,6 +26,16 @@ jobs:
           chmod +x scripts/sosa-lint.sh
           bash scripts/sosa-lint.sh .
 
+      # Card SNQ5Siev: validate-pr.yml only runs when plugins/, scripts/ or
+      # .claude-plugin/ change, so a PR that edits only a workflow never ran
+      # the run:-body guard. This workflow runs on every PR, so the guard
+      # (and its negative control) runs here too, over every workflow.
+      - name: Workflow run bodies — no expression interpolation
+        run: python3 scripts/check-workflow-run-expressions.py --root .
+
+      - name: Workflow run bodies — prove the guard can FAIL
+        run: python3 scripts/check-workflow-run-expressions.test.py
+
       - name: Check for hardcoded secrets
         run: |
           echo "Scanning for potential secrets..."

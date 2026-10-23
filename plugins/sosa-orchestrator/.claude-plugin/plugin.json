@@ -1,7 +1,7 @@
 {
   "name": "sosa-orchestrator",
   "displayName": "SOSA Orchestrator",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "SOSA Orchestrator — token-aware task prioritization and budget management for Claude sessions. Ranks tasks by importance vs. cost, tracks consumption in real time, and pauses work before budget boundaries are crossed.",
   "author": {
     "name": "MSApps",
