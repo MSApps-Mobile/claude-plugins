@@ -34,7 +34,8 @@ import sys
 # `lspServers` table in the plugin manifest reference,
 # https://code.claude.com/docs/en/plugins-reference#lspservers
 # (`requestTimeout` there: milliseconds, positive integer, Claude Code v2.1.288+;
-# re-read 2026-10-21, card DMqfyLzZ).
+# re-read 2026-10-21, card DMqfyLzZ; `diagnostics` there: optional boolean,
+# whether to push diagnostics into context after edits, default true, card 3P7ZxakX).
 ALLOWED_KEYS = {
     "command": (str,),
     "args": (list,),
@@ -49,6 +50,7 @@ ALLOWED_KEYS = {
     "requestTimeout": (int, float),
     "restartOnCrash": (bool,),
     "maxRestarts": (int,),
+    "diagnostics": (bool,),
 }
 REQUIRED_KEYS = ("command", "extensionToLanguage")
 TRANSPORTS = ("stdio", "socket")
