@@ -80,6 +80,19 @@ echo '# memory' > "$C/projects/$(enc "$MEM_LOCKED")/memory/MEMORY.md"
 old "$C/projects/$(enc "$ALIAS_CWD")/s.jsonl" "$C/projects/$(enc "$ALIAS_CWD")" \
     "$C/projects/$(enc "$MEM_ALIAS")/memory/MEMORY.md" "$C/projects/$(enc "$MEM_ALIAS")/memory" "$C/projects/$(enc "$MEM_ALIAS")" \
     "$C/projects/$(enc "$MEM_LOCKED")/memory/MEMORY.md" "$C/projects/$(enc "$MEM_LOCKED")/memory" "$C/projects/$(enc "$MEM_LOCKED")"
+#   f) the nearest existing parent of the cwd is an EMPTY folder: it may be an unmounted mount point outside
+#      any mount root (Linux /data, /srv), so the project's absence proves nothing
+EMPTYP="$ROOT/emptyparent"; mkdir -p "$EMPTYP"; EMPTYP_CWD="$EMPTYP/proj"
+mkdir -p "$C/projects/$(enc "$EMPTYP_CWD")"
+printf '{"cwd":"%s"}\n' "$EMPTYP_CWD" > "$C/projects/$(enc "$EMPTYP_CWD")/s.jsonl"
+old "$C/projects/$(enc "$EMPTYP_CWD")/s.jsonl" "$C/projects/$(enc "$EMPTYP_CWD")"
+# g) positive control: a project on a REALLY mounted volume that is really gone is still an orphan. /dev is
+#    its own filesystem on macOS and Linux, so with "/" as the mount root it is a provably mounted volume. Only
+#    the separate run below makes /dev a reference disk; the main run keeps it (not on the local disk).
+MOUNTED_CWD="/dev/janitor-test-gone-$$/proj"
+mkdir -p "$C/projects/$(enc "$MOUNTED_CWD")"
+printf '{"cwd":"%s"}\n' "$MOUNTED_CWD" > "$C/projects/$(enc "$MOUNTED_CWD")/s.jsonl"
+old "$C/projects/$(enc "$MOUNTED_CWD")/s.jsonl" "$C/projects/$(enc "$MOUNTED_CWD")"
 mkdir -p "$LOCKED"; chmod 000 "$LOCKED"
 trap 'chmod 755 "$LOCKED" 2>/dev/null; rm -rf "$ROOT"' EXIT
 
@@ -126,6 +139,20 @@ else
   echo "  - skipped memory-only unreadable-parent check (running as root)"
 fi
 
+echo "empty nearest parent / really mounted volume"
+printf '%s\n' "$GOT" | grep -qF -- "$(enc "$EMPTYP_CWD")" && fail "project whose nearest existing parent is empty was listed as an orphan" || ok "empty-nearest-parent project is not an orphan"
+printf '%s\n' "$GOT" | grep -qF -- "$(enc "$MOUNTED_CWD")" && fail "project on a volume that is not a reference disk was listed" || ok "gone project on another (mounted) disk is kept by default"
+dev_id() { stat -c %d -- "$1" 2>/dev/null || stat -f %d "$1" 2>/dev/null; }
+if [ -d /dev ] && [ -n "$(dev_id /dev)" ] && [ "$(dev_id /dev)" != "$(dev_id /)" ]; then
+  MOUT="$(JANITOR_MOUNT_ROOTS="/" JANITOR_DISK_REFS="/dev" "$JANITOR" 2>/dev/null)"
+  printf '%s\n' "$MOUT" | grep -q "^orphan	.*$(enc "$MOUNTED_CWD")" && ok "gone project on a provably mounted volume is still an orphan" \
+    || fail "gone project on a provably mounted volume was not listed (the mount check keeps everything)"
+  printf '%s\n' "$MOUT" | grep -qF -- "$(enc "$ALIAS_CWD")" && fail "symlink-to-stale-mount project listed with / as mount root" || ok "symlink-to-stale-mount project still kept with / as mount root"
+else
+  echo "  - skipped mounted-volume check (/dev is not a separate filesystem here)"
+fi
+JANITOR_MOUNT_ROOTS="   " JANITOR_DISK_REFS="   " "$JANITOR" >/dev/null 2>&1; [ $? -eq 0 ] && ok "blank JANITOR_MOUNT_ROOTS / JANITOR_DISK_REFS fall back to the defaults" || fail "blank env vars broke the run"
+
 echo "changelog tolerance"
 JANITOR_CLAUDE_VERSION="2.1.201" "$JANITOR" 2>/dev/null | grep -q '^changelog' && fail "one release behind was flagged" || ok "one release behind is kept"
 JANITOR_CLAUDE_VERSION="2.1.199" "$JANITOR" 2>/dev/null | grep -q '^changelog' && fail "a newer cache was flagged" || ok "a cache newer than the install is kept"
@@ -143,6 +170,7 @@ for kept in "$C/backups/.claude.json.backup.170000000003" "$C/session-env/empty-
             "$C/projects/$(enc "$UNMOUNTED")/s.jsonl" "$C/projects/$(enc "$LOCKED_CWD")/s.jsonl" \
             "$C/projects/$(enc "$STALE")/s.jsonl" "$C/projects/$(enc "$ALIAS_CWD")/s.jsonl" \
             "$C/projects/$(enc "$MEM_ALIAS")/memory/MEMORY.md" "$C/projects/$(enc "$MEM_LOCKED")/memory/MEMORY.md" \
+            "$C/projects/$(enc "$EMPTYP_CWD")/s.jsonl" "$C/projects/$(enc "$MOUNTED_CWD")/s.jsonl" \
             "$C/CLAUDE.md" "$C/settings.json" "$C/settings.local.json" "$C/history.jsonl" \
             "$C/skills/a/SKILL.md" "$C/plugins/b/p.json" "$C/scheduled-tasks/c/t.md"; do
   [ -e "$kept" ] || fail "removed something it must keep: $kept"

@@ -31,11 +31,15 @@ the janitor checks every possible match before calling a project orphaned.
 **Unclear means keep.** A missing folder on an unmounted disk looks exactly like a deleted one, so "missing"
 is only believed when it is provable:
 
-- the nearest existing parent folder is readable and on the same disk as `/` or `$HOME`, and
-- the project does not sit under a mount root (`/Volumes`, `/mnt`, `/media`) whose volume is not provably
-  mounted. A volume counts as mounted only when its folder's device id is known and differs from the mount
-  root's. An empty leftover folder (an unmounted `/mnt/data`, a stale `/Volumes/X`) sits on the root disk,
-  so its projects are kept.
+- the transcripts record a `cwd`. A project with none (a memory-only project, for example) is always kept:
+  its folder name alone cannot say where it lived or whether that disk is mounted;
+- the nearest existing parent folder, resolved to its real path (symlinks followed, so `~/ext -> /Volumes/X`
+  counts as `/Volumes/X`), can be listed, is not empty (an empty folder may be an unmounted mount point
+  such as Linux `/data`), and is on the same disk as `/` or `$HOME`; and
+- neither the recorded `cwd` nor that real parent sits under a mount root (`/Volumes`, `/mnt`, `/media`)
+  whose volume is not provably mounted. A volume counts as mounted only when its folder's device id is
+  known and differs from the mount root's. An empty leftover folder (an unmounted `/mnt/data`, a stale
+  `/Volumes/X`) sits on the root disk, so its projects are kept.
 
 If any of this cannot be determined, the project is kept.
 
@@ -54,9 +58,10 @@ outside `~/.claude`. Each path is checked before it is listed and again before i
 Environment variables: `JANITOR_CLAUDE_DIR`, `JANITOR_KEEP_BACKUPS` (1), `JANITOR_MIN_AGE_DAYS` (7),
 `JANITOR_CLAUDE_VERSION`, plus two for the orphan rule's mount check:
 
-- `JANITOR_MOUNT_ROOTS` (`/Volumes /mnt /media`): space-separated folders whose children are mount points.
+- `JANITOR_MOUNT_ROOTS`: extra space-separated folders whose children are mount points. They are added to
+  `/Volumes /mnt /media`, which always apply.
 - `JANITOR_DISK_REFS` (`/ $HOME`): space-separated paths; a missing project counts as gone only when its
-  nearest existing parent is on the same device as one of them.
+  nearest existing parent is on the same device as one of them. A blank value means the default.
 
 ## Tests
 
@@ -66,7 +71,8 @@ bash plugins/claude-folder-janitor/tests/janitor.test.sh
 
 Builds a fake `~/.claude` with one eligible and one ineligible case per rule, plus every protected path,
 all aged past the threshold. It also covers the keep cases: a missing mount, an empty stale mount folder on
-the root disk, and an unreadable parent. Checks that the dry run lists exactly the eligible five and deletes nothing,
+the root disk, a symlink to such a folder, an unreadable parent, an empty parent, and memory-only projects
+with no recorded `cwd`, plus a gone project on a really mounted volume that must still be listed. Checks that the dry run lists exactly the eligible five and deletes nothing,
 that apply removes exactly those five, and that every protected and ineligible path survives.
 
 ## Install

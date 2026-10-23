@@ -44,13 +44,13 @@ whose encoding matches; if any exists, the project is kept.
 **Unclear means keep.** A missing folder on an unmounted disk looks exactly like a deleted one, so the
 janitor believes "missing" only when it can prove it:
 
-- the nearest existing parent of the recorded `cwd` is readable and on the same device as one of
-  `JANITOR_DISK_REFS` (default `/` and `$HOME`), and
-- if the `cwd` is under a mount root in `JANITOR_MOUNT_ROOTS` (default `/Volumes /mnt /media`), that
-  volume is provably mounted: its folder exists and its device id is known and differs from the mount
-  root's. An empty leftover folder (an unmounted `/mnt/data`, a stale `/Volumes/X`) shares the root
-  disk's device id, so its projects are kept.
-- a project with no recorded `cwd` whose name starts with a mount root is always kept.
+- the transcripts record a `cwd`; a project with none (a memory-only project, for example) is always kept;
+- the nearest existing parent of the recorded `cwd`, resolved to its real path (symlinks followed), can be
+  listed, is not empty, and is on the same device as one of `JANITOR_DISK_REFS` (default `/` and `$HOME`);
+- if the `cwd` or that real parent is under a mount root (`/Volumes /mnt /media`, plus any in
+  `JANITOR_MOUNT_ROOTS`), that volume is provably mounted: its folder exists and its device id is known and
+  differs from the mount root's. An empty leftover folder (an unmounted `/mnt/data`, a stale `/Volumes/X`,
+  or a symlink to one) shares the root disk's device id, so its projects are kept.
 
 ## Never touched
 
@@ -64,8 +64,8 @@ removed; a path that fails is reported on stderr and skipped.
 - `JANITOR_KEEP_BACKUPS` — backups to keep (default `1`)
 - `JANITOR_MIN_AGE_DAYS` — age threshold for `session-env` and `orphan` (default `7`)
 - `JANITOR_CLAUDE_VERSION` — overrides `claude --version` for the changelog rule
-- `JANITOR_MOUNT_ROOTS` — space-separated folders whose children are mount points (default `/Volumes /mnt /media`)
-- `JANITOR_DISK_REFS` — space-separated paths that define "the local disk" for the orphan rule (default `/ $HOME`)
+- `JANITOR_MOUNT_ROOTS` — extra space-separated folders whose children are mount points (added to `/Volumes /mnt /media`, which always apply)
+- `JANITOR_DISK_REFS` — space-separated paths that define "the local disk" for the orphan rule (default `/ $HOME`; blank means the default)
 
 ## Not in this version
 

@@ -132,21 +132,24 @@ rule_changelog() {
 # ── rule 4: orphaned project transcripts ────────────────────────────────────
 # Claude Code names a project dir by replacing every non-alphanumeric character of its path with "-",
 # which cannot be decoded unambiguously (/a/b-c and /a/b/c encode the same). So a project is an orphan
-# only when BOTH say so:
-#   1. the cwd recorded inside its transcripts (if any) does not exist, and
+# only when ALL of these say so:
+#   1. its transcripts record a cwd, and that cwd does not exist. A project with NO recorded cwd (a
+#      memory-only project, transcripts without a cwd) is always kept: its name alone cannot say where it
+#      lived, which disk that was, or whether that disk is mounted.
 #   2. no existing directory on disk encodes to its name (a walk from / that follows every child whose
 #      encoding is a prefix of the remaining name).
 #   3. "gone" is only believed when it is provable: a missing path on an unmounted volume, a network share, an
 #      encrypted or removable disk, or behind a folder macOS will not let us read looks exactly like a deleted
-#      project, and /janitor apply would rm -rf its transcripts. So a project counts as orphaned only when its
-#      nearest existing parent folder is readable and on the same disk as / or $HOME, and it does not sit
-#      under a mount root (/Volumes, /mnt, /media) whose mount is not provably mounted. A mount counts as
-#      mounted only when its device id is KNOWN and DIFFERS from its mount root's: an unmounted static mount
-#      (Linux /mnt/data) or a stale /Volumes/X leaves an empty folder on the root disk that would otherwise
-#      look like a live, readable volume. Anything unclear is KEPT.
+#      project, and /janitor apply would rm -rf its transcripts. So the nearest existing parent of the cwd is
+#      resolved to its REAL path (pwd -P, so a symlink such as ~/ext -> /Volumes/X is followed), and the
+#      project counts as orphaned only when that real parent can be listed, is not empty (an empty folder may
+#      be an unmounted mount point anywhere, e.g. Linux /data or /srv), is on the same disk as / or $HOME, and
+#      neither the recorded cwd nor the real parent sits under a mount root (/Volumes, /mnt, /media) whose
+#      mount is not provably mounted. A mount counts as mounted only when its device id is KNOWN and DIFFERS
+#      from its mount root's: an unmounted static mount (Linux /mnt/data) or a stale /Volumes/X leaves an
+#      empty folder on the root disk that would otherwise look like a live, readable volume. Anything unclear
+#      is KEPT.
 # Pure bash (no fork per child): the walk below runs this once per directory entry it visits.
-encode() { local s="$1"; printf '%s' "${s//[^A-Za-z0-9]/-}"; }
-
 path_exists_for() {  # dir remaining-encoded-name → 0 if some existing dir under $1 encodes to it
   local d="$1" rest="$2" c b e
   for c in "$d"/*/ "$d"/.*/; do
@@ -163,9 +166,12 @@ path_exists_for() {  # dir remaining-encoded-name → 0 if some existing dir und
   return 1
 }
 
-# Overridable so the fixture test is deterministic (no real /Volumes needed, any tmp filesystem layout).
-MOUNT_ROOTS="${JANITOR_MOUNT_ROOTS:-/Volumes /mnt /media}"
-DISK_REFS="${JANITOR_DISK_REFS:-/ $HOME}"
+# Mount roots: the defaults always apply and JANITOR_MOUNT_ROOTS only ADDS to them, so a blank or partial
+# override can never switch the protection off. Disk refs: a blank JANITOR_DISK_REFS means the default.
+# Both are read into arrays (no glob expansion); relative entries are ignored.
+read -r -a MOUNT_ROOTS <<<"/Volumes /mnt /media ${JANITOR_MOUNT_ROOTS:-}"
+read -r -a DISK_REFS <<<"${JANITOR_DISK_REFS:-}"
+[ "${#DISK_REFS[@]}" -gt 0 ] || DISK_REFS=(/ "$HOME")
 
 devid() {  # path → numeric device id (GNU stat -c, then BSD/macOS stat -f); empty when unknown
   local id
@@ -183,26 +189,46 @@ mount_present() {
   [ -n "$md" ] && [ -n "$rd" ] && [ "$md" != "$rd" ]
 }
 
+# 0 when path $1 is, or sits under, a mount root whose mount is not provably mounted (or is the root itself:
+# which volume it would be is unknown). Each root is checked as given and as its real path. A root of "/"
+# makes every top-level folder a mount.
+under_unproven_mount() {
+  local path="$1" r rr pref rest
+  for r in "${MOUNT_ROOTS[@]}"; do
+    case "$r" in /*) ;; *) continue ;; esac
+    for rr in "$r" "$(cd "$r" 2>/dev/null && pwd -P)"; do
+      [ -n "$rr" ] || continue
+      rr="${rr%/}"; pref="$rr/"
+      [ "$path" = "${rr:-/}" ] && return 0
+      case "$path" in
+        "$pref"?*) rest="${path#"$pref"}"; mount_present "${rr:-/}" "$pref${rest%%/*}" || return 0 ;;
+      esac
+    done
+  done
+  return 1
+}
+
 # 0 only when a cwd that failed the existence check is PROVABLY gone (not merely unreachable).
 cwd_provably_gone() {
-  local cwd="$1" r rest mount p pd rd ref
+  local cwd="$1" p real listing pd rd ref
   case "$cwd" in /*) ;; *) return 1 ;; esac
-  for r in $MOUNT_ROOTS; do
-    r="${r%/}"
-    case "$cwd" in
-      "$r"/*) rest="${cwd#"$r"/}"; mount="$r/${rest%%/*}"; mount_present "$r" "$mount" || return 1 ;;
-    esac
-  done
+  under_unproven_mount "$cwd" && return 1
   p="$cwd"
   while [ ! -e "$p" ] && [ ! -L "$p" ]; do
     p="${p%/*}"
     [ -n "$p" ] || p=/
   done
   [ "$p" != "$cwd" ] || return 1                  # it exists after all (a file, a dangling link)
-  [ -d "$p" ] && [ -r "$p" ] && [ -x "$p" ] || return 1   # cannot see inside the nearest parent: unknown
-  pd="$(devid "$p")"
+  [ -d "$p" ] || return 1                          # nearest parent is a file or a dangling link: unknown
+  real="$(cd "$p" 2>/dev/null && pwd -P)" || return 1   # where it really leads, symlinks resolved
+  [ -n "$real" ] || return 1
+  under_unproven_mount "$real" && return 1
+  listing="$(ls -A "$real" 2>/dev/null)" || return 1   # cannot list it (permissions, macOS privacy): unknown
+  [ -n "$listing" ] || return 1                    # empty: may be an unmounted mount point anywhere: unknown
+  pd="$(devid "$real")"
   [ -n "$pd" ] || return 1
-  for ref in $DISK_REFS; do
+  for ref in "${DISK_REFS[@]}"; do
+    case "$ref" in /*) ;; *) continue ;; esac
     rd="$(devid "$ref")"
     [ -n "$rd" ] && [ "$rd" = "$pd" ] && return 0
   done
@@ -220,7 +246,7 @@ recorded_cwd() {  # first "cwd" found in the first lines of the project's transc
 }
 
 rule_orphans() {
-  local dir="$CLAUDE_DIR/projects" p name cwd r
+  local dir="$CLAUDE_DIR/projects" p name cwd
   [ -d "$dir" ] || return 0
   for p in "$dir"/*/; do
     p="${p%/}"
@@ -228,18 +254,12 @@ rule_orphans() {
     name="$(basename "$p")"
     case "$name" in -*) ;; *) continue ;; esac   # not a path encoding we understand — keep it
     cwd="$(recorded_cwd "$p")"
-    if [ -n "$cwd" ] && [ -d "$cwd" ]; then continue; fi
-    if [ -n "$cwd" ]; then
-      cwd_provably_gone "$cwd" || continue
-    else
-      # no recorded cwd: the name alone cannot say which mount it lived on — keep anything under a mount root
-      for r in $MOUNT_ROOTS; do
-        case "$name" in "$(encode "${r%/}")"-*) continue 2 ;; esac
-      done
-    fi
+    [ -n "$cwd" ] || continue                     # no recorded cwd: nothing to prove "gone" with — keep
+    [ -d "$cwd" ] && continue
+    cwd_provably_gone "$cwd" || continue
     if path_exists_for "" "$name"; then continue; fi
     untouched "$p" || continue
-    add orphan "$p" "project path ${cwd:-(decoded from $name)} no longer exists; transcripts untouched ${MIN_AGE_DAYS}+ days"
+    add orphan "$p" "project path $cwd no longer exists; transcripts untouched ${MIN_AGE_DAYS}+ days"
   done
 }
 
