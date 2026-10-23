@@ -9,7 +9,9 @@
 # Output: one plugin name per line (e.g. "whatsapp-mcp")
 #
 # In GitHub Actions, call as:
-#   CHANGED=$(bash scripts/detect-changed-plugins.sh ${{ github.event.before }} ${{ github.sha }})
+#   env: BEFORE_SHA / HEAD_SHA set from github.event.before / github.sha, then
+#   CHANGED=$(bash scripts/detect-changed-plugins.sh "$BEFORE_SHA" "$HEAD_SHA")
+#   (never paste ${{ }} into the run: body - card SNQ5Siev)
 
 set -euo pipefail
 
