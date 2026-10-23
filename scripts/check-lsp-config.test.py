@@ -47,6 +47,7 @@ case(".lsp.json that does not parse", "bad-json", True, match="invalid JSON")
 case("lspServers given as an absolute path (DMqfyLzZ)", "absolute-path", True, match="absolute path")
 case("lspServers path that leaves the plugin dir (DMqfyLzZ)", "escaping-path", True, match="escapes the plugin directory")
 case("key with a newline in it (DMqfyLzZ)", "newline-key", True, match="unknown key")
+case("diagnostics set to a non-boolean (3P7ZxakX)", "diagnostics-not-bool", True, match="'diagnostics' must be bool")
 
 
 def one_command_per_problem(fixture):
