@@ -1,17 +1,16 @@
 {
   "name": "java-lsp",
+  "displayName": "Java LSP",
   "version": "1.0.1",
   "description": "Real-time Java code intelligence for Claude — compile errors, go-to-definition, find references, and type info via Eclipse JDT Language Server (jdtls).",
   "author": {
     "name": "MSApps",
-    "email": "michal@msapps.mobi",
-    "url": "https://msapps.mobi"
+    "url": "https://claudeservices.ai",
+    "email": "michal@msapps.mobi"
   },
-  "homepage": "https://msapps.mobi/plugins",
+  "homepage": "https://claudeservices.ai/plugins",
   "repository": "https://github.com/MSApps-Mobile/claude-plugins",
   "license": "MIT",
-  "privacy_policy": "https://opsagents.agency/privacy",
-  "terms_of_service": "https://opsagents.agency/terms",
   "keywords": [
     "java",
     "jdtls",
@@ -41,5 +40,9 @@
   },
   "topics": [
     "sosa-agents"
-  ]
+  ],
+  "documentationUrl": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/java-lsp/README.md",
+  "supportUrl": "https://github.com/MSApps-Mobile/claude-plugins/issues",
+  "privacyPolicyUrl": "https://opsagents.agency/privacy",
+  "termsOfServiceUrl": "https://opsagents.agency/terms"
 }

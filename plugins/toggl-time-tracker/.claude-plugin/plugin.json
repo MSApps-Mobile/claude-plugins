@@ -1,15 +1,14 @@
 {
   "name": "toggl-time-tracker",
+  "displayName": "Toggl Time Tracker",
   "version": "1.1.0",
-  "description": "Track time and pull reports from Toggl Track \u2014 start/stop timers, log hours, weekly summaries",
+  "description": "Track time and pull reports from Toggl Track — start/stop timers, log hours, weekly summaries",
   "author": {
     "name": "MSApps",
-    "url": "https://msapps.mobi"
+    "url": "https://claudeservices.ai"
   },
-  "homepage": "https://msapps.mobi/plugins",
+  "homepage": "https://claudeservices.ai/plugins",
   "license": "MIT",
-  "privacy_policy": "https://opsagents.agency/privacy",
-  "terms_of_service": "https://opsagents.agency/terms",
   "keywords": [
     "toggl",
     "time-tracking",
@@ -30,12 +29,17 @@
     "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
     "pillars": {
       "supervised": "User controls timer start/stop",
-      "orchestrated": "Timer \u2192 entry \u2192 report pipeline",
+      "orchestrated": "Timer → entry → report pipeline",
       "secured": "API token in local config file, scoped to workspace",
       "agents": "R=time-tracking, T=Toggl-API, M=config-file, P=track-log-report"
     }
   },
   "topics": [
     "sosa-agents"
-  ]
+  ],
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "documentationUrl": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/toggl-time-tracker/README.md",
+  "supportUrl": "https://github.com/MSApps-Mobile/claude-plugins/issues",
+  "privacyPolicyUrl": "https://opsagents.agency/privacy",
+  "termsOfServiceUrl": "https://opsagents.agency/terms"
 }

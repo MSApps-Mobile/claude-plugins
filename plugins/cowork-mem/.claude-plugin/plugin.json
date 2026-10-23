@@ -1,14 +1,14 @@
 {
   "name": "cowork-mem",
+  "displayName": "Cowork Mem",
   "version": "0.2.6",
   "description": "Persistent memory across Cowork sessions. Automatically recalls past decisions, file changes, insights, and errors so you never lose context between sessions. Inspired by claude-mem, rebuilt natively for Cowork.",
   "author": {
-    "name": "MSApps"
+    "name": "MSApps",
+    "url": "https://claudeservices.ai"
   },
   "repository": "https://github.com/MSApps-Mobile/claude-plugins",
   "license": "MIT",
-  "privacy_policy": "https://opsagents.agency/privacy",
-  "terms_of_service": "https://opsagents.agency/terms",
   "keywords": [
     "memory",
     "persistence",
@@ -16,5 +16,10 @@
     "sessions",
     "recall",
     "history"
-  ]
+  ],
+  "homepage": "https://claudeservices.ai/plugins",
+  "documentationUrl": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/cowork-mem/README.md",
+  "supportUrl": "https://github.com/MSApps-Mobile/claude-plugins/issues",
+  "privacyPolicyUrl": "https://opsagents.agency/privacy",
+  "termsOfServiceUrl": "https://opsagents.agency/terms"
 }
