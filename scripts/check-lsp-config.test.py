@@ -44,6 +44,28 @@ case("server without command / extensionToLanguage", "missing-required", True, m
 case("unknown key in an inline plugin.json lspServers", "inline-unknown-key", True, match="restartOnCrashes")
 case("lspServers path pointing at a missing file", "dangling-path", True, match="servers.json")
 case(".lsp.json that does not parse", "bad-json", True, match="invalid JSON")
+case("lspServers given as an absolute path (DMqfyLzZ)", "absolute-path", True, match="absolute path")
+case("lspServers path that leaves the plugin dir (DMqfyLzZ)", "escaping-path", True, match="escapes the plugin directory")
+case("key with a newline in it (DMqfyLzZ)", "newline-key", True, match="unknown key")
+
+
+def one_command_per_problem(fixture):
+    """AC-3: a CR/LF in a key must not let the output start a second workflow
+    command. Every stdout line that opens with '::' is an '::error::' line, and
+    the forged '::warning::' never starts a line."""
+    root = os.path.join(FIX, fixture)
+    out = subprocess.run([sys.executable, SCRIPT, "--root", root], capture_output=True, text=True).stdout
+    commands = [l for l in out.splitlines() if l.startswith("::")]
+    forged = [l for l in commands if not l.startswith("::error::")]
+    if forged or not commands:
+        failures.append(f"{fixture}: workflow-command lines not escaped: {commands}")
+    elif "%0A" not in out:
+        failures.append(f"{fixture}: the newline was not encoded as %0A: {out!r}")
+    else:
+        print(f"  ok  {fixture}: newline encoded, no forged workflow command")
+
+
+one_command_per_problem("newline-key")
 
 print("known-positive - this MUST be green:")
 case(".lsp.json via path + inline lspServers, every allowed key style", "valid", False)
