@@ -1,0 +1,31 @@
+{
+  "name": "directory-manager",
+  "displayName": "Directory Manager",
+  "version": "0.1.0",
+  "description": "Keeps your Claude directory plugins healthy: lints plugin.json and README against Anthropic's listing rules before you push, reads every submission's status in the developer portal, tracks installs and where they come from, and requests publishes for passing versions.",
+  "author": {
+    "name": "MSApps",
+    "url": "https://claudeservices.ai"
+  },
+  "homepage": "https://claudeservices.ai/plugins",
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "license": "MIT",
+  "keywords": ["plugin-directory", "marketplace", "listing", "lint", "publishing", "plugin-stats", "developer-portal"],
+  "documentationUrl": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/directory-manager/README.md",
+  "supportUrl": "https://github.com/MSApps-Mobile/claude-plugins/issues",
+  "privacyPolicyUrl": "https://opsagents.agency/privacy",
+  "termsOfServiceUrl": "https://opsagents.agency/terms",
+  "sosa": {
+    "compliant": true,
+    "level": 2,
+    "impact": "medium",
+    "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md",
+    "pillars": {
+      "supervised": "Lint, status and stats are read-only. Requesting a publish is an outward action and asks the user first, every time.",
+      "orchestrated": "Plan > Act > Verify: read the portal, act on one plugin at a time, re-read the page to confirm.",
+      "secured": "No credentials stored. Uses the user's own signed-in browser session; never prints tokens or secret values from portal pages.",
+      "agents": "R=listing-lint,directory-status,directory-stats; T=browser; M=none; P=lint-then-read-then-request"
+    }
+  },
+  "topics": ["sosa-agents"]
+}
