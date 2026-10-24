@@ -14,7 +14,8 @@ every run: value - inline or block scalar - and fails on ANY ${{ inside it.
 ${{ }} stays allowed in name:, env:, with:, if:, strategy: and outputs:.
 
 Run:  python3 scripts/check-workflow-run-expressions.py [--root .] [workflow ...]
-Default workflow list: .github/workflows/validate-pr.yml
+Default workflow list: validate-pr.yml, release.yml and sosa-lint.yml under
+.github/workflows/ (release.yml and sosa-lint.yml added by card SNQ5Siev).
 Exit 0 = clean, 1 = an expression was found in a run: body, 2 = usage error.
 """
 
@@ -23,7 +24,13 @@ import os
 import re
 import sys
 
-DEFAULT_WORKFLOWS = [".github/workflows/validate-pr.yml"]
+DEFAULT_WORKFLOWS = [
+    ".github/workflows/validate-pr.yml",
+    # Card SNQ5Siev: release.yml is the job that publishes; sosa-lint.yml runs
+    # on every PR. Both stay clean only if the default run checks them.
+    ".github/workflows/release.yml",
+    ".github/workflows/sosa-lint.yml",
+]
 
 RUN_KEY = re.compile(r"^(?P<indent>\s*)(?P<dash>-\s+)?run:\s*(?P<rest>.*)$")
 EXPR = re.compile(r"\$\{\{")

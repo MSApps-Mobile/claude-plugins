@@ -3,7 +3,7 @@
 Trello IcsmluvI - the negative control for check-workflow-run-expressions.py.
 
 A guard that has only ever seen passing input proves nothing, so each fixture
-below declares whether it MUST red, and the real validate-pr.yml must be green.
+below declares whether it MUST red, and every real workflow must be green.
 
 Run: python3 scripts/check-workflow-run-expressions.test.py
 Exit 0 = every case behaved as declared, INCLUDING the ones that must fail.
@@ -49,6 +49,20 @@ case("env-routed values", os.path.join(FIX, "good.yml"), False)
 
 print("the real repo:")
 case("validate-pr.yml", os.path.join(ROOT, ".github", "workflows", "validate-pr.yml"), False)
+case("release.yml", os.path.join(ROOT, ".github", "workflows", "release.yml"), False)
+case("sosa-lint.yml", os.path.join(ROOT, ".github", "workflows", "sosa-lint.yml"), False)
+
+# Card SNQ5Siev: the no-argument run (what CI calls) must cover every workflow
+# in the repo, so a new or forgotten workflow cannot sit outside the guard.
+on_disk = sorted(
+    os.path.join(".github", "workflows", f)
+    for f in os.listdir(os.path.join(ROOT, ".github", "workflows"))
+    if f.endswith((".yml", ".yaml"))
+)
+if sorted(os.path.normpath(p) for p in wr.DEFAULT_WORKFLOWS) != on_disk:
+    failures.append(f"DEFAULT_WORKFLOWS {wr.DEFAULT_WORKFLOWS} != workflows on disk {on_disk}")
+else:
+    print("  ok  DEFAULT_WORKFLOWS covers every workflow on disk")
 
 if failures:
     print("\nFAILED:")
