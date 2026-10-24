@@ -1,0 +1,42 @@
+{
+  "name": "claude-folder-janitor",
+  "description": "Dry-run-first cleanup of ~/.claude: old .claude.json backups, empty session-env folders, a stale changelog cache, and the transcripts of projects whose folders no longer exist. Lists every candidate with size and reason; deletes only on /janitor apply. Never touches skills, plugins, scheduled tasks, settings or history.",
+  "version": "0.1.0",
+  "author": {
+    "name": "MSApps",
+    "url": "https://claudeservices.ai"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/MSApps-Mobile/claude-plugins/tree/main/plugins/claude-folder-janitor",
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "privacy_policy": "https://opsagents.agency/privacy",
+  "terms_of_service": "https://opsagents.agency/terms",
+  "keywords": [
+    "claude-code",
+    "cleanup",
+    "disk",
+    "transcripts",
+    "maintenance",
+    "sosa-agents"
+  ],
+  "platforms": [
+    "claude-code",
+    "cowork"
+  ],
+  "sosa": {
+    "compliant": true,
+    "level": 2,
+    "impact": "medium",
+    "methodology": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md",
+    "whitepaper": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/sosa-whitepaper.pdf",
+    "pillars": {
+      "supervised": "Dry run is the default and lists every candidate with rule, size and reason; deletion happens only on an explicit /janitor apply, which re-derives the same list and removes exactly those paths",
+      "orchestrated": "dry run → review → apply → summary (removed, failed, KB freed, elapsed); one eligibility function per rule decides both the listing and the deletion",
+      "secured": "Local filesystem only, no network, no credentials, never sudo; every path is checked to resolve inside ~/.claude under one of four rule roots and never under skills/, plugins/, scheduled-tasks/, CLAUDE.md, settings*.json or history.jsonl",
+      "agents": "R=claude-folder-janitor, T=bash+find+du, M=none (stateless), P=dry-run-then-apply"
+    }
+  },
+  "topics": [
+    "sosa-agents"
+  ]
+}
