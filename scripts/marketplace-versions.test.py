@@ -82,6 +82,21 @@ try:
         failures.append(f"--sync-all did not repair the drifted fixture: {p2} {d2}")
     else:
         print("  ok  --sync-all repairs the drifted fixture")
+    # Card SNQ5Siev: a version that is not plain x.y.z is refused BEFORE bash
+    # arithmetic evaluates it (a part like 'BASH_VERSINFO[$(cmd)]' runs cmd, even under set -u).
+    work3 = os.path.join(tmp, "badver")
+    shutil.copytree(os.path.join(FIX, "agrees"), work3)
+    shutil.copytree(HERE, os.path.join(work3, "scripts"), ignore=shutil.ignore_patterns("fixtures", "__pycache__"))
+    pj3 = os.path.join(work3, "plugins/alpha/.claude-plugin/plugin.json")
+    d3 = json.load(open(pj3))
+    d3["version"] = "1.0.BASH_VERSINFO[$(touch PWNED)]"
+    json.dump(d3, open(pj3, "w"))
+    r3 = subprocess.run(["bash", "scripts/bump-version.sh", "alpha", "patch"], cwd=work3, env=env, capture_output=True, text=True)
+    after = json.load(open(pj3))["version"]
+    if r3.returncode == 0 or os.path.exists(os.path.join(work3, "PWNED")) or after != d3["version"]:
+        failures.append(f"bump-version.sh accepted a non-x.y.z version: rc={r3.returncode} version={after!r} pwned={os.path.exists(os.path.join(work3, 'PWNED'))}")
+    else:
+        print("  ok  non-x.y.z version refused, nothing executed, plugin.json untouched")
 finally:
     shutil.rmtree(tmp, ignore_errors=True)
 

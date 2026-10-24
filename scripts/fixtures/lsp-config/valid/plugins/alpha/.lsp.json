@@ -6,6 +6,7 @@
     "transport": "stdio",
     "restartOnCrash": true,
     "maxRestarts": 3,
+    "diagnostics": false,
     "startupTimeout": 30000,
     "shutdownTimeout": 5000,
     "requestTimeout": 10000

@@ -14,6 +14,11 @@ on:
       # coverage check below, whose whole subject is that file.
       - '.claude-plugin/**'
 
+# Card DMqfyLzZ: no job here writes to the repo or the PR, so the token gets
+# read-only scope instead of the repo default.
+permissions:
+  contents: read
+
 jobs:
   # ── Job 1: Detect which plugins are in this PR ───────────────────
   detect:
@@ -29,23 +34,47 @@ jobs:
 
       - name: Detect changed plugins
         id: detect
+        # Card IcsmluvI: the names found here become the validate job's matrix
+        # entries. They come from the PR's own file paths, so they are
+        # attacker-controlled. Every name that is still a directory must match
+        # ^[a-z0-9-]+$ or this step FAILS the run (it does not skip the entry:
+        # a skipped directory would merge without ever being validated).
+        # Paths are read NUL-separated (-z), so a name with a quote, newline
+        # or "$(...)" reaches the check as written and is rejected there.
         run: |
-          # Card 4vgdDPNS: a DELETED plugin dir is not a plugin to validate. Before
-          # this filter a removal PR put the gone dir in the matrix and every
-          # structure check red on a directory that no longer exists. Names can
-          # contain spaces, so read line by line and test each one.
-          CHANGED=$(git diff --name-only origin/main...HEAD | grep '^plugins/' | cut -d'/' -f2 | sort -u \
-            | while IFS= read -r p; do [[ -n "$p" && -d "plugins/$p" ]] && echo "$p"; done || true)
+          git diff --name-only -z origin/main...HEAD > "$RUNNER_TEMP/changed-files.z"
+          python3 - "$RUNNER_TEMP/changed-files.z" <<'PYEOF'
+          import json, os, re, sys
 
-          if [[ -z "$CHANGED" ]]; then
-            echo "has_plugins=false" >> $GITHUB_OUTPUT
-            echo "plugins=[]" >> $GITHUB_OUTPUT
-          else
-            JSON=$(echo "$CHANGED" | python3 -c "import sys,json; lines=[l.strip() for l in sys.stdin if l.strip()]; print(json.dumps(lines))")
-            echo "has_plugins=true" >> $GITHUB_OUTPUT
-            echo "plugins=$JSON" >> $GITHUB_OUTPUT
-            echo "Plugins in this PR: $CHANGED"
-          fi
+          SAFE = re.compile(r"^[a-z0-9-]+$")
+
+          with open(sys.argv[1], "rb") as f:
+              paths = [p for p in f.read().decode("utf-8", "surrogateescape").split("\0") if p]
+
+          # Card 4vgdDPNS: a DELETED plugin dir is not a plugin to validate, so
+          # only names that still exist as directories are kept.
+          names = sorted({
+              p.split("/")[1]
+              for p in paths
+              if p.startswith("plugins/") and len(p.split("/")) > 2 and p.split("/")[1]
+          })
+          names = [n for n in names if os.path.isdir(os.path.join("plugins", n))]
+
+          bad = [n for n in names if not SAFE.fullmatch(n)]
+          if bad:
+              for n in bad:
+                  # ascii() escapes quotes, control characters and newlines, so
+                  # the name cannot break out of this annotation line.
+                  print(f"::error::Plugin directory name {ascii(n)} is not allowed: "
+                        "plugin directory names must match ^[a-z0-9-]+$ (lowercase letters, digits, hyphens).")
+              sys.exit(1)
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"has_plugins={'true' if names else 'false'}\n")
+              out.write(f"plugins={json.dumps(names)}\n")
+
+          print("Plugins in this PR: " + (", ".join(names) if names else "(none)"))
+          PYEOF
 
   # ── Job 2: Validate each changed plugin ─────────────────────────
   validate:
@@ -58,13 +87,23 @@ jobs:
         plugin: ${{ fromJson(needs.detect.outputs.plugins) }}
       fail-fast: false
 
+    # Card IcsmluvI: the matrix entry reaches the shell and Python ONLY
+    # through this env var, never by expression text interpolation inside a
+    # run: body (a directory name is attacker-controlled PR input).
+    env:
+      PLUGIN: ${{ matrix.plugin }}
+
     steps:
       - uses: actions/checkout@v4
 
       # ── 1. Structure check ─────────────────────────────────────
       - name: Check plugin structure
         run: |
-          PLUGIN="${{ matrix.plugin }}"
+          # Defence in depth: detect already refuses any other name.
+          if [[ ! "$PLUGIN" =~ ^[a-z0-9-]+$ ]]; then
+            echo "::error::Plugin directory name is not allowed: must match ^[a-z0-9-]+\$"
+            exit 1
+          fi
           ERRORS=0
 
           if [[ ! -d "plugins/$PLUGIN/.claude-plugin" ]]; then
@@ -100,7 +139,7 @@ jobs:
           python3 - <<'PYEOF'
           import json, sys, re, os
 
-          path = f"plugins/${{ matrix.plugin }}/.claude-plugin/plugin.json"
+          path = f"plugins/{os.environ['PLUGIN']}/.claude-plugin/plugin.json"
 
           try:
               with open(path) as f:
@@ -148,7 +187,6 @@ jobs:
       # ── 3. SKILL.md quality check ─────────────────────────────
       - name: Check SKILL.md quality
         run: |
-          PLUGIN="${{ matrix.plugin }}"
           ISSUES=0
 
           while IFS= read -r skill_file; do
@@ -175,7 +213,6 @@ jobs:
       # ── 4. Secret scan ────────────────────────────────────────
       - name: Scan for hardcoded secrets
         run: |
-          PLUGIN="${{ matrix.plugin }}"
           FOUND=0
 
           PATTERNS=(
@@ -209,7 +246,7 @@ jobs:
       - name: Dry-run package build
         run: |
           chmod +x scripts/package-plugin.sh
-          bash scripts/package-plugin.sh ${{ matrix.plugin }} /tmp/dist-test
+          bash scripts/package-plugin.sh "$PLUGIN" /tmp/dist-test
           echo "✓ Package build succeeded"
 
   # ── Job 3: SOSA compliance (repo-wide) ──────────────────────────
@@ -269,3 +306,16 @@ jobs:
       # command, unknown inline key, ...) must red on every run.
       - name: LSP server configs — prove the guard can FAIL
         run: python3 scripts/check-lsp-config.test.py
+
+      # ── Card IcsmluvI ──────────────────────────────────────────
+      # The matrix entry (a directory name from the PR's own files) was pasted
+      # into run: scripts as text, so a directory named with a command
+      # substitution ran it on the runner. Fail any expression inside a run:
+      # body of this workflow; values go through env: instead.
+      - name: Workflow run bodies — no expression interpolation
+        run: python3 scripts/check-workflow-run-expressions.py --root .
+
+      # Negative control: committed fixtures that interpolate into run: bodies
+      # (block, heredoc, inline, folded) must red on every run.
+      - name: Workflow run bodies — prove the guard can FAIL
+        run: python3 scripts/check-workflow-run-expressions.test.py
