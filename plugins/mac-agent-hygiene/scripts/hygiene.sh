@@ -187,15 +187,18 @@ repo_config_runs_commands(){ local gd f
 # such branches (card SIDmENpf follow-up: 130 GB kept as "unpushed" on 2026-10-26). One gh call per SHA,
 # cached across the run; no gh, gh failure, no PR, or over HYG_GH_SHA_CHECK_MAX ⇒ 1 ⇒ KEEP.
 in_github_pr(){ local repo="$1" sha="$2" f n
-  [ "$HYG_WT_MERGED_PR_CHECK" = 1 ] && [ -n "$GH" ] && [ -n "$repo" ] && [ -n "$sha" ] || return 1
+  [ "$HYG_WT_MERGED_PR_CHECK" = 1 ] && [ -n "$GH" ] && [ -n "$repo" ] || return 1
+  [[ "$sha" =~ ^[0-9a-f]{40}$ ]] && [[ "$repo" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || return 1
   f="$TMPD/pr-sha-$(echo "$repo" | tr / _)-$sha"
   if [ ! -f "$f" ]; then
     n=$(/bin/cat "$TMPD/pr-sha-calls" 2>/dev/null || echo 0)
     [ "$n" -lt "$HYG_GH_SHA_CHECK_MAX" ] || return 1
     echo $((n+1)) > "$TMPD/pr-sha-calls"
-    "$GH" api "repos/$repo/commits/$sha/pulls" --jq 'length' > "$f" 2>/dev/null || echo 0 > "$f"
+    # only a JSON array of PRs from this exact repo counts; an error object or a redirect ⇒ 0
+    "$GH" api "repos/$repo/commits/$sha/pulls" --jq "if type==\"array\" then [.[] | select(.base.repo.full_name == \"$repo\")] | length else 0 end" \
+      > "$f" 2>/dev/null || echo 0 > "$f"
   fi
-  [ "$(/bin/cat "$f")" -gt 0 ] 2>/dev/null; }
+  [[ "$(/bin/cat "$f")" =~ ^[1-9][0-9]*$ ]]; }
 git_safe(){ # repo/worktree dir → 0 clean and on a remote ref or merged-PR head (REASON=pushed|merged-pr-head)
   local d="$1" b h repo f st br
   repo_config_runs_commands "$d" && { REASON=repo-config-can-run-commands; return 1; }
@@ -206,7 +209,9 @@ git_safe(){ # repo/worktree dir → 0 clean and on a remote ref or merged-PR hea
     && { REASON=has-submodules; return 1; }   # gitlinks found by index mode 160000, not only by .gitmodules
   st=$(GITS -C "$d" -c diff.ignoreSubmodules=all status --porcelain --ignore-submodules=all 2>/dev/null) || { REASON=git-status-failed; return 1; }
   [ -z "$st" ] || { REASON=dirty-uncommitted-work; return 1; }
-  repo=$(GITS -C "$d" remote get-url origin 2>/dev/null | /usr/bin/sed -nE 's#.*github\.com[:/]##p' | /usr/bin/sed -E 's#\.git$##')
+  # owner/name only from an anchored github.com URL; anything else ⇒ empty ⇒ no gh call ⇒ KEEP
+  repo=$(GITS -C "$d" remote get-url origin 2>/dev/null | /usr/bin/sed -nE 's#^(https://|ssh://git@|git@)github\.com[:/]([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)$#\2#p' | /usr/bin/sed -E 's#\.git$##')
+  case "$repo" in *..*|.*|*/.*) repo="";; esac
   if [ -d "$d/.git" ]; then   # a full clone owns its stash and every local branch; a linked worktree shares them with its parent
     [ -z "$(GITS -C "$d" stash list 2>/dev/null)" ] || { REASON=clone-has-stash; return 1; }
     while IFS= read -r br; do [ -n "$br" ] || continue
