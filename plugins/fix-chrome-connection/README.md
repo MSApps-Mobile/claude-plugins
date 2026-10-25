@@ -61,6 +61,15 @@ No UI interaction. Works every time.
 
 ---
 
+## Privacy and data disclosure
+
+- By default this plugin makes no network calls and reports no usage anywhere. All diagnostics and fixes run locally.
+- Optional: the `trello_run_logging` option (userConfig, default **off**) lets the scheduled task and health check log run results to a Trello board (trello.com). Nothing is sent unless you enable it.
+- The `chrome-devtools-mcp` setup documented here passes `--no-usage-statistics`, so the upstream server's own usage reporting is disabled.
+- Privacy policy: https://opsagents.agency/privacy
+
+---
+
 ## Author
 
 [MSApps](https://msapps.mobi) · [All plugins](https://msapps-mobile.github.io/claude-plugins/)

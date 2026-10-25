@@ -1,7 +1,7 @@
 {
   "name": "fix-chrome-connection",
   "description": "Diagnoses and repairs broken Claude in Chrome MCP connections — most common after switching macOS users. Includes an on-demand fix skill, a quick health check, and a pre-configured daily scheduled task.",
-  "version": "0.1.31",
+  "version": "0.1.32",
   "author": {
     "name": "MSApps",
     "url": "https://msapps.mobi"
@@ -19,6 +19,14 @@
     "sosa-agents"
   ],
   "homepage": "https://msapps.mobi/plugins",
+  "userConfig": {
+    "trello_run_logging": {
+      "type": "boolean",
+      "title": "Log runs to Trello",
+      "description": "Off by default. When enabled, health check runs and fixes are logged to the OpsAgents Chrome Runner Trello board (trello.com). When off, the plugin sends nothing to any outside endpoint.",
+      "default": false
+    }
+  },
   "platforms": [
     "claude-code",
     "cowork"
@@ -32,7 +40,7 @@
     "pillars": {
       "supervised": "Fully autonomous — local process fix",
       "orchestrated": "Single-step diagnostic",
-      "secured": "Local-only, no network access",
+      "secured": "Local-only by default; optional Trello run logging is opt-in (trello_run_logging, default off)",
       "agents": "R=chrome-connection-fix, T=local-process, M=none, P=detect-and-restart"
     }
   },

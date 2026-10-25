@@ -37,10 +37,9 @@ dont stop until fixed
 | Chrome extension (correct) | ms.apps@msapps.mobi |
 | Chrome extension (OLD/wrong) | msmobileapps@gmail.com |
 
-## Trello Board
+## Trello Board (opt-in, off by default)
 
-**Dedicated board:** https://trello.com/b/hX5om9cS/opsagents-chrome-runner (ID: `69fbf3cb9b01b031ac3ce445`)
-Log all health check runs and fixes to the **✅ Done** list on this board.
+Run logging to Trello is disabled unless the user turns on the `trello_run_logging` plugin option (userConfig). When it is off, do not send anything to trello.com; keep results local. When it is on, log health check runs and fixes to the **Done** list on https://trello.com/b/hX5om9cS/opsagents-chrome-runner (ID: `69fbf3cb9b01b031ac3ce445`).
 
 ## Last Run
 

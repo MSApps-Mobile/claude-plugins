@@ -106,11 +106,14 @@ You should see:
   "command": "npx",
   "args": [
     "chrome-devtools-mcp@latest",
-    "--isolated"
+    "--isolated",
+    "--no-usage-statistics"
   ],
   "env": {}
 }
 ```
+
+`--no-usage-statistics` opts out of the upstream server's default usage reporting to Google; keep it so this setup sends no usage data off the machine.
 
 With `--isolated` in place, future sessions will each get their own Chromium profile directory under a tmp path — no more SingletonLock collisions, even if multiple Claude Code windows are open.
 
