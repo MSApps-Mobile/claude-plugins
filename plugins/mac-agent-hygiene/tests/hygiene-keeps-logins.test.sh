@@ -97,7 +97,7 @@ if [ -f "$PROF/Default/Cookies" ] && [ -f "$PROF/Default/Login Data" ] && [ -f "
    && [ -f "$PROF/Default/Local Storage/leveldb_0" ] && [ -f "$PROF/Default/IndexedDB/db_0" ]; then
   ok "after apply Cookies, Login Data, Local State, Local Storage and IndexedDB are intact"
 else bad "after apply a login file is missing"; fi
-if [ -f "$LOCKED/Default/Cache/data_0" ] && [ -f "$LOCKED/Default/Cookies" ]; then ok "locked profile untouched by apply"
+if [ -f "$LOCKED/Default/Cache/NO_SUCH_FILE" ] && [ -f "$LOCKED/Default/Cookies" ]; then ok "locked profile untouched by apply"
 else bad "locked profile was modified"; fi
 
 echo "---"; echo "pass=$PASS fail=$FAILN"
