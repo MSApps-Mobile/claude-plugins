@@ -40,7 +40,7 @@ set -u
 umask 077
 
 # ---------- configuration: defaults < config file < environment ----------
-VARS="HYG_LOG HYG_DERIVED_DATA HYG_PLUGIN_CACHE HYG_PLUGIN_CLONE_MIN_AGE_MIN HYG_PW_GLOB HYG_MODEL_CACHES HYG_MODEL_CACHE_AGE_DAYS HYG_WT_ROOT HYG_WT_GLOB HYG_WT_ROOTS HYG_WT_AGE_DAYS HYG_WT_MERGED_PR_CHECK HYG_GH_SHA_CHECK_MAX HYG_GIT HYG_GH HYG_SESSION_ROOT HYG_SESSION_AGE_HOURS HYG_GRADLE_HOME HYG_GRADLE_AGE_DAYS HYG_DEVICE_SUPPORT HYG_DEVICE_SUPPORT_AGE_DAYS HYG_SIM_DEVICES HYG_ANDROID_HOME HYG_ANDROID_CACHE_AGE_DAYS HYG_ANDROID_SDK HYG_PKG_CACHES HYG_PKG_CACHE_AGE_DAYS HYG_LOCK"
+VARS="HYG_LOG HYG_DERIVED_DATA HYG_PLUGIN_CACHE HYG_PLUGIN_CLONE_MIN_AGE_MIN HYG_PW_GLOB HYG_MODEL_CACHES HYG_MODEL_CACHE_AGE_DAYS HYG_WT_ROOT HYG_WT_GLOB HYG_WT_ROOTS HYG_WT_AGE_DAYS HYG_WT_MERGED_PR_CHECK HYG_GIT HYG_GH HYG_SESSION_ROOT HYG_SESSION_AGE_HOURS HYG_GRADLE_HOME HYG_GRADLE_AGE_DAYS HYG_DEVICE_SUPPORT HYG_DEVICE_SUPPORT_AGE_DAYS HYG_SIM_DEVICES HYG_ANDROID_HOME HYG_ANDROID_CACHE_AGE_DAYS HYG_ANDROID_SDK HYG_PKG_CACHES HYG_PKG_CACHE_AGE_DAYS HYG_LOCK"
 for v in $VARS; do eval "ENV_$v=\"\${$v-}\""; done
 CONF="${XDG_CONFIG_HOME:-$HOME/.config}/mac-agent-hygiene/config.env"
 # shellcheck disable=SC1090
@@ -58,7 +58,6 @@ HYG_WT_ROOT="${HYG_WT_ROOT:-$HOME/code}"; HYG_WT_ROOT="${HYG_WT_ROOT%/}"
 HYG_WT_GLOB="${HYG_WT_GLOB:-*wt-*}"
 HYG_WT_AGE_DAYS="${HYG_WT_AGE_DAYS:-7}"
 HYG_WT_MERGED_PR_CHECK="${HYG_WT_MERGED_PR_CHECK:-1}"
-HYG_GH_SHA_CHECK_MAX="${HYG_GH_SHA_CHECK_MAX:-3000}"   # gh api calls per run for in_github_pr; over it ⇒ KEEP
 HYG_WT_ROOTS="${HYG_WT_ROOTS-$HYG_WT_ROOT:$HYG_WT_GLOB $HOME/code/wt:*}"   # space-separated dir:glob pairs
 HYG_SESSION_ROOT="${HYG_SESSION_ROOT:-$HOME/code/wt}"; HYG_SESSION_ROOT="${HYG_SESSION_ROOT%/}"
 HYG_SESSION_AGE_HOURS="${HYG_SESSION_AGE_HOURS:-24}"
@@ -74,7 +73,7 @@ HYG_PKG_CACHES="${HYG_PKG_CACHES-$HOME/Library/Caches/CocoaPods}"
 HYG_PKG_CACHE_AGE_DAYS="${HYG_PKG_CACHE_AGE_DAYS:-30}"
 HYG_LOCK="${HYG_LOCK:-${TMPDIR:-/tmp}/mac-agent-hygiene.lock}"
 HYG_DERIVED_DATA="${HYG_DERIVED_DATA%/}"; HYG_PLUGIN_CACHE="${HYG_PLUGIN_CACHE%/}"
-case "$HYG_WT_AGE_DAYS$HYG_MODEL_CACHE_AGE_DAYS$HYG_PLUGIN_CLONE_MIN_AGE_MIN$HYG_SESSION_AGE_HOURS$HYG_GRADLE_AGE_DAYS$HYG_DEVICE_SUPPORT_AGE_DAYS$HYG_ANDROID_CACHE_AGE_DAYS$HYG_PKG_CACHE_AGE_DAYS$HYG_GH_SHA_CHECK_MAX" in *[!0-9]*) echo "age settings must be integers" >&2; exit 2;; esac
+case "$HYG_WT_AGE_DAYS$HYG_MODEL_CACHE_AGE_DAYS$HYG_PLUGIN_CLONE_MIN_AGE_MIN$HYG_SESSION_AGE_HOURS$HYG_GRADLE_AGE_DAYS$HYG_DEVICE_SUPPORT_AGE_DAYS$HYG_ANDROID_CACHE_AGE_DAYS$HYG_PKG_CACHE_AGE_DAYS" in *[!0-9]*) echo "age settings must be integers" >&2; exit 2;; esac
 
 GIT="${HYG_GIT:-}"
 if [ -z "$GIT" ]; then GIT=/usr/bin/git; [ -x "$HOME/.local/bin/git" ] && GIT="$HOME/.local/bin/git"; fi   # honour a user's git shim unless HYG_GIT is explicit
@@ -182,23 +181,6 @@ repo_config_runs_commands(){ local gd f
     [ -f "$f" ] || continue
     "$GIT" config --file "$f" --name-only --list 2>/dev/null | /usr/bin/grep -qiE "$CMD_CONFIG_RE" && return 0
   done; return 1; }
-# A commit no remote-tracking ref holds is still safe when GitHub has it in a PR: refs/pull/N/head keeps
-# it (and its ancestors) after the branch is deleted or squash-merged. Pipeline clones carry hundreds of
-# such branches (card SIDmENpf follow-up: 130 GB kept as "unpushed" on 2026-10-26). One gh call per SHA,
-# cached across the run; no gh, gh failure, no PR, or over HYG_GH_SHA_CHECK_MAX ⇒ 1 ⇒ KEEP.
-in_github_pr(){ local repo="$1" sha="$2" f n
-  [ "$HYG_WT_MERGED_PR_CHECK" = 1 ] && [ -n "$GH" ] && [ -n "$repo" ] || return 1
-  [[ "$sha" =~ ^[0-9a-f]{40}$ ]] && [[ "$repo" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || return 1
-  f="$TMPD/pr-sha-$(echo "$repo" | tr / _)-$sha"
-  if [ ! -f "$f" ]; then
-    n=$(/bin/cat "$TMPD/pr-sha-calls" 2>/dev/null || echo 0)
-    [ "$n" -lt "$HYG_GH_SHA_CHECK_MAX" ] || return 1
-    echo $((n+1)) > "$TMPD/pr-sha-calls"
-    # only a JSON array of PRs from this exact repo counts; an error object or a redirect ⇒ 0
-    "$GH" api "repos/$repo/commits/$sha/pulls" --jq "if type==\"array\" then [.[] | select(.base.repo.full_name == \"$repo\")] | length else 0 end" \
-      > "$f" 2>/dev/null || echo 0 > "$f"
-  fi
-  [[ "$(/bin/cat "$f")" =~ ^[1-9][0-9]*$ ]]; }
 git_safe(){ # repo/worktree dir → 0 clean and on a remote ref or merged-PR head (REASON=pushed|merged-pr-head)
   local d="$1" b h repo f st br
   repo_config_runs_commands "$d" && { REASON=repo-config-can-run-commands; return 1; }
@@ -209,21 +191,17 @@ git_safe(){ # repo/worktree dir → 0 clean and on a remote ref or merged-PR hea
     && { REASON=has-submodules; return 1; }   # gitlinks found by index mode 160000, not only by .gitmodules
   st=$(GITS -C "$d" -c diff.ignoreSubmodules=all status --porcelain --ignore-submodules=all 2>/dev/null) || { REASON=git-status-failed; return 1; }
   [ -z "$st" ] || { REASON=dirty-uncommitted-work; return 1; }
-  # owner/name only from an anchored github.com URL; anything else ⇒ empty ⇒ no gh call ⇒ KEEP
-  repo=$(GITS -C "$d" remote get-url origin 2>/dev/null | /usr/bin/sed -nE 's#^(https://|ssh://git@|git@)github\.com[:/]([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)$#\2#p' | /usr/bin/sed -E 's#\.git$##')
-  case "$repo" in *..*|.*|*/.*) repo="";; esac
   if [ -d "$d/.git" ]; then   # a full clone owns its stash and every local branch; a linked worktree shares them with its parent
     [ -z "$(GITS -C "$d" stash list 2>/dev/null)" ] || { REASON=clone-has-stash; return 1; }
     while IFS= read -r br; do [ -n "$br" ] || continue
-      [ -n "$(GITS -C "$d" branch -r --contains "$br" 2>/dev/null | /usr/bin/head -1)" ] || in_github_pr "$repo" "$br" \
-        || { REASON=clone-has-unpushed-branch; return 1; }
+      [ -n "$(GITS -C "$d" branch -r --contains "$br" 2>/dev/null | /usr/bin/head -1)" ] || { REASON=clone-has-unpushed-branch; return 1; }
     done < <(GITS -C "$d" for-each-ref --format='%(objectname)' refs/heads 2>/dev/null)
   fi
   h=$(GITS -C "$d" rev-parse HEAD 2>/dev/null) || { REASON=no-head; return 1; }
   if [ -n "$(GITS -C "$d" branch -r --contains "$h" 2>/dev/null | /usr/bin/head -1)" ]; then REASON=pushed; return 0; fi
-  in_github_pr "$repo" "$h" && { REASON=in-github-pr; return 0; }
   if [ "$HYG_WT_MERGED_PR_CHECK" = 1 ] && [ -n "$GH" ]; then
     b=$(GITS -C "$d" rev-parse --abbrev-ref HEAD 2>/dev/null)
+    repo=$(GITS -C "$d" remote get-url origin 2>/dev/null | /usr/bin/sed -E 's#.*github.com[:/]##; s#\.git$##')
     if [ -n "$repo" ]; then
       f="$TMPD/$(echo "$repo" | tr / _)"
       [ -f "$f" ] || "$GH" pr list --repo "$repo" --state merged --limit 3000 --json headRefName,headRefOid \

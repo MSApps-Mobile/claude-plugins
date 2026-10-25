@@ -6,8 +6,6 @@
 #   KNOWN-NEGATIVE  a stale session dir with ONE dirty nested repo is kept whole
 #   KNOWN-NEGATIVE  a session dir with a file touched in the last 24 h is kept
 #   KNOWN-NEGATIVE  a nested full clone with a stash, or with a local branch on no remote, keeps the folder
-#   KNOWN-POSITIVE  a local-only branch / HEAD whose commit GitHub holds in a PR (gh api …/pulls) → remove
-#   KNOWN-NEGATIVE  the same shape when GitHub has no PR for the commit, or origin is not a plain github.com URL → keep
 #   KNOWN-NEGATIVE  a nested repo whose config defines a filter driver is kept, and the driver never runs
 #   KNOWN-NEGATIVE  a nested repo with submodules is kept unread (status would run under their config)
 #   KNOWN-NEGATIVE  a dirty repo 7 levels deep inside node_modules keeps the folder (the search is not pruned)
@@ -52,15 +50,6 @@ mksession stale-submod; (cd "$HOME/code/wt/stale-submod/repo" && printf '[submod
 mksession stale-gitlink; (cd "$HOME/code/wt/stale-gitlink/repo" && git update-index --add --cacheinfo 160000,$(git rev-parse HEAD),sub && git commit -qm gl && git push -q origin HEAD:refs/heads/stale-gitlink 2>/dev/null); old "$HOME/code/wt/stale-gitlink"
 mksession stale-deep; mkdir -p "$HOME/code/wt/stale-deep/a/b/c/d/e/node_modules/pkg"; git init -q "$HOME/code/wt/stale-deep/a/b/c/d/e/node_modules/pkg"; echo u > "$HOME/code/wt/stale-deep/a/b/c/d/e/node_modules/pkg/wip"; old "$HOME/code/wt/stale-deep"
 
-# --- local-only branch whose commit GitHub holds in a PR (deleted / squash-merged head). origin is
-#     repointed at a github.com URL after the push; a fake gh answers from $FX/pr-shas.
-mkprsession(){ mksession "$1"; (cd "$HOME/code/wt/$1/repo" && git checkout -qb "card-$1" && echo "$1" > h && git add h && git commit -qm "$1" \
-  && git remote set-url origin "https://github.com/o/r.git"); old "$HOME/code/wt/$1"; }
-mkprsession stale-in-pr; git -C "$HOME/code/wt/stale-in-pr/repo" rev-parse HEAD > "$FX/pr-shas"
-mkprsession stale-no-pr
-printf '#!/bin/bash\n[ "$1" = api ] || exit 1\nsha=$(echo "$2" | sed -E "s#.*/commits/([0-9a-f]+)/pulls#\\1#")\ngrep -qxF "$sha" "%s" && echo 1 || echo 0\n' "$FX/pr-shas" > "$FX/fake-gh"; chmod +x "$FX/fake-gh"
-mkprsession stale-bad-url; (cd "$HOME/code/wt/stale-bad-url/repo" && git remote set-url origin "https://evil.example/x?github.com/o/r/../../u"); git -C "$HOME/code/wt/stale-bad-url/repo" rev-parse HEAD >> "$FX/pr-shas"
-
 # --- gradle: three old dists with distinct ages; newest two must stay
 for v in 8.11.1 8.14.3 9.5.0; do mkdir -p "$HOME/.gradle/wrapper/dists/gradle-$v-bin/x"; done
 touch -t 202501010000 "$HOME/.gradle/wrapper/dists/gradle-8.11.1-bin"
@@ -92,17 +81,6 @@ bash "$HYG" plan > "$FX/plan.tsv" 2>"$FX/plan.err" || bad "plan exited non-zero:
 [ "$(action_of "$HOME/.android/cache/sdkbin-1")" = remove ] && ok "old android cache → remove" || bad "android cache: $(grep sdkbin "$FX/plan.tsv")"
 grep -q '/avd' "$FX/plan.tsv" && bad "an AVD appeared in the plan" || ok "AVD never a candidate"
 [ "$(action_of "$HOME/Library/Caches/CocoaPods")" = remove ] && ok "idle CocoaPods cache → remove" || bad "cocoapods: $(grep CocoaPods "$FX/plan.tsv")"
-
-# --- GitHub PR check on (fake gh); off above, so both PR fixtures were kept there
-[ "$(action_of "$HOME/code/wt/stale-in-pr")" = keep ] && ok "PR check off → local-only branch kept" || bad "stale-in-pr with check off: $(grep stale-in-pr "$FX/plan.tsv")"
-HYG_WT_MERGED_PR_CHECK=1 HYG_GH="$FX/fake-gh" bash "$HYG" plan > "$FX/plan-pr.tsv" 2>/dev/null
-pr_action(){ /usr/bin/awk -F'\t' -v p="$1" '$5==p{print $2" "$4}' "$FX/plan-pr.tsv"; }
-[ "$(pr_action "$HOME/code/wt/stale-in-pr")" = "remove stale-session-all-nested-pushed" ] && ok "local-only branch held in a GitHub PR → remove" || bad "stale-in-pr: $(grep stale-in-pr "$FX/plan-pr.tsv")"
-[ "$(pr_action "$HOME/code/wt/stale-no-pr" | cut -d' ' -f1)" = keep ] && ok "local-only branch with no GitHub PR → keep" || bad "stale-no-pr: $(grep stale-no-pr "$FX/plan-pr.tsv")"
-[ "$(pr_action "$HOME/code/wt/stale-bad-url" | cut -d' ' -f1)" = keep ] && ok "non-github / crafted origin URL → no gh call, keep" || bad "stale-bad-url: $(grep stale-bad-url "$FX/plan-pr.tsv")"
-[ "$(pr_action "$HOME/code/wt/stale-dirty" | cut -d' ' -f1)" = keep ] && ok "PR check never overrides dirty work" || bad "stale-dirty with PR check: $(grep stale-dirty "$FX/plan-pr.tsv")"
-HYG_WT_MERGED_PR_CHECK=1 HYG_GH="$FX/fake-gh" HYG_GH_SHA_CHECK_MAX=0 bash "$HYG" plan > "$FX/plan-cap.tsv" 2>/dev/null
-[ "$(/usr/bin/awk -F'\t' -v p="$HOME/code/wt/stale-in-pr" '$5==p{print $2}' "$FX/plan-cap.tsv")" = keep ] && ok "gh call cap reached → keep" || bad "cap: $(grep stale-in-pr "$FX/plan-cap.tsv")"
 
 # --- run with the lock held removes nothing
 mkdir "$HYG_LOCK"; bash "$HYG" run >/dev/null 2>&1
