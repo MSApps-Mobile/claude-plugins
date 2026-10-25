@@ -6,6 +6,10 @@
 #   KNOWN-NEGATIVE  a stale session dir with ONE dirty nested repo is kept whole
 #   KNOWN-NEGATIVE  a session dir with a file touched in the last 24 h is kept
 #   KNOWN-NEGATIVE  a nested full clone with a stash, or with a local branch on no remote, keeps the folder
+#   KNOWN-POSITIVE  a clone branch its stale origin ref misses but GitHub's default branch contains → remove
+#   KNOWN-NEGATIVE  the same when GitHub's default branch lacks it, origin is a crafted URL, or the gh cap is hit → keep
+#   KNOWN-POSITIVE  a clean linked worktree whose HEAD a parent-repo branch holds → remove; the branch survives apply
+#   KNOWN-NEGATIVE  a linked worktree on a detached HEAD no branch holds → keep
 #   KNOWN-NEGATIVE  a nested repo whose config defines a filter driver is kept, and the driver never runs
 #   KNOWN-NEGATIVE  a nested repo with submodules is kept unread (status would run under their config)
 #   KNOWN-NEGATIVE  a dirty repo 7 levels deep inside node_modules keeps the folder (the search is not pruned)
@@ -50,6 +54,33 @@ mksession stale-submod; (cd "$HOME/code/wt/stale-submod/repo" && printf '[submod
 mksession stale-gitlink; (cd "$HOME/code/wt/stale-gitlink/repo" && git update-index --add --cacheinfo 160000,$(git rev-parse HEAD),sub && git commit -qm gl && git push -q origin HEAD:refs/heads/stale-gitlink 2>/dev/null); old "$HOME/code/wt/stale-gitlink"
 mksession stale-deep; mkdir -p "$HOME/code/wt/stale-deep/a/b/c/d/e/node_modules/pkg"; git init -q "$HOME/code/wt/stale-deep/a/b/c/d/e/node_modules/pkg"; echo u > "$HOME/code/wt/stale-deep/a/b/c/d/e/node_modules/pkg/wip"; old "$HOME/code/wt/stale-deep"
 
+# --- stale origin refs: a commit lands on local main, origin/main stays behind; origin is then repointed
+#     at a github.com URL. A fake gh answers `compare SHA...main` from $FX/default-shas.
+mkstale(){ mksession "$1"; (cd "$HOME/code/wt/$1/repo" && echo "$1" > h && git add h && git commit -qm "$1" \
+  && git remote set-url origin "${2:-https://github.com/o/r.git}"); old "$HOME/code/wt/$1"; }
+mkstale stale-on-default; git -C "$HOME/code/wt/stale-on-default/repo" rev-parse HEAD > "$FX/default-shas"
+mkstale stale-off-default
+mkstale stale-bad-url "https://evil.example/x?github.com/o/r/../../u"; git -C "$HOME/code/wt/stale-bad-url/repo" rev-parse HEAD >> "$FX/default-shas"
+cat > "$FX/fake-gh" <<FAKE
+#!/bin/bash
+[ "\$1" = api ] || exit 1
+case "\$2" in repos/o/r) echo main; exit 0;; esac
+sha=\$(echo "\$2" | sed -nE 's#^repos/o/r/compare/([0-9a-f]{40})\\.\\.\\.main\$#\\1#p')
+[ -n "\$sha" ] || exit 1
+echo "\$2" >> "$FX/gh-calls"
+grep -qxF "\$sha" "$FX/default-shas" && echo 1 || echo 0
+FAKE
+chmod +x "$FX/fake-gh"
+# --- linked worktree in a session; its parent repo lives outside the session
+git clone -q "$FX/origin.git" "$HOME/code/parent" 2>/dev/null
+(cd "$HOME/code/parent" && echo p > p && git add p && git commit -qm p && git push -q origin HEAD:refs/heads/parent-base 2>/dev/null)
+mkdir -p "$HOME/code/wt/wt-on-branch" "$HOME/code/wt/wt-detached"
+git -C "$HOME/code/parent" worktree add -q -b card-local "$HOME/code/wt/wt-on-branch/repo" 2>/dev/null
+(cd "$HOME/code/wt/wt-on-branch/repo" && echo w > w && git add w && git commit -qm "local only"); WT_SHA=$(git -C "$HOME/code/wt/wt-on-branch/repo" rev-parse HEAD)
+git -C "$HOME/code/parent" worktree add -q --detach "$HOME/code/wt/wt-detached/repo" 2>/dev/null
+(cd "$HOME/code/wt/wt-detached/repo" && echo d > d && git add d && git commit -qm "detached only")
+old "$HOME/code/wt/wt-on-branch" "$HOME/code/wt/wt-detached"
+
 # --- gradle: three old dists with distinct ages; newest two must stay
 for v in 8.11.1 8.14.3 9.5.0; do mkdir -p "$HOME/.gradle/wrapper/dists/gradle-$v-bin/x"; done
 touch -t 202501010000 "$HOME/.gradle/wrapper/dists/gradle-8.11.1-bin"
@@ -82,6 +113,21 @@ bash "$HYG" plan > "$FX/plan.tsv" 2>"$FX/plan.err" || bad "plan exited non-zero:
 grep -q '/avd' "$FX/plan.tsv" && bad "an AVD appeared in the plan" || ok "AVD never a candidate"
 [ "$(action_of "$HOME/Library/Caches/CocoaPods")" = remove ] && ok "idle CocoaPods cache → remove" || bad "cocoapods: $(grep CocoaPods "$FX/plan.tsv")"
 
+# --- linked worktrees need no gh: decided in the first plan
+[ "$(action_of "$HOME/code/wt/wt-on-branch")" = remove ] && ok "clean linked worktree on a parent-repo branch → remove" || bad "wt-on-branch: $(grep wt-on-branch "$FX/plan.tsv")"
+[ "$(action_of "$HOME/code/wt/wt-detached")" = keep ] && ok "linked worktree on a detached HEAD no branch holds → keep" || bad "wt-detached: $(grep wt-detached "$FX/plan.tsv")"
+# --- GitHub default-branch check: off above, on below with the fake gh
+[ "$(action_of "$HOME/code/wt/stale-on-default")" = keep ] && ok "gh check off → stale-ref clone kept" || bad "stale-on-default with check off: $(grep stale-on-default "$FX/plan.tsv")"
+HYG_WT_MERGED_PR_CHECK=1 HYG_GH="$FX/fake-gh" bash "$HYG" plan > "$FX/plan-gh.tsv" 2>/dev/null
+gh_action(){ /usr/bin/awk -F'\t' -v p="$1" '$5==p{print $2}' "$FX/plan-gh.tsv"; }
+[ "$(gh_action "$HOME/code/wt/stale-on-default")" = remove ] && ok "clone commit on GitHub's default branch → remove" || bad "stale-on-default: $(grep stale-on-default "$FX/plan-gh.tsv")"
+[ "$(gh_action "$HOME/code/wt/stale-off-default")" = keep ] && ok "clone commit GitHub's default branch lacks → keep" || bad "stale-off-default: $(grep stale-off-default "$FX/plan-gh.tsv")"
+[ "$(gh_action "$HOME/code/wt/stale-bad-url")" = keep ] && ok "crafted origin URL → no gh call, keep" || bad "stale-bad-url: $(grep stale-bad-url "$FX/plan-gh.tsv")"
+grep -q evil "$FX/gh-calls" 2>/dev/null && bad "gh was called for the crafted URL" || ok "gh never called for the crafted URL"
+[ "$(gh_action "$HOME/code/wt/stale-dirty")" = keep ] && ok "gh check never overrides dirty work" || bad "stale-dirty with gh: $(grep stale-dirty "$FX/plan-gh.tsv")"
+HYG_WT_MERGED_PR_CHECK=1 HYG_GH="$FX/fake-gh" HYG_GH_SHA_CHECK_MAX=0 bash "$HYG" plan > "$FX/plan-cap.tsv" 2>/dev/null
+[ "$(/usr/bin/awk -F'\t' -v p="$HOME/code/wt/stale-on-default" '$5==p{print $2}' "$FX/plan-cap.tsv")" = keep ] && ok "gh call cap reached → keep" || bad "cap: $(grep stale-on-default "$FX/plan-cap.tsv")"
+
 # --- run with the lock held removes nothing
 mkdir "$HYG_LOCK"; bash "$HYG" run >/dev/null 2>&1
 [ -d "$HOME/code/wt/stale-clean" ] && grep -q 'skipped: previous run still holds' "$HYG_LOG" && ok "held lock → run skipped" || bad "run did not respect the lock"
@@ -94,6 +140,10 @@ bash "$HYG" apply "$FX/apply.tsv" > "$FX/apply.out" 2>&1
 [ -f "$HOME/code/wt/stale-dirty/repo/wip.txt" ] && ok "dirty session's work survived" || bad "dirty work lost"
 [ -d "$HOME/.gradle/wrapper/dists/gradle-9.5.0-bin" ] && [ ! -e "$HOME/.gradle/wrapper/dists/gradle-8.11.1-bin" ] && ok "gradle apply kept newest, removed oldest" || bad "gradle apply wrong"
 [ -d "$HOME/.android/avd/pixel.avd" ] && ok "AVD intact after apply" || bad "AVD gone"
+[ ! -e "$HOME/code/wt/wt-on-branch" ] && [ "$(git -C "$HOME/code/parent" rev-parse card-local 2>/dev/null)" = "$WT_SHA" ] \
+  && [ -z "$(git -C "$HOME/code/parent" worktree list --porcelain | grep wt-on-branch)" ] \
+  && ok "linked worktree removed, its unpushed branch survives in the parent, metadata pruned" || bad "wt-on-branch apply: $(cat "$FX/apply.out")"
+[ -d "$HOME/code/wt/wt-detached/repo" ] && ok "detached worktree survived apply" || bad "detached worktree lost"
 
 echo "# pass=$PASS fail=$FAILN"
 [ "$FAILN" = 0 ]
