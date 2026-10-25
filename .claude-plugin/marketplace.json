@@ -841,7 +841,7 @@
       "name": "token-efficiency-audit",
       "source": "./plugins/token-efficiency-audit",
       "description": "Audits and optimizes token usage across skills, scheduled tasks, plugins, and MCP connectors — SOSA Supervised pillar enforcement for efficiency requirements",
-      "version": "1.0.3",
+      "version": "1.0.4",
       "platforms": [
         "claude-code",
         "cowork"

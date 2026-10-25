@@ -1,6 +1,6 @@
 {
   "name": "token-efficiency-audit",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "SOSA Level 3 plugin that audits and optimizes token usage across skills, scheduled tasks, plugins, and MCP connectors. Enforces the Orchestrated pillar's efficiency requirements (O6).",
   "author": {
     "name": "MSApps",
