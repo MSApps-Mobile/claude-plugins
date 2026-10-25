@@ -168,7 +168,7 @@ check_worktree(){ local d="$1"
   [ -f "$d/.git" ] || { REASON=not-a-linked-worktree; return 1; }        # a full clone has a .git DIR — left alone
   wt_recently_touched "$d" && { REASON=touched-recently; return 1; }
   cwd_inside "$d" && { REASON=a-process-is-inside; return 1; }
-  git_safe "$d"; }
+  git_safe "$d" "$d"; }
 # git run on repos an agent made: repo-local config must not be able to run a command while we only
 # look (core.fsmonitor and hooks are the command-executing keys `status` would honour).
 GITS(){ GIT_CONFIG_NOSYSTEM=1 "$GIT" --no-optional-locks -c core.fsmonitor=false -c core.hooksPath=/dev/null \
@@ -201,8 +201,8 @@ in_github_default(){ local repo="$1" sha="$2" key f n def
       > "$f" 2>/dev/null || echo 0 > "$f"
   fi
   [ "$(/bin/cat "$f")" = 1 ]; }
-git_safe(){ # repo/worktree dir → 0 clean and on a remote ref or merged-PR head (REASON=pushed|merged-pr-head)
-  local d="$1" b h repo f st br cdir
+git_safe(){ # repo/worktree dir, deletion boundary (the dir apply would rm) → 0 clean and on a remote ref or merged-PR head (REASON=pushed|merged-pr-head)
+  local d="$1" bound="${2:-$1}" b h repo f st br cdir rc rb wg
   repo_config_runs_commands "$d" && { REASON=repo-config-can-run-commands; return 1; }
   # status recurses into submodules under THEIR config, which the scan above never read: keep, unread.
   { [ -e "$d/.gitmodules" ] || [ -d "$(GITS -C "$d" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)/modules" ] \
@@ -225,11 +225,17 @@ git_safe(){ # repo/worktree dir → 0 clean and on a remote ref or merged-PR hea
   if [ -n "$(GITS -C "$d" branch -r --contains "$h" 2>/dev/null | /usr/bin/head -1)" ]; then REASON=pushed; return 0; fi
   in_github_default "$repo" "$h" && { REASON=in-github-default-branch; return 0; }
   # A clean linked worktree whose HEAD a local branch holds loses nothing: removing the worktree leaves
-  # that branch (and its unpushed commits) in the parent repo. The parent must live outside $d; a parent
-  # inside an agent session is itself a full clone, checked branch by branch above.
+  # that branch (and its unpushed commits) in the parent repo — provided the parent survives the removal.
+  # So: the parent's real path lies outside the deletion boundary (the whole session folder for a
+  # session-dir; a bare parent there is not found by nested_repos), and the parent really registers
+  # this dir as one of its worktrees ($cdir/worktrees/<name>/gitdir points back at $d/.git).
   if [ -f "$d/.git" ]; then
     cdir=$(GITS -C "$d" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
-    if [ -n "$cdir" ] && [ -d "$cdir" ] && case "$cdir/" in "$d"/*) false;; *) true;; esac \
+    rc=$(cd -P -- "$cdir" 2>/dev/null && pwd -P); rb=$(cd -P -- "$bound" 2>/dev/null && pwd -P)
+    wg=$(GITS -C "$d" rev-parse --path-format=absolute --git-dir 2>/dev/null)
+    if [ -n "$rc" ] && [ -n "$rb" ] && case "$rc/" in "$rb"/*) false;; *) true;; esac \
+       && case "$wg" in "$cdir"/worktrees/*) true;; *) false;; esac \
+       && [ "$(cd -P -- "$(/usr/bin/dirname "$(/bin/cat "$wg/gitdir" 2>/dev/null)")" 2>/dev/null && pwd -P)" = "$(cd -P -- "$d" && pwd -P)" ] \
        && [ -n "$(GITS -C "$d" for-each-ref --contains "$h" --format=x refs/heads 2>/dev/null | /usr/bin/head -1)" ]; then
       REASON=branch-kept-in-parent-repo; return 0; fi
   fi
@@ -249,8 +255,12 @@ check_session(){ local d="$1" r
   [ -e "$d/.git" ] && { REASON=is-a-git-repo; return 1; }
   [ -n "$(/usr/bin/find "$d" \( -name .git -o -name node_modules -o -name .venv -o -name Pods \) -prune -o -type f -mmin -"$((HYG_SESSION_AGE_HOURS*60))" -print -quit 2>/dev/null)" ] && { REASON=touched-recently; return 1; }
   cwd_inside "$d" && { REASON=a-process-is-inside; return 1; }
+  # nested_repos only finds `.git`; a bare repo or separate git-dir elsewhere in the folder would go
+  # with the rm unchecked. Any HEAD file outside a .git path ⇒ keep the folder, unread.
+  [ -n "$(/usr/bin/find "$d" -path '*/.git' -prune -o -type f -name HEAD -print -quit 2>/dev/null)" ] \
+    && { REASON=contains-bare-or-separate-git-dir; return 1; }
   while IFS= read -r r; do [ -n "$r" ] || continue
-    git_safe "$r" || { REASON="nested-$REASON"; return 1; }
+    git_safe "$r" "$d" || { REASON="nested-$REASON"; return 1; }
   done < <(nested_repos "$d")
   REASON=stale-session-all-nested-pushed; return 0; }
 check_gradle(){ local p="$1" parent n

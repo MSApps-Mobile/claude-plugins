@@ -10,6 +10,8 @@
 #   KNOWN-NEGATIVE  the same when GitHub's default branch lacks it, origin is a crafted URL, or the gh cap is hit → keep
 #   KNOWN-POSITIVE  a clean linked worktree whose HEAD a parent-repo branch holds → remove; the branch survives apply
 #   KNOWN-NEGATIVE  a linked worktree on a detached HEAD no branch holds → keep
+#   KNOWN-NEGATIVE  a linked worktree whose parent (a bare repo) sits inside the same session → keep
+#   KNOWN-NEGATIVE  a session holding a bare repo (no .git anywhere) → keep
 #   KNOWN-NEGATIVE  a nested repo whose config defines a filter driver is kept, and the driver never runs
 #   KNOWN-NEGATIVE  a nested repo with submodules is kept unread (status would run under their config)
 #   KNOWN-NEGATIVE  a dirty repo 7 levels deep inside node_modules keeps the folder (the search is not pruned)
@@ -80,6 +82,10 @@ git -C "$HOME/code/parent" worktree add -q -b card-local "$HOME/code/wt/wt-on-br
 git -C "$HOME/code/parent" worktree add -q --detach "$HOME/code/wt/wt-detached/repo" 2>/dev/null
 (cd "$HOME/code/wt/wt-detached/repo" && echo d > d && git add d && git commit -qm "detached only")
 old "$HOME/code/wt/wt-on-branch" "$HOME/code/wt/wt-detached"
+mkdir -p "$HOME/code/wt/wt-parent-inside"; git clone -q --bare "$FX/origin.git" "$HOME/code/wt/wt-parent-inside/store" 2>/dev/null
+git -C "$HOME/code/wt/wt-parent-inside/store" worktree add -q -b inside-only "$HOME/code/wt/wt-parent-inside/repo" stale-clean 2>/dev/null
+(cd "$HOME/code/wt/wt-parent-inside/repo" && echo i > i && git add i && git commit -qm "only in the inside parent"); old "$HOME/code/wt/wt-parent-inside"
+mkdir -p "$HOME/code/wt/bare-only"; git clone -q --bare "$HOME/code/wt/stale-branch/repo" "$HOME/code/wt/bare-only/store.git" 2>/dev/null; old "$HOME/code/wt/bare-only"
 
 # --- gradle: three old dists with distinct ages; newest two must stay
 for v in 8.11.1 8.14.3 9.5.0; do mkdir -p "$HOME/.gradle/wrapper/dists/gradle-$v-bin/x"; done
@@ -115,6 +121,8 @@ grep -q '/avd' "$FX/plan.tsv" && bad "an AVD appeared in the plan" || ok "AVD ne
 
 # --- linked worktrees need no gh: decided in the first plan
 [ "$(action_of "$HOME/code/wt/wt-on-branch")" = remove ] && ok "clean linked worktree on a parent-repo branch → remove" || bad "wt-on-branch: $(grep wt-on-branch "$FX/plan.tsv")"
+[ "$(action_of "$HOME/code/wt/bare-only")" = keep ] && ok "session holding only a bare repo → keep" || bad "bare-only: $(grep bare-only "$FX/plan.tsv")"
+[ "$(action_of "$HOME/code/wt/wt-parent-inside")" = keep ] && ok "worktree whose bare parent is inside the session → keep" || bad "wt-parent-inside: $(grep wt-parent-inside "$FX/plan.tsv")"
 [ "$(action_of "$HOME/code/wt/wt-detached")" = keep ] && ok "linked worktree on a detached HEAD no branch holds → keep" || bad "wt-detached: $(grep wt-detached "$FX/plan.tsv")"
 # --- GitHub default-branch check: off above, on below with the fake gh
 [ "$(action_of "$HOME/code/wt/stale-on-default")" = keep ] && ok "gh check off → stale-ref clone kept" || bad "stale-on-default with check off: $(grep stale-on-default "$FX/plan.tsv")"
