@@ -1,7 +1,7 @@
 {
   "name": "claude-folder-janitor",
   "description": "Dry-run-first cleanup of ~/.claude: old .claude.json backups, empty session-env folders, a stale changelog cache, and the transcripts of projects whose folders no longer exist. Lists every candidate with size and reason; deletes only on /janitor apply. Never touches skills, plugins, scheduled tasks, settings or history.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": {
     "name": "MSApps",
     "url": "https://claudeservices.ai"
