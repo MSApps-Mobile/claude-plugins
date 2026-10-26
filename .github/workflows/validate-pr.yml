@@ -80,7 +80,9 @@ jobs:
           tested = [
               n for n in names
               if os.path.isdir(os.path.join("plugins", n, "tests"))
-              and any(f.endswith(".test.sh") for f in os.listdir(os.path.join("plugins", n, "tests")))
+              # Hidden files are skipped, as the tests job's bash glob skips them.
+              and any(f.endswith(".test.sh") and not f.startswith(".")
+                      for f in os.listdir(os.path.join("plugins", n, "tests")))
           ]
 
           with open(os.environ["GITHUB_OUTPUT"], "a") as out:
@@ -117,10 +119,7 @@ jobs:
       - name: Check plugin structure
         run: |
           # Defence in depth: detect already refuses any other name.
-          if [[ ! "$PLUGIN" =~ ^[a-z0-9-]+$ ]]; then
-            echo "::error::Plugin directory name is not allowed: must match ^[a-z0-9-]+\$"
-            exit 1
-          fi
+          bash scripts/check-plugin-name.sh "$PLUGIN" || exit 1
           ERRORS=0
 
           if [[ ! -d "plugins/$PLUGIN/.claude-plugin" ]]; then
@@ -294,10 +293,8 @@ jobs:
 
       - name: Run plugins/<plugin>/tests/*.test.sh
         run: |
-          if [[ ! "$PLUGIN" =~ ^[a-z0-9-]+$ ]]; then
-            echo "::error::Plugin directory name is not allowed: must match ^[a-z0-9-]+\$"
-            exit 1
-          fi
+          # Defence in depth, the same script the validate job runs.
+          bash scripts/check-plugin-name.sh "$PLUGIN" || exit 1
           echo "runner: $(uname -s) $(uname -m), $(bash --version | head -1)"
           FAILED=0
           RAN=0
