@@ -19,7 +19,11 @@
 - Worktrees: linked (`[ -f .git ]`), untouched > age, nobody's cwd, clean, pushed or merged-PR head.
   `gh` failure ⇒ keep. Never `--force`.
 - DerivedData skipped while Xcode builds. Never sudo. Paths outside `$HOME` refused at apply.
-- Session dirs (`~/code/wt/*` without `.git`): kept whole if ANY nested repo fails the worktree test; untouched > 24 h.
+- Session dirs (every `~/code/wt/*` except a linked worktree; a top-level full clone is one too): kept whole if the clone
+  or ANY nested repo fails the worktree test, the session is alive in `HYG_SESSIONS_JSON`, or anything was touched < 24 h.
+- Build artifacts (`node_modules .next dist build .turbo coverage` inside `~/code/wt/<session>`): only when the session
+  is idle 24 h, nobody's cwd, not alive in the registry, the dir holds no `.git`, and git IGNORES it with no tracked file
+  (no repo: node_modules/.next/.turbo beside package.json only). An unreadable registry ⇒ every session alive.
 - Gradle: never the newest two versions or one a running process names. iOS: never the newest DeviceSupport,
   never a simulator whose runtime is installed, never `Xcode/Archives`. Android AVDs / SDK images: report only.
 - `run` holds a mkdir lock so a 4-hourly run never overlaps a slow one (stale after 6 h).
@@ -31,7 +35,7 @@
 
 ```bash
 bash -n scripts/*.sh && node --check server/index.js
-bash tests/hygiene-keeps-logins.test.sh && bash tests/hygiene-dev-caches.test.sh   # macOS fixtures, throwaway HOME
+bash tests/hygiene-keeps-logins.test.sh && bash tests/hygiene-dev-caches.test.sh && bash tests/hygiene-wt-artifacts.test.sh   # macOS fixtures, throwaway HOME
 bash scripts/hygiene.sh status
 bash scripts/hygiene.sh plan | awk -F'\t' '{print $1, $2, $4}' | sort | uniq -c
 printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}}' \
