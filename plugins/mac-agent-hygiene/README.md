@@ -77,7 +77,7 @@ The log is `~/Library/Logs/mac-agent-hygiene.log`.
 ```bash
 HYG_WT_ROOT="$HOME/code"      # where agent worktrees live
 HYG_WT_GLOB="*wt-*"           # how they are named
-HYG_WT_NESTED="wt"            # also ~/code/wt/*/... (phase-session worktrees); "" = off
+HYG_WT_NESTED="wt _worktrees" # also ~/code/wt/*/... and ~/code/_worktrees/*/... (agent worktrees); "" = off
 HYG_WT_DEPTH=3
 HYG_WT_AGE_DAYS=7
 HYG_MODEL_CACHES="$HOME/.cache/whisper $HOME/.cache/codex-runtimes"
