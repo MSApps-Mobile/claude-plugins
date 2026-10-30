@@ -23,6 +23,12 @@
 #                    commit subject matches one of the PR's commits. Dirty / unpushed / in-use: KEPT.
 #                    Note: "clean" is `git status --porcelain`, so gitignored files (a local .env,
 #                    node_modules) go with the worktree. The branch ref stays — nothing is unrecoverable.
+#                    HYG_WT_KEEP_UNPUSHED=0 (opt-in age-only policy): an idle, nobody's-cwd worktree goes
+#                    even when dirty or unpushed. HEAD and a `git stash create` snapshot of tracked edits are
+#                    kept first under refs/hygiene-archive/<date>/<path> in the parent repo; untracked files go.
+#   wt-clones        only with HYG_WT_KEEP_UNPUSHED=0: full clones (.git is a DIR) at most HYG_WT_DEPTH deep under
+#                    a HYG_WT_NESTED dir, idle > HYG_WT_AGE_DAYS, nobody's cwd. Local-only commits (and a stash
+#                    snapshot of tracked edits) are saved first as a git bundle under HYG_ARCHIVE_DIR.
 #
 # Config: ~/.config/mac-agent-hygiene/config.env (optional). Environment variables win over the
 # config file, so an MCP call can override one value for one run.
@@ -31,7 +37,7 @@ set -u
 umask 077
 
 # ---------- configuration: defaults < config file < environment ----------
-VARS="HYG_LOG HYG_DERIVED_DATA HYG_PLUGIN_CACHE HYG_PLUGIN_CLONE_MIN_AGE_MIN HYG_PW_GLOB HYG_MODEL_CACHES HYG_MODEL_CACHE_AGE_DAYS HYG_WT_ROOT HYG_WT_GLOB HYG_WT_NESTED HYG_WT_DEPTH HYG_WT_AGE_DAYS HYG_WT_MERGED_PR_CHECK HYG_GIT HYG_GH"
+VARS="HYG_LOG HYG_DERIVED_DATA HYG_PLUGIN_CACHE HYG_PLUGIN_CLONE_MIN_AGE_MIN HYG_PW_GLOB HYG_MODEL_CACHES HYG_MODEL_CACHE_AGE_DAYS HYG_WT_ROOT HYG_WT_GLOB HYG_WT_NESTED HYG_WT_DEPTH HYG_WT_AGE_DAYS HYG_WT_MERGED_PR_CHECK HYG_WT_KEEP_UNPUSHED HYG_ARCHIVE_DIR HYG_GIT HYG_GH"
 for v in $VARS; do eval "ENV_$v=\"\${$v-}\""; done
 CONF="${XDG_CONFIG_HOME:-$HOME/.config}/mac-agent-hygiene/config.env"
 # shellcheck disable=SC1090
@@ -51,6 +57,8 @@ HYG_WT_NESTED="${HYG_WT_NESTED-wt}"   # set to "" to scan direct children only
 HYG_WT_DEPTH="${HYG_WT_DEPTH:-3}"
 HYG_WT_AGE_DAYS="${HYG_WT_AGE_DAYS:-7}"
 HYG_WT_MERGED_PR_CHECK="${HYG_WT_MERGED_PR_CHECK:-1}"
+HYG_WT_KEEP_UNPUSHED="${HYG_WT_KEEP_UNPUSHED:-1}"   # 0 = age-only: idle dirty/unpushed worktrees go too (archived)
+HYG_ARCHIVE_DIR="${HYG_ARCHIVE_DIR:-$HOME/.local/share/mac-agent-hygiene/archive}"; HYG_ARCHIVE_DIR="${HYG_ARCHIVE_DIR%/}"
 HYG_DERIVED_DATA="${HYG_DERIVED_DATA%/}"; HYG_PLUGIN_CACHE="${HYG_PLUGIN_CACHE%/}"
 case "$HYG_WT_AGE_DAYS$HYG_MODEL_CACHE_AGE_DAYS$HYG_PLUGIN_CLONE_MIN_AGE_MIN$HYG_WT_DEPTH" in *[!0-9]*) echo "age settings must be integers" >&2; exit 2;; esac
 
@@ -106,6 +114,11 @@ list_worktrees(){ local g d
   /usr/bin/find "$HYG_WT_ROOT" -mindepth 2 -maxdepth $((HYG_WT_DEPTH+1)) \( -type d \( -name .git -o -name node_modules \) -prune \) \
       -o \( -type f -name .git -print \) 2>/dev/null | /usr/bin/sort |
   while IFS= read -r g; do d="${g%/.git}"; wt_in_scope "$d" && printf '%s\n' "$d"; done; }
+# Full clones under a HYG_WT_NESTED dir — listed only under the age-only opt-in.
+list_wt_clones(){ local g d
+  [ "$HYG_WT_KEEP_UNPUSHED" = 0 ] && [ -d "$HYG_WT_ROOT" ] || return 0
+  /usr/bin/find "$HYG_WT_ROOT" -mindepth 2 -maxdepth $((HYG_WT_DEPTH+1)) -type d \( -name .git -print -prune -o -name node_modules -prune \) 2>/dev/null |
+  /usr/bin/sort | while IFS= read -r g; do d="${g%/.git}"; wt_in_scope "$d" && [ "${d#"$HYG_WT_ROOT"/}" != "${d#"$HYG_WT_ROOT"/*/}" ] && printf '%s\n' "$d"; done; }
 list_clones(){ [ -d "$HYG_PLUGIN_CACHE" ] && /usr/bin/find "$HYG_PLUGIN_CACHE" -maxdepth 1 -mindepth 1 -type d -name 'temp_git_*' 2>/dev/null | /usr/bin/sort; }
 list_profiles(){ local p; for p in $HYG_PW_GLOB; do [ -d "$p" ] && printf '%s\n' "$p"; done; }
 # Directories a human does not edit — dependency trees, VCS internals, build output. Pruned from the
@@ -118,6 +131,10 @@ wt_recently_touched(){  # any regular file (outside the pruned dirs) newer than 
   unset 'expr[${#expr[@]}-1]'
   [ -n "$(/usr/bin/find "$1" \( "${expr[@]}" \) -prune -o -type f -mtime -"$HYG_WT_AGE_DAYS" -print -quit 2>/dev/null)" ] ||
   [ -n "$(/usr/bin/find "$1" -maxdepth 0 -mtime -"$HYG_WT_AGE_DAYS" 2>/dev/null)" ]; }
+
+# A repo (.git dir or file) somewhere below $1. `worktree remove --force` / rm -rf would take it along
+# without its own archive, so an age-only removal waits until the nested repos are gone first.
+has_nested_repo(){ [ -n "$(/usr/bin/find "$1" -mindepth 2 -maxdepth $((HYG_WT_DEPTH+1)) -name node_modules -prune -o -name .git -print -quit 2>/dev/null)" ]; }
 
 # ---------- eligibility (the SAME function decides in plan and in apply) ----------
 REASON=""
@@ -179,8 +196,11 @@ check_worktree(){ local d="$1" b h repo f st rb ro rn gd cdir
   wt_recently_touched "$d" && { REASON=touched-recently; return 1; }
   cwd_inside "$d" && { REASON=a-process-is-inside; return 1; }
   st=$("$GIT" -C "$d" status --porcelain 2>/dev/null) || { REASON=git-status-failed; return 1; }
-  [ -z "$st" ] || { REASON=dirty-uncommitted-work; return 1; }
   h=$("$GIT" -C "$d" rev-parse HEAD 2>/dev/null) || { REASON=no-head; return 1; }
+  if [ -n "$st" ]; then
+    [ "$HYG_WT_KEEP_UNPUSHED" = 0 ] && has_nested_repo "$d" && { REASON=contains-nested-repo; return 1; }
+    [ "$HYG_WT_KEEP_UNPUSHED" = 0 ] && { REASON=idle-dirty-archived; return 0; }
+    REASON=dirty-uncommitted-work; return 1; fi
   if [ -n "$("$GIT" -C "$d" branch -r --contains "$h" 2>/dev/null | /usr/bin/head -1)" ]; then REASON=pushed; return 0; fi
   if [ "$HYG_WT_MERGED_PR_CHECK" = 1 ] && [ -n "$GH" ]; then
     b=$("$GIT" -C "$d" rev-parse --abbrev-ref HEAD 2>/dev/null)
@@ -193,14 +213,24 @@ check_worktree(){ local d="$1" b h repo f st rb ro rn gd cdir
       if [ -n "$b" ] && [ "$b" != HEAD ] && merged_pr_commits_match "$d" "$repo" "$f" "$b"; then REASON=merged-pr-commits; return 0; fi
     fi
   fi
+  [ "$HYG_WT_KEEP_UNPUSHED" = 0 ] && { REASON=idle-unpushed-archived; return 0; }
   REASON=unpushed-commits; return 1; }
 
+check_wt_clone(){ local d="$1" top
+  [ "$HYG_WT_KEEP_UNPUSHED" = 0 ] || { REASON=age-only-policy-off; return 1; }
+  wt_in_scope "$d" || { REASON=outside-worktree-scope; return 1; }
+  top="${d#"$HYG_WT_ROOT"/}"; top="${top%%/*}"
+  [ -d "$d/.git" ] && [ ! -L "$d" ] && [ "$top" != "${d#"$HYG_WT_ROOT"/}" ] || { REASON=not-a-nested-clone; return 1; }
+  wt_recently_touched "$d" && { REASON=touched-recently; return 1; }
+  cwd_inside "$d" && { REASON=a-process-is-inside; return 1; }
+  has_nested_repo "$d" && { REASON=contains-nested-repo; return 1; }
+  REASON=idle-clone-archived; return 0; }
 check_item(){ # category path → 0 removable (REASON=why) / 1 keep (REASON=why)
   case "$2" in "$HOME"/*) ;; *) REASON=outside-home; return 1;; esac
   has_dot_component "$2" && { REASON=dot-component-in-path; return 1; }
   case "$1" in
     derived-data) check_derived "$2";; plugin-clones) check_clone "$2";; browser-caches) check_pwcache "$2";;
-    model-caches) check_model "$2";; worktrees) check_worktree "$2";; *) REASON=unknown-category; return 1;; esac; }
+    model-caches) check_model "$2";; worktrees) check_worktree "$2";; wt-clones) check_wt_clone "$2";; *) REASON=unknown-category; return 1;; esac; }
 
 # ---------- candidates ----------
 candidates(){  # category<TAB>path
@@ -213,6 +243,7 @@ candidates(){  # category<TAB>path
   done
   for d in $HYG_MODEL_CACHES; do [ -d "$d" ] && printf 'model-caches\t%s\n' "${d%/}"; done
   list_worktrees | while IFS= read -r d; do printf 'worktrees\t%s\n' "$d"; done
+  list_wt_clones | while IFS= read -r d; do printf 'wt-clones\t%s\n' "$d"; done
 }
 
 plan(){ local cat p k prev="" n=0 r=0 t0=$SECONDS
@@ -228,11 +259,36 @@ plan(){ local cat p k prev="" n=0 r=0 t0=$SECONDS
   plan_mark
 }
 
-remove_item(){ local cat="$1" p="$2" common
+# Age-only removals (HYG_WT_KEEP_UNPUSHED=0): pin HEAD, and tracked edits if any, under an archive ref in
+# the parent repo before the forced remove. Any archive failure ⇒ 1 ⇒ the worktree is not removed.
+archive_worktree(){ local p="$1" ref h w
+  ref="refs/hygiene-archive/$(/bin/date +%Y%m%d)/$(printf '%s' "${p#"$HYG_WT_ROOT"/}" | /usr/bin/tr -c 'A-Za-z0-9._-' _)"
+  h=$("$GIT" -C "$p" rev-parse HEAD 2>/dev/null) || return 1
+  "$GIT" -C "$p" update-ref "$ref" "$h" >>"$HYG_LOG" 2>&1 || return 1
+  "$GIT" -C "$p" update-index -q --refresh >/dev/null 2>&1   # stale stat info makes the first stash create exit 1
+  w=$("$GIT" -C "$p" stash create 2>/dev/null) || return 1
+  [ -z "$w" ] || "$GIT" -C "$p" update-ref "$ref-wip" "$w" >>"$HYG_LOG" 2>&1 || return 1
+  log "archived $p -> $ref${w:+ (+wip)}"; }
+# A clone's local-only history (and a stash snapshot of tracked edits) → one bundle file; nothing
+# local-only ⇒ no bundle needed. Any other failure ⇒ 1 ⇒ the clone is not removed.
+archive_clone(){ local p="$1" dir f w out
+  "$GIT" -C "$p" rev-parse -q --verify HEAD >/dev/null 2>&1 || { log "archive: no commits in $p"; return 0; }
+  dir="$HYG_ARCHIVE_DIR/$(/bin/date +%Y%m%d)"; /bin/mkdir -p "$dir" || return 1
+  f="$dir/$(printf '%s' "${p#"$HYG_WT_ROOT"/}" | /usr/bin/tr -c 'A-Za-z0-9._-' _).bundle"
+  "$GIT" -C "$p" update-index -q --refresh >/dev/null 2>&1   # stale stat info makes the first stash create exit 1
+  w=$("$GIT" -C "$p" stash create 2>/dev/null) || return 1
+  [ -z "$w" ] || "$GIT" -C "$p" update-ref refs/hygiene-wip "$w" >>"$HYG_LOG" 2>&1 || return 1
+  if [ -z "$("$GIT" -C "$p" rev-list -n1 --branches --tags --glob=refs/hygiene-wip --not --remotes 2>/dev/null)" ]; then
+    log "archive: nothing local-only in $p"; return 0; fi
+  out=$("$GIT" -C "$p" bundle create "$f" --branches --tags --glob=refs/hygiene-wip --not --remotes 2>&1) || { log "archive failed for $p: $out"; return 1; }
+  log "archived $p -> $f${w:+ (+wip at refs/hygiene-wip)}"; }
+remove_item(){ local cat="$1" p="$2" common force=
   if [ "$cat" = worktrees ]; then
     common=$("$GIT" -C "$p" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
-    "$GIT" -C "$p" worktree remove "$p" >>"$HYG_LOG" 2>&1 || return 1
+    case "$REASON" in idle-*-archived) archive_worktree "$p" || return 1; force=--force;; esac
+    "$GIT" -C "$p" worktree remove $force "$p" >>"$HYG_LOG" 2>&1 || return 1
     [ -n "$common" ] && "$GIT" --git-dir="$common" worktree prune >/dev/null 2>&1
+  elif [ "$cat" = wt-clones ]; then archive_clone "$p" || return 1; /bin/rm -rf -- "$p" || return 1
   else /bin/rm -rf -- "$p" || return 1; fi; return 0; }
 
 apply(){ local file="$1" cat p k freed=0 n=0 refused=0

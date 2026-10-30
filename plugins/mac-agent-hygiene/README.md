@@ -80,6 +80,7 @@ HYG_WT_GLOB="*wt-*"           # how they are named
 HYG_WT_NESTED="wt"            # also ~/code/wt/*/... (phase-session worktrees); "" = off
 HYG_WT_DEPTH=3
 HYG_WT_AGE_DAYS=7
+HYG_WT_KEEP_UNPUSHED=1        # 0 = age-only: idle dirty/unpushed worktrees go too, archived first
 HYG_MODEL_CACHES="$HOME/.cache/whisper $HOME/.cache/codex-runtimes"
 HYG_MODEL_CACHE_AGE_DAYS=7     # model caches go only when idle this long
 ```
@@ -87,6 +88,14 @@ HYG_MODEL_CACHE_AGE_DAYS=7     # model caches go only when idle this long
 Environment variables win over the config file, so one MCP call can override one value for one run.
 "Clean" means `git status --porcelain` is empty — gitignored files (a local `.env`, `node_modules`)
 are removed together with a clean worktree.
+
+`HYG_WT_KEEP_UNPUSHED=0` switches worktrees to an age-only policy: a worktree idle longer than
+`HYG_WT_AGE_DAYS` that nobody's cwd is in is removed even when dirty or unpushed. Before the forced
+remove, its HEAD is pinned at `refs/hygiene-archive/<date>/<path>` in the parent repo and its tracked
+edits (`git stash create`) at the same ref plus `-wip`. Untracked files are not kept. The same opt-in adds
+the `wt-clones` category: full clones under `~/code/wt/*/...` idle that long are removed after their
+local-only commits (and tracked edits) are saved as a git bundle under `HYG_ARCHIVE_DIR`
+(default `~/.local/share/mac-agent-hygiene/archive/<date>/`).
 
 ### Without the MCP server
 
