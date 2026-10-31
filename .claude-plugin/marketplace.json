@@ -329,7 +329,7 @@
       "name": "fix-chrome-connection",
       "source": "./plugins/fix-chrome-connection",
       "description": "Diagnoses and repairs broken Claude in Chrome MCP connections in seconds — auto-detects stale extension service workers and fixes them without manual steps",
-      "version": "0.1.32",
+      "version": "0.1.31",
       "platforms": [
         "claude-code",
         "cowork"
