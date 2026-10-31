@@ -85,6 +85,20 @@ All plugins must adhere to the SOSA™ (Supervised, Orchestrated, Secured, Agent
 4. Reference any related issues
 5. A maintainer will review your PR — expect feedback within a few days
 
+## Versions are bumped by the release workflow, never by a PR
+
+`.github/workflows/release.yml` patch-bumps the version of every plugin that
+changes on a merge to main (`scripts/bump-version.sh`), in `plugin.json` and in
+the matching `marketplace.json` entry, and tags the release. So:
+
+- **Do not change `version`** in `plugins/<name>/.claude-plugin/plugin.json` or in
+  `.claude-plugin/marketplace.json` in a PR. A hand bump stacks on the automatic one
+  (a PR that set 1.0.4 would ship 1.0.5).
+- CI enforces it: the `No manual version bump` job in `validate-pr.yml`
+  (`scripts/check-no-manual-bump.py`) fails a PR whose version differs from its merge base
+  with main. A brand-new plugin keeps the version it is created with.
+- Need a minor or major release? Ask a maintainer; do not put it in the PR.
+
 ## Good First Issues
 
 Look for issues tagged [`good first issue`](https://github.com/MSApps-Mobile/claude-plugins/labels/good%20first%20issue) — these are great starting points for new contributors.
