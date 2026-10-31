@@ -14,8 +14,11 @@ import sys
 
 LISTING_URL_FIELDS = ["documentationUrl", "supportUrl", "privacyPolicyUrl", "termsOfServiceUrl"]
 LEGACY_FIELDS = {"privacy_policy": "privacyPolicyUrl", "terms_of_service": "termsOfServiceUrl"}
-# A launcher that downloads a package at run time must name an exact version.
+# A launcher that downloads a package at run time must name an exact version
+# (claude.com/docs/plugins/pre-submission-checklist: "npx, bunx, pnpm dlx, yarn dlx, uvx,
+# pipx run, and uv run all count ... Run uv run with --locked or --frozen").
 LAUNCHERS = {"npx", "bunx", "uvx", "pnpx"}
+DLX_LAUNCHERS = {"pnpm", "yarn"}  # '<cmd> dlx <pkg>'
 ALLOWED_VARS = re.compile(r"^(CLAUDE_PLUGIN_ROOT|CLAUDE_PLUGIN_DATA|user_config\.[A-Za-z_][A-Za-z0-9_]*)$")
 VAR_RE = re.compile(r"\$\{([^}]+)\}")
 MIN_README_WORDS = 40
@@ -34,23 +37,58 @@ def _pinned(pkg):
     return at > 0 and re.match(r"^\d", pkg[at + 1:]) is not None
 
 
+def _first_positional(args):
+    """The first argument that is not a flag ('--yes', '-p', ...)."""
+    return next((a for a in args if not a.startswith("-")), "")
+
+
+def _subcommand_at(args, word):
+    """Index of the first `word` in args, or -1. Global options may sit before a
+    subcommand ('uv --directory X run ...'), so the position is not fixed."""
+    return args.index(word) if word in args else -1
+
+
+def _check_pkg(pkg, label, server_name, issues):
+    if not _pinned(pkg):
+        issues.append(("error", f"mcp:{server_name}", f"unpinned {label} launcher: '{pkg or '?'}' (pin an exact version, e.g. tsx@4.19.2 or name==1.2.3)"))
+
+
+def _check_uvx(args, label, server_name, issues):
+    if "--from" in args:
+        k = args.index("--from") + 1
+        pkg = args[k] if k < len(args) else ""
+        if not _pinned(pkg):
+            issues.append(("error", f"mcp:{server_name}", f"{label} --from {pkg or '?'} is not pinned (use name==X.Y.Z)"))
+        return
+    _check_pkg(_first_positional(args), label, server_name, issues)
+
+
 def check_launcher(server_name, cfg, issues):
     cmd = os.path.basename(str(cfg.get("command", "")))
     args = [str(a) for a in cfg.get("args", [])]
-    if cmd not in LAUNCHERS:
-        return
-    i = 0
     if cmd == "uvx":
-        if "--from" in args:
-            pkg = args[args.index("--from") + 1] if args.index("--from") + 1 < len(args) else ""
-            if not _pinned(pkg):
-                issues.append(("error", f"mcp:{server_name}", f"uvx --from {pkg or '?'} is not pinned (use name==X.Y.Z)"))
-            return
-    while i < len(args) and args[i].startswith("-"):
-        i += 1
-    pkg = args[i] if i < len(args) else ""
-    if not _pinned(pkg):
-        issues.append(("error", f"mcp:{server_name}", f"unpinned {cmd} launcher: '{pkg or '?'}' (pin an exact version, e.g. tsx@4.19.2)"))
+        _check_uvx(args, "uvx", server_name, issues)
+    elif cmd in LAUNCHERS:
+        _check_pkg(_first_positional(args), cmd, server_name, issues)
+    elif cmd in DLX_LAUNCHERS:
+        k = _subcommand_at(args, "dlx")
+        if k >= 0:
+            _check_pkg(_first_positional(args[k + 1:]), f"{cmd} dlx", server_name, issues)
+    elif cmd == "pipx":
+        k = _subcommand_at(args, "run")
+        if k >= 0:
+            rest = args[k + 1:]
+            if "--spec" in rest:
+                j = rest.index("--spec") + 1
+                _check_pkg(rest[j] if j < len(rest) else "", "pipx run --spec", server_name, issues)
+            else:
+                _check_pkg(_first_positional(rest), "pipx run", server_name, issues)
+    elif cmd == "uv":
+        k = _subcommand_at(args, "tool")
+        if k >= 0 and args[k + 1:k + 2] == ["run"]:  # 'uv tool run' is uvx
+            _check_uvx(args[k + 2:], "uv tool run", server_name, issues)
+        elif _subcommand_at(args, "run") >= 0 and not ({"--locked", "--frozen"} & set(args)):
+            issues.append(("error", f"mcp:{server_name}", "'uv run' without --locked or --frozen (the directory requires a locked run)"))
 
 
 def lint_plugin(pdir):

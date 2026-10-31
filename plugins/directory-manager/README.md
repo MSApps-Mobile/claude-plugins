@@ -35,7 +35,8 @@ the skill lists the plugins and waits for your yes before clicking anything.
 ## Install
 
 ```
-/plugin install directory-manager --marketplace MSApps-Mobile/claude-plugins
+/plugin marketplace add MSApps-Mobile/claude-plugins
+/plugin install directory-manager@msapps-plugins
 ```
 
 ## License

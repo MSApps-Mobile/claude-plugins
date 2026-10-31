@@ -79,7 +79,7 @@ def main(argv):
         return 2
     try:
         items = json.load(open(argv[0], encoding="utf-8"))
-        assert isinstance(items, list) and all("name" in x for x in items)
+        assert isinstance(items, list) and all(isinstance(x, dict) and "name" in x for x in items)
     except (OSError, ValueError, AssertionError) as e:
         print(f"bad input: {e}", file=sys.stderr)
         return 2
