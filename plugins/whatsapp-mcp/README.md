@@ -85,7 +85,7 @@ All memory data is stored in your private Notion workspace. Nothing is shared ex
 Before installing this plugin, you need to set up the WhatsApp MCP bridge on your machine:
 
 1. **Go** (1.21+) — `brew install go`
-2. **Python + UV** — `brew install uv`
+2. **Python + UV** — `brew install uv`. The plugin starts the server with `uv run --frozen`, so it installs exactly what the bridge's `uv.lock` pins and never re-resolves versions. Clone the bridge (Setup below) and keep its `whatsapp-mcp-server/uv.lock` in place; if that file is missing, run `uv lock` once inside `whatsapp-mcp-server/`.
 3. **FFmpeg** (optional, for voice messages) — `brew install ffmpeg`
 ## Setup
 
