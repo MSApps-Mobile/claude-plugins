@@ -1,3 +1,8 @@
+---
+name: mac-cleanup
+description: "Clean safe, auto-regenerated Mac cache locations, report how much space was freed, and flag oversized folders worth reviewing manually. Use when the user says \"clean my Mac\", \"free up disk space\", \"clear cache\", \"my Mac is slow\", \"running out of space\", \"Mac cleanup\", or runs it as a scheduled task."
+---
+
 # Mac Disk Cleanup
 
 Clean up safe Mac cache locations, report how much space was freed, and flag any oversized folders worth reviewing manually.

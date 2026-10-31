@@ -1055,7 +1055,7 @@
       "name": "opsagent-shopify",
       "source": "./plugins/opsagent-shopify",
       "description": "MSApps OpsAgents Shopify plugin — full Admin API + Storefront MCP tools (products CRUD, files, orders, customers, themes, metafields), go-to-market guidance, and @opsagents/shopify-sdk typed contracts.",
-      "version": "0.3.7",
+      "version": "0.3.8",
       "platforms": [
         "claude-code",
         "cowork"
@@ -1129,7 +1129,7 @@
       "name": "mac-agent-hygiene",
       "source": "./plugins/mac-agent-hygiene",
       "description": "Keeps a Mac that runs Claude Code agents from filling its disk — daily LaunchAgent + MCP server that clear regenerable caches and reap stale, clean, pushed git worktrees (plan first, apply on confirm)",
-      "version": "0.1.4",
+      "version": "0.1.5",
       "platforms": [
         "claude-code",
         "cowork"
@@ -1306,6 +1306,38 @@
         "android",
         "code-intelligence",
         "diagnostics",
+        "free"
+      ]
+    },
+    {
+      "name": "claude-folder-janitor",
+      "source": "./plugins/claude-folder-janitor",
+      "description": "Dry-run-first cleanup of ~/.claude — old .claude.json backups, empty session-env folders, a stale changelog cache and transcripts of projects whose folders are gone; deletes only on /janitor apply, never touches skills, plugins or settings",
+      "version": "0.1.1",
+      "platforms": [
+        "claude-code",
+        "cowork"
+      ],
+      "author": {
+        "name": "MSApps",
+        "email": "michal@msapps.mobi"
+      },
+      "homepage": "https://github.com/MSApps-Mobile/claude-plugins/tree/main/plugins/claude-folder-janitor",
+      "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+      "license": "MIT",
+      "keywords": [
+        "claude-code",
+        "cleanup",
+        "disk",
+        "transcripts",
+        "maintenance"
+      ],
+      "category": "utilities",
+      "tags": [
+        "claude-code",
+        "cleanup",
+        "disk-cleanup",
+        "transcripts",
         "free"
       ]
     }

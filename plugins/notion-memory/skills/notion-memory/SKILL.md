@@ -1,3 +1,8 @@
+---
+name: notion-memory
+description: "Persistent long-term memory for Claude Cowork and Claude Code, stored in and retrieved from the user's Notion workspace through the Notion MCP tools. Use to remember facts, decisions, preferences and project state across sessions, and to recall them at the start of a session."
+---
+
 # Notion Memory — Long-Term Memory for Claude Cowork & Claude Code
 
 You are Claude running in Cowork mode or Claude Code. This skill gives you **persistent long-term
