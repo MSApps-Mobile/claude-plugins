@@ -21,7 +21,7 @@ This plugin includes an embedded AI expert persona: **Dr. Noa Reshef** — a fic
 - **Task name:** `token-efficiency-audit`
 - **Owner:** Michal Shatz — michal@msapps.mobi
 - **Run frequency:** Daily at ~08:00 IL time
-- **Run mode:** Fully autonomous — Michal is not present. Do not ask questions. Make reasonable decisions and note them in the report.
+- **Run mode:** Unattended read-only audit — Michal is not present. Do not ask questions. Make reasonable decisions and note them in the report. The run never publishes to GitHub and never edits plugin files (see Autonomy Rules).
 - **Output:** Report saved to workspace as `token-audit-YYYY-MM-DD.md`
 - **GitHub repo:** https://github.com/MSApps-Mobile/claude-plugins/tree/main/plugins/token-efficiency-audit
 
@@ -35,7 +35,7 @@ This plugin includes an embedded AI expert persona: **Dr. Noa Reshef** — a fic
 4. Classifies findings by severity: 🔴 High waste / 🟡 Moderate / 🟢 Efficient
 5. Produces a structured audit report with prioritized recommendations
 6. Archives report to Notion
-7. If anything new was learned → updates this CLAUDE.md and pushes to GitHub
+7. If anything new was learned → lists it under "Suggested plugin updates" in the report and the Notion page, for the owner to apply by hand
 
 ---
 
@@ -141,7 +141,7 @@ Save a structured report to Notion for historical tracking. Include:
 - Top 3 findings
 - Actions taken vs. deferred
 
-### Step 5 — Self-Learning & Git Push
+### Step 5 — Record Learnings (report only)
 
 **At the end of every run**, check if anything new was learned:
 
@@ -151,53 +151,21 @@ Save a structured report to Notion for historical tracking. Include:
 - New skills/plugins/connectors added since last audit
 - Corrected workflows or navigation tricks
 
-**If anything was learned:**
+**If anything was learned:** add a "Suggested plugin updates" section to the audit report and the Notion page. Do not edit any plugin file and do not run any git clone, commit or publish step. The owner decides whether to apply a suggestion and changes the plugin through the normal pull-request flow.
 
-1. Update this CLAUDE.md with the new information
-2. Clone or pull the repo: `https://github.com/MSApps-Mobile/claude-plugins.git`
-3. Copy updated files to `plugins/token-efficiency-audit/`
-4. Commit with message: `chore: update CLAUDE.md — daily audit learnings YYYY-MM-DD`
-5. Push to `main` branch
-
-**Git commands:**
-```bash
-cd /tmp && git clone https://github.com/MSApps-Mobile/claude-plugins.git
-cp /path/to/updated/CLAUDE.md claude-plugins/plugins/token-efficiency-audit/CLAUDE.md
-cd claude-plugins
-git add plugins/token-efficiency-audit/
-git commit -m "chore: update CLAUDE.md — daily audit learnings YYYY-MM-DD"
-git push origin main
-```
-
-**If nothing new was learned:** Skip the git push. Note "No new learnings" in the report.
+**If nothing new was learned:** note "No new learnings" in the report.
 
 ---
 
-## ⚠️ Git Push Rule — ALWAYS Push Changes
+## No Autonomous Publishing, No Self-Modification
 
-**Whenever ANY file in this plugin is modified — CLAUDE.md, any SKILL.md, references, config, or CONNECTORS.md — push to GitHub.**
+This plugin never publishes to GitHub and never rewrites its own files during a run. Specifically, a run must not:
 
-This is not limited to self-learning. If the task modifies ANY local plugin file for ANY reason, it MUST push:
+- clone, pull, commit to or publish to any repository, in particular `MSApps-Mobile/claude-plugins`;
+- modify `CLAUDE.md`, any `SKILL.md`, references, config, `plugin.json` or `CONNECTORS.md` of this plugin;
+- send session-derived or scheduled-task-derived content anywhere other than the user's own workspace report and the user's own Notion workspace.
 
-1. Clone: `cd /tmp && git clone https://github.com/MSApps-Mobile/claude-plugins.git`
-2. Copy ALL changed files from the local plugin directory to `claude-plugins/plugins/token-efficiency-audit/`
-3. Preserve the full directory structure (skills/, .claude-plugin/, references/, etc.)
-4. Commit with descriptive message: `chore: <what changed> — YYYY-MM-DD`
-5. Push to `main`
-
-**Files to sync (always copy the full set if any changed):**
-```
-.claude/skills/token-efficiency-audit/CLAUDE.md                              → plugins/token-efficiency-audit/CLAUDE.md
-.claude/skills/token-efficiency-audit/README.md                              → plugins/token-efficiency-audit/README.md
-.claude/skills/token-efficiency-audit/CONNECTORS.md                          → plugins/token-efficiency-audit/CONNECTORS.md
-.claude/skills/token-efficiency-audit/.claude-plugin/config.json             → plugins/token-efficiency-audit/.claude-plugin/config.json
-.claude/skills/token-efficiency-audit/.claude-plugin/plugin.json             → plugins/token-efficiency-audit/.claude-plugin/plugin.json
-.claude/skills/token-efficiency-audit/skills/token-efficiency-audit/SKILL.md → plugins/token-efficiency-audit/skills/token-efficiency-audit/SKILL.md
-.claude/skills/token-efficiency-audit/skills/token-efficiency-audit/references/optimization-patterns.md → plugins/token-efficiency-audit/skills/token-efficiency-audit/references/optimization-patterns.md
-.claude/skills/token-efficiency-audit/skills/token-efficiency-expert/SKILL.md → plugins/token-efficiency-audit/skills/token-efficiency-expert/SKILL.md
-```
-
-**If git push fails:** Save the full diff in the report and flag for Michal. Do NOT silently skip.
+If an owner wants learnings in the plugin, they copy them in manually and open a pull request.
 
 ---
 
@@ -216,7 +184,7 @@ token-efficiency-audit/
 │   └── token-efficiency-expert/
 │       └── SKILL.md — Dr. Noa Reshef expert persona + Reshef Method™
 ├── CONNECTORS.md
-├── CLAUDE.md ← this file (self-updating)
+├── CLAUDE.md ← this file (static instructions; not modified by runs)
 └── README.md
 ```
 
@@ -239,11 +207,11 @@ token-efficiency-audit/
 - Read scheduled task prompts (via Desktop Commander)
 - Calculate token costs and efficiency scores
 - Save audit report to workspace and Notion
-- Update this CLAUDE.md with new learnings
-- Push CLAUDE.md updates to GitHub
+- Write suggested plugin updates into the report and Notion page (never into plugin files)
 
 **Do NOT do autonomously:**
-- Modify or delete any skill, task, or plugin
+- Modify or delete any skill, task, or plugin, including this plugin's own files
+- Clone, commit to or publish to any git repository
 - Disconnect MCP connectors
 - Change scheduled task frequencies
 - Rewrite skill descriptions (flag for Michal instead)
@@ -329,7 +297,7 @@ Known overlap patterns to watch for (evolves over time):
 
 - Cannot write .skill files directly to Mac's `.claude/skills/` directory (read-only bindfs mount in Cowork VM). Uses `present_files` with .skill packaging instead.
 - Cannot uninstall plugins or disconnect MCP servers programmatically — these are listed as manual items.
-- Git push requires GitHub auth to be available in the session. If push fails, save the diff in the report and flag for Michal.
+- The plugin does not publish to GitHub. Learnings are reported for the owner to apply manually.
 
 ---
 
