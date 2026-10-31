@@ -1,6 +1,6 @@
 {
   "name": "linkedin-scraper",
-  "version": "0.3.0",
+  "version": "0.2.0",
   "description": "Scrape LinkedIn profiles and company pages using Apify actors — extract professional data, work history, and company info without manual browsing.",
   "author": {
     "name": "MSApps",

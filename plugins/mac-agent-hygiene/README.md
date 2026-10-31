@@ -29,7 +29,8 @@ This plugin turns the fix into a routine any Mac can install:
   04:30 by default).
 
 A worktree is removed only when it is untouched for 7 days, clean, nobody's current directory, and
-its HEAD is pushed (or is the head of a merged pull request). Browser profiles are logins: only their
+its HEAD is pushed (or is the head of a merged pull request, or every local-only commit of a rebased
+branch appears in that branch's merged pull request). Browser profiles are logins: only their
 cache subfolders go; cookies and local storage stay. DerivedData is skipped while Xcode builds. The
 full reasoning is in `skills/mac-agent-hygiene/references/safety-model.md`.
 
@@ -76,6 +77,8 @@ The log is `~/Library/Logs/mac-agent-hygiene.log`.
 ```bash
 HYG_WT_ROOT="$HOME/code"      # where agent worktrees live
 HYG_WT_GLOB="*wt-*"           # how they are named
+HYG_WT_NESTED="wt _worktrees" # also ~/code/wt/*/... and ~/code/_worktrees/*/... (agent worktrees); "" = off
+HYG_WT_DEPTH=3
 HYG_WT_AGE_DAYS=7
 HYG_MODEL_CACHES="$HOME/.cache/whisper $HOME/.cache/codex-runtimes"
 HYG_MODEL_CACHE_AGE_DAYS=7     # model caches go only when idle this long

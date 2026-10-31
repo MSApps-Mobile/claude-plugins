@@ -1,6 +1,6 @@
 {
   "name": "apify-scraper",
-  "version": "0.2.0",
+  "version": "0.1.0",
   "description": "Full Apify web scraping platform integration — run Actors, manage datasets, key-value stores, schedules, webhooks, and tasks directly from Claude.",
   "author": {
     "name": "MSApps"

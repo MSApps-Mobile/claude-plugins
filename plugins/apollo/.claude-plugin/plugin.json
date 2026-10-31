@@ -1,6 +1,6 @@
 {
   "name": "apollo",
-  "version": "0.3.0",
+  "version": "0.2.0",
   "description": "3 pre-built skills that chain multiple Apollo APIs into complete sales workflows — no manual steps, no tab switching. Enrich any contact from a name, email, or LinkedIn URL. Prospect by describing your ICP in plain English and get ranked leads. Find, enrich, and load contacts into a sequence in one shot.",
   "author": {
     "name": "Apollo.io",

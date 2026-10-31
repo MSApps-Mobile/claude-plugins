@@ -31,14 +31,28 @@ can be the only copy of real work, and no board signal says which. Removal there
 1. untouched for `HYG_WT_AGE_DAYS` — no regular file inside (outside `.git`) newer than the age, not
    just the directory mtime (editing a nested file would otherwise leave the top-level mtime old);
 2. no process has its cwd inside (`lsof -d cwd`) — a live session may be parked there;
-3. `.git` is a FILE (a linked worktree). A `.git` directory means a full clone, which is left alone.
-   The common idiom `[ -d .git ]` is false for a worktree and is exactly the wrong test here;
+3. `.git` is a FILE (a linked worktree) and `git rev-parse --git-dir` differs from `--git-common-dir`
+   (a submodule also has a `.git` file). A `.git` directory means a full clone, which is left alone —
+   the enumerator prunes it and never lists it. The common idiom `[ -d .git ]` is false for a worktree
+   and is exactly the wrong test here;
 4. `git status --porcelain` is empty — no modified, staged or untracked files;
 5. HEAD is contained in a remote-tracking ref (`git branch -r --contains HEAD`), OR equals the head
    SHA of a merged pull request (`gh pr list --state merged --json headRefName,headRefOid`). The
    second branch exists because squash merges land content without making the branch commit an
-   ancestor of `main`. If `gh` is missing or fails, the merged-PR file is empty and the worktree is
-   KEPT.
+   ancestor of `main`. OR the branch has a merged PR (same `headRefName`) and EVERY commit reachable
+   from HEAD but from no remote ref (`git log HEAD --not --remotes`) has a subject equal to one of the
+   PR's commit headlines (`gh pr view --json commits`), or starting with one that gh truncated with
+   "…" (prefix ≥ 20 chars). Pipeline sessions rebase or force-push after the worktree's last commit,
+   so the exact-SHA test alone kept 65 merged branches (21.9 GB) on the reference machine. One
+   unmatched subject (work that landed under another title, or never landed) ⇒ KEPT. If `gh` is
+   missing or fails, the merged-PR file is empty and the worktree is KEPT.
+
+Scope: a direct child of `HYG_WT_ROOT` matching `HYG_WT_GLOB`, or a worktree at most `HYG_WT_DEPTH`
+levels deep under a top-level dir named in `HYG_WT_NESTED` (default `wt _worktrees`: phase sessions create
+`wt/{sup,ref,pipe}-*/...`, 163 GB in 842 dirs the direct-child scan never saw; other agents create
+`_worktrees/<card>/`, 21 GB in 62 worktrees, card uO9PFYg8). A person's own
+`~/code/project/feature` worktree is out of scope. `tests/hygiene-worktrees.test.sh` covers these rules
+with fixture repos and a stubbed `gh`.
 
 Removal uses `git worktree remove <path>` without `--force` (git refuses a dirty tree on its own as a
 second line of defence) followed by `git worktree prune` in the main repository.

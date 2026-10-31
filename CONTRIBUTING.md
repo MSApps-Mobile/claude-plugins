@@ -5,12 +5,12 @@ Thank you for your interest in contributing! This project is the largest open-so
 ## Ways to Contribute
 
 ### Report Bugs
-- Open an [issue](https://github.com/MSApps-Mobile/claude-plugins/issues) with a clear description
+- Open a [bug report](https://github.com/MSApps-Mobile/claude-plugins/issues/new?template=bug_report.md) with a clear description
 - Include steps to reproduce, expected behavior, and actual behavior
 - Add relevant logs or screenshots if possible
 
 ### Suggest New Plugins
-- Open an issue with the title "Plugin Request: [Service Name]"
+- Open a [plugin proposal](https://github.com/MSApps-Mobile/claude-plugins/issues/new?template=new_plugin_proposal.md)
 - Describe the integration, what tools it should expose, and the use case
 - Bonus: link to the service's API documentation
 
@@ -26,23 +26,41 @@ Thank you for your interest in contributing! This project is the largest open-so
 
 ## Plugin Structure
 
-Each plugin should follow this structure:
+Each plugin lives in its own folder under `plugins/` and follows the layout the
+existing plugins use (see any folder under [`plugins/`](plugins/) for a worked example):
 
 ```
 plugins/your-plugin-name/
-├── src/
-│   └── index.ts          # Main MCP server entry point
-├── package.json          # Dependencies and metadata
-├── tsconfig.json         # TypeScript configuration
-├── README.md             # Plugin-specific documentation
-└── config.example.json   # Example configuration (if needed)
+├── .claude-plugin/
+│   └── plugin.json          # name, version, description, author
+├── README.md                # what it does, setup, examples
+├── CONNECTORS.md            # (if it needs connectors / MCP servers) what and why
+└── skills/
+    └── your-skill-name/
+        ├── SKILL.md         # the skill itself
+        └── references/      # (optional) supporting docs the skill loads
 ```
+
+A plugin that ships an MCP server adds a `.mcp.json` at the plugin root (e.g.
+[`plugins/apollo/.mcp.json`](plugins/apollo/.mcp.json)) and documents every server it starts in `CONNECTORS.md`.
+
+### The bar for a new plugin
+
+A new-plugin PR is ready for review when:
+
+1. The folder follows the layout above and `plugin.json` is valid.
+2. **The plugin is listed in [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json).**
+   A plugin folder that is not in the manifest is not installable from the marketplace;
+   CI checks the two agree (`scripts/check-marketplace-coverage.py`).
+3. It passes the SOSA™ lint (`scripts/sosa-lint.sh`, run by CI on every PR).
+4. Its README says what it needs (accounts, connectors, env vars) and what it will never do.
+
+Not sure a plugin fits? Open a [plugin proposal](https://github.com/MSApps-Mobile/claude-plugins/issues/new?template=new_plugin_proposal.md) first.
 
 ## Development Guidelines
 
 ### Code Standards
-- Write in TypeScript
-- Follow existing code style and patterns
+- Follow the existing style of the plugin you are changing (most plugins are skills — Markdown — rather than compiled code)
 - Add error handling for all API calls
 - Include rate limiting where appropriate
 - Never hardcode credentials — use environment variables or config files
@@ -73,7 +91,7 @@ Look for issues tagged [`good first issue`](https://github.com/MSApps-Mobile/cla
 
 ## Code of Conduct
 
-Be respectful, constructive, and collaborative. We're building this together.
+This project follows the [Contributor Covenant](CODE_OF_CONDUCT.md). By taking part you agree to uphold it; report unacceptable behavior to michal@msapps.mobi.
 
 ## Questions?
 

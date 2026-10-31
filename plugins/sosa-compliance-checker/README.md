@@ -2,6 +2,10 @@
 
 Audit your Claude plugins, skills, and coding agents against the SOSA™ methodology — Supervised Orchestrated Secured Agents.
 
+## About the publisher
+
+[MSApps is Certified in the Claude Partner Network.](https://claude.com/partners)
+
 ## What it does
 
 Scans your entire plugin ecosystem and evaluates each component against the four SOSA pillars, covering both enterprise operations and AI-assisted software engineering (SOSA for Code):

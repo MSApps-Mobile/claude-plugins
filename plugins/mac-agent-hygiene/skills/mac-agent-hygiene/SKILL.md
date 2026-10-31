@@ -44,7 +44,7 @@ Without the MCP server (plain shell): `bash scripts/hygiene.sh status | plan | r
 | `plugin-clones` | `~/.claude/plugins/cache/temp_git_*` older than 24 h | younger clones (an install may still be using them) |
 | `browser-caches` | inside each `~/.cache/playwright-*` profile, ONLY: `Default/Cache`, `Default/Code Cache`, `Default/GPUCache`, `Default/Service Worker/CacheStorage` + `ScriptCache`, Dawn / Graphite / shader caches, `BrowserMetrics*` | Cookies, Local Storage, IndexedDB, Login Data, Local State, Preferences, Session Storage, Network — the profile IS a login; any profile with a `SingletonLock` or open files is skipped whole |
 | `model-caches` | the directories in `HYG_MODEL_CACHES` (default `~/.cache/whisper`, `~/.cache/codex-runtimes`), idle > `HYG_MODEL_CACHE_AGE_DAYS` (7) | when a process has them open or they were used this week |
-| `worktrees` | a linked worktree under `HYG_WT_ROOT` (default `~/code`) matching `HYG_WT_GLOB` (default `*wt-*`) that is untouched > `HYG_WT_AGE_DAYS` (7), is nobody's cwd, has an empty `git status --porcelain`, and whose HEAD is on a remote-tracking ref or equals the head of a merged PR (`gh pr list --state merged`) | dirty, unpushed, unmerged, in-use, recently touched, or a full clone (`.git` is a directory, not a file) |
+| `worktrees` | a linked worktree under `HYG_WT_ROOT` (default `~/code`) — a direct child matching `HYG_WT_GLOB` (default `*wt-*`), or up to `HYG_WT_DEPTH` (3) levels below a top-level dir in `HYG_WT_NESTED` (default `wt _worktrees`, i.e. `~/code/wt/{sup,ref,pipe}-*/...` and `~/code/_worktrees/...`) — that is untouched > `HYG_WT_AGE_DAYS` (7), is nobody's cwd, has an empty `git status --porcelain`, and whose HEAD is on a remote-tracking ref, equals the head of a merged PR (`gh pr list --state merged`), or sits on the branch of a merged PR whose commits (`gh pr view --json commits`) match every local-only commit subject (rebased / force-pushed heads) | dirty, unpushed, unmerged, in-use, recently touched, or a full clone (`.git` is a directory, not a file) |
 
 The decision lives in one shell function per category, used by `plan` and by `apply`. A `gh` failure
 makes the merged-PR branch of the worktree check return empty, so the worktree is kept — the rail
@@ -61,6 +61,8 @@ Optional file `~/.config/mac-agent-hygiene/config.env`, sourced by the script:
 ```bash
 HYG_WT_ROOT="$HOME/code"      # where agent worktrees live
 HYG_WT_GLOB="*wt-*"           # how they are named
+HYG_WT_NESTED="wt _worktrees" # top-level dirs whose nested worktrees are agent-owned ("" = off)
+HYG_WT_DEPTH=3                # how deep under HYG_WT_ROOT to look
 HYG_WT_AGE_DAYS=7
 HYG_MODEL_CACHES="$HOME/.cache/whisper $HOME/.cache/codex-runtimes"
 HYG_MODEL_CACHE_AGE_DAYS=7    # model caches go when not MODIFIED this long (a read does not count)

@@ -16,8 +16,11 @@
 ## Invariants (do not relax)
 
 - Browser profiles: cache-subfolder allowlist only; profile with `SingletonLock` or open files skipped.
-- Worktrees: linked (`[ -f .git ]`), untouched > age, nobody's cwd, clean, pushed or merged-PR head.
-  `gh` failure ⇒ keep. Never `--force`.
+- Worktrees: linked (`[ -f .git ]` AND git-dir ≠ common-dir), in scope (direct child matching
+  `HYG_WT_GLOB`, or ≤ `HYG_WT_DEPTH` deep under a `HYG_WT_NESTED` dir), untouched > age, nobody's cwd,
+  clean, and pushed / merged-PR head / merged PR on the same branch whose commits cover every local-only
+  commit subject. `gh` failure ⇒ keep. Never `--force`. macOS `/bin/bash` is 3.2: no `declare -A`;
+  per-repo gh results are cache files in `$TMPD`.
 - DerivedData skipped while Xcode builds. Never sudo. Paths outside `$HOME` refused at apply.
 - System binaries by absolute path; explicit PATH in the plist; `mktemp` with a `${TMPDIR:-/tmp}` template.
 - Paths compared as fixed strings (never a grep pattern); `.`/`..` components refused at the apply gate; every
@@ -27,6 +30,9 @@
 
 ```bash
 bash -n scripts/*.sh && node --check server/index.js
+bash tests/hygiene-worktrees.test.sh        # fixture git repos + stubbed gh; runs on Linux too
+bash tests/hygiene-wt-scan-roots.test.sh    # default scope incl. ~/code/_worktrees, keep rules, status count
+bash tests/hygiene-keeps-logins.test.sh     # macOS only
 bash scripts/hygiene.sh status
 bash scripts/hygiene.sh plan | awk -F'\t' '{print $1, $2, $4}' | sort | uniq -c
 printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}}' \

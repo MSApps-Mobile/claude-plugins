@@ -1,6 +1,6 @@
 {
   "name": "rtl-chat",
-  "version": "0.2.0",
+  "version": "0.1.0",
   "description": "Formats Claude's chat responses so mixed Hebrew and English text stays readable in Cowork and Claude Desktop, which have limited RTL support.",
   "author": {
     "name": "MSApps"

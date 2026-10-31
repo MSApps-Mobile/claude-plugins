@@ -1,0 +1,12 @@
+on: pull_request
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate plugin.json schema
+        run: |
+          python3 - <<'PYEOF'
+          import json
+          path = f"plugins/${{ matrix.plugin }}/.claude-plugin/plugin.json"
+          json.load(open(path))
+          PYEOF

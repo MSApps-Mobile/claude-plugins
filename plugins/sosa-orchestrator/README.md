@@ -4,6 +4,10 @@
 
 Part of the [SOSA™ governance suite](../../docs/SOSA.md) by MSApps.
 
+## About the publisher
+
+[MSApps is Certified in the Claude Partner Network.](https://claude.com/partners)
+
 ## What It Does
 
 The Orchestrator is the resource-aware brain that sits above individual tasks and decides what runs, what waits, and what stops — based on real-time token budget tracking and business priority scoring.

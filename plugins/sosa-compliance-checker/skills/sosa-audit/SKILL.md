@@ -1,6 +1,11 @@
 ---
 name: sosa-audit
-description: Run a SOSA (Supervised Orchestrated Secured Agents) compliance audit across AI operations and AI-assisted code, assess the four pillars at Level 1-3, and list remediation actions. Use when the user asks for a SOSA audit or compliance assessment.
+description: >
+  Four-pillar SOSA™ compliance audit (Supervised, Orchestrated, Secured, Agents) of AI
+  operations and AI-assisted code generation. Scores plugins, skills, scheduled tasks and
+  repositories against Level 1/2/3 controls and lists remediation actions. Trigger on
+  "SOSA audit", "SOSA check", "compliance check", "run SOSA scan", "audit my agents",
+  "plugin governance check".
 ---
 
 # SOSA Compliance Audit
