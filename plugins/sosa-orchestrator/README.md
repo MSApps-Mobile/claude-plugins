@@ -49,6 +49,15 @@ The Orchestrator is the resource-aware brain that sits above individual tasks an
 
 ## Usage
 
+```
+/sosa-orchestrator:prioritize [tasks or time window]
+
+# Examples:
+/sosa-orchestrator:prioritize
+/sosa-orchestrator:prioritize what should I run next?
+```
+
+
 Say any of these:
 - "Orchestrate my tasks"
 - "Prioritize — I have a lot to do today"

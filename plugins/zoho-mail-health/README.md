@@ -13,17 +13,33 @@ Verifies that both Zoho Mail accounts (`michal@msapps.mobi` and `jobs@msapps.mob
 | Skill | `zoho-mail-health-check` | Runs the full health check and saves a report |
 | MCP | `zoho-mail` | Connects to Zoho Mail API for both accounts |
 
-## Setup
+## Installation
 
-The `.mcp.json` is pre-configured for MSApps accounts. No additional environment variables are required — credentials are embedded.
-
-If the Zoho MCP server is not installed, build it first:
 ```bash
-cd "/Users/michalshatz/Documents/Claude/mcps biz/zoho-mail-mcp-server"
-npm install && npm run build
+/plugin marketplace add MSApps-Mobile/claude-plugins
+/plugin install zoho-mail-health@msapps-plugins
 ```
 
+## Setup
+
+The plugin reads everything from environment variables. Nothing is embedded in `.mcp.json`.
+
+| Variable | What it is |
+|----------|------------|
+| `ZOHO_MAIL_MCP_PATH` | Folder of a built Zoho Mail MCP server (`npm install && npm run build`) |
+| `ZOHO_CLIENT_ID` | Zoho OAuth client ID |
+| `ZOHO_CLIENT_SECRET` | Zoho OAuth client secret |
+| `ZOHO_ACCOUNTS` | The Zoho Mail accounts to check |
+
 ## Usage
+
+```
+/zoho-mail-health:check [no arguments]
+
+# Examples:
+/zoho-mail-health:check
+```
+
 
 Trigger the skill by saying any of:
 - "Run the Zoho Mail health check"

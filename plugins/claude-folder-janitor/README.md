@@ -75,6 +75,18 @@ the root disk, a symlink to such a folder, an unreadable parent, an empty parent
 with no recorded `cwd`, plus a gone project on a really mounted volume that must still be listed. Checks that the dry run lists exactly the eligible five and deletes nothing,
 that apply removes exactly those five, and that every protected and ineligible path survives.
 
+## Usage
+
+```
+/claude-folder-janitor:janitor [apply]
+
+# Examples:
+/claude-folder-janitor:janitor
+/claude-folder-janitor:janitor apply
+```
+
+With no argument it is a dry run that lists candidates and deletes nothing. Only the exact word `apply` deletes.
+
 ## Install
 
 ```

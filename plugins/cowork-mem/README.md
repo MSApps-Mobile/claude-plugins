@@ -41,6 +41,40 @@ Settings → Plugins → Marketplaces → Add `MSApps-Mobile/claude-plugins` →
 ```
 ## Usage
 
+```
+/cowork-mem:remember [what to remember]
+
+# Examples:
+/cowork-mem:remember
+/cowork-mem:remember We chose Postgres over MySQL because of JSONB support
+
+/cowork-mem:search <keywords or question>
+
+# Examples:
+/cowork-mem:search deployment process
+/cowork-mem:search did we decide anything about auth?
+
+/cowork-mem:ask <question>
+
+# Examples:
+/cowork-mem:ask Why did we choose this database?
+/cowork-mem:ask What is our deployment process?
+
+/cowork-mem:plan [goal or time frame]
+
+# Examples:
+/cowork-mem:plan
+/cowork-mem:plan plan the next sprint
+
+/cowork-mem:timeline [time period]
+
+# Examples:
+/cowork-mem:timeline
+/cowork-mem:timeline this week
+/cowork-mem:timeline last month
+```
+
+
 Just start working. The skill triggers automatically when you:
 - Begin a new session on an ongoing project
 - Reference past work ("what did we do last time?")
