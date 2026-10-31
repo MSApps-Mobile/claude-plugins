@@ -32,11 +32,17 @@ Everything below is derived from the files in this plugin. Nothing here is hidde
 | Notion connector (required) | Save audit reports and externalized data to your Notion workspace | Yes, Notion via your connector |
 | `present_files` | Hand back the report and `.skill` replacement packages | No |
 
-**Shell commands:** the only shell commands in the plugin are in `CLAUDE.md` (the scheduled-run self-update step): `git clone https://github.com/MSApps-Mobile/claude-plugins.git`, `cp`, `git add`, `git commit`, `git push origin main`. This is the only direct network call the plugin makes, and it goes only to `github.com/MSApps-Mobile/claude-plugins`. It runs only in the owner's own scheduled audit task and only if that run learned something new. It needs your GitHub auth and is skipped if you do not use it.
+**Shell commands:** none. The instructions in `CLAUDE.md` contain no shell, `git clone`, `git commit` or `git push` steps. The plugin does not publish anything to GitHub and does not edit its own files.
 
-**Network destinations:** `github.com/MSApps-Mobile/claude-plugins` (the push above) and Notion (through your connector). The plugin makes no other fetches and sends no data to MSApps or any third-party server, and it has no telemetry.
+**Network destinations:** Notion, through your own connector, and nothing else. The plugin makes no direct network calls, fetches nothing, sends no data to MSApps or any third-party server, and has no telemetry. Report content (task names, token counts, findings) goes only to your workspace and your Notion workspace.
 
-**Reads and writes:** it reads skill files, scheduled-task metadata and session transcripts. It never reads credentials or `.mcp.json`. It does not modify or delete skills, tasks or plugins without your approval. It writes the audit report (`token-audit-YYYY-MM-DD.md`) and a Notion page.
+**Reads and writes:** it reads skill files, scheduled-task metadata and session transcripts. It never reads credentials or `.mcp.json`. It never modifies or deletes skills, tasks or plugins on its own, and never edits its own plugin files: learnings from a run appear as "Suggested plugin updates" in the report and the Notion page for you to apply by hand. It writes the audit report (`token-audit-YYYY-MM-DD.md`) and a Notion page.
+
+**Declared capabilities:** `.claude-plugin/plugin.json` and `.claude-plugin/config.json` list `read_skills`, `read_scheduled_tasks`, `modify_scheduled_tasks`, `notion_read_write` and `present_files`.
+
+| Capability | What the instructions do with it |
+|---|---|
+| `modify_scheduled_tasks` | Declared so the audit can offer to change a task schedule. The instructions never change a scheduled task autonomously: changes to task frequency, disabling or deleting a task are listed as recommendations and applied only after you approve them. |
 
 ## Usage
 
