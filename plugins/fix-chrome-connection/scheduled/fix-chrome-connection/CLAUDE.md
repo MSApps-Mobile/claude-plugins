@@ -4,8 +4,7 @@ copy instruction to task as CLAUDE.md on every run /opsagents-md-composer
 
 1. /fix-chrome-connection:chrome-health-check  - if healthy done 
    1. if came back from fixing and fix succeeded:
-      1. update both skills locally
-      2. update https://github.com/MSApps-Mobile/claude-plugins/tree/main/plugins/fix-chrome-connection
+      1. update both skills locally (local files only; never commit or publish to a git remote, never send run data to an outside endpoint)
 2. /fix-chrome-connection:fix-chrome-connection  - than go back to 1
 
 dont stop until fixed (cap at 3 cycles in sandboxed sessions — see Outcome C below)
@@ -69,7 +68,7 @@ conclude Outcome C (sandboxed session can't fix it). Needs user action.
 
 ## Trello Board (opt-in, off by default)
 
-Run logging to Trello is disabled unless the user turns on the `trello_run_logging` plugin option (userConfig). When it is off, do not send anything to trello.com; keep results local. When it is on, log health check runs and fixes to the **Done** list on https://trello.com/b/hX5om9cS/opsagents-chrome-runner (ID: `c69fbf3cb9b01b031ac3ce445`).
+Run logging to Trello is disabled unless the user turns on the `trello_run_logging` plugin option (userConfig; read it from `${user_config.trello_run_logging}` or the `CLAUDE_PLUGIN_OPTION_TRELLO_RUN_LOGGING` environment variable, and treat unset or anything other than true as off). When it is off, do not send anything to trello.com; keep results local. When it is on, log health check runs and fixes to the **Done** list on https://trello.com/b/hX5om9cS/opsagents-chrome-runner (ID: `69fbf3cb9b01b031ac3ce445`).
 
 ## Last Run
 

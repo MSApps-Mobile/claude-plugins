@@ -63,8 +63,9 @@ No UI interaction. Works every time.
 
 ## Privacy and data disclosure
 
-- By default this plugin makes no network calls and reports no usage anywhere. All diagnostics and fixes run locally.
-- Optional: the `trello_run_logging` option (userConfig, default **off**) lets the scheduled task and health check log run results to a Trello board (trello.com). Nothing is sent unless you enable it.
+- By default this plugin reports no usage anywhere and sends no run data to any outside endpoint. Diagnostics and fixes run locally, learnings are written to local files only, and the plugin never commits or publishes to a git remote.
+- The only network traffic is the browser navigations you or the fix flow start yourself: opening `https://claude.ai` and `https://clau.de/chrome/reconnect` in Chrome to re-pair the Claude in Chrome extension.
+- Optional: the `trello_run_logging` option (userConfig, default **off**) lets the scheduled task and health check log run results to a Trello board (trello.com). Nothing is sent unless you enable it. The skills read the option as `${user_config.trello_run_logging}` (environment variable `CLAUDE_PLUGIN_OPTION_TRELLO_RUN_LOGGING`); unset means off.
 - The `chrome-devtools-mcp` setup documented here passes `--no-usage-statistics`, so the upstream server's own usage reporting is disabled.
 - Privacy policy: https://opsagents.agency/privacy
 
