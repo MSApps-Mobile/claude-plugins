@@ -319,3 +319,24 @@ jobs:
       # (block, heredoc, inline, folded) must red on every run.
       - name: Workflow run bodies — prove the guard can FAIL
         run: python3 scripts/check-workflow-run-expressions.test.py
+
+  # ── Job 4: PRs never change a plugin version ────────────────────
+  # Card Jmv8kJnp: release.yml patch-bumps on every merge to main, so a PR that
+  # also bumped by hand stacked a second bump (#76 advertised 1.0.4 and would
+  # have shipped 1.0.5). Rule (b), recorded in CONTRIBUTING.md: PRs never bump.
+  # Needs full history: the check diffs against the merge base with main.
+  no-manual-bump:
+    name: No manual version bump
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Plugin versions unchanged vs the merge base
+        run: python3 scripts/check-no-manual-bump.py --root . --base origin/main --head HEAD
+
+      # Negative control: throwaway git repos where a bumped plugin.json or
+      # marketplace.json entry must red, and a new/deleted plugin must not.
+      - name: Manual-bump check — prove the guard can FAIL
+        run: python3 scripts/check-no-manual-bump.test.py
