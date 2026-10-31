@@ -1,7 +1,7 @@
 {
   "name": "opsagent-shopify",
   "displayName": "OpsAgent Shopify",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "description": "MSApps OpsAgents Shopify plugin — full Admin API + Storefront MCP tools (products CRUD, files, orders, customers, themes, metafields), go-to-market guidance, and @opsagents/shopify-sdk typed contracts.",
   "author": {
     "name": "MSApps",
