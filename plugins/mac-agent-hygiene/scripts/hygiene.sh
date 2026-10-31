@@ -242,17 +242,40 @@ git_safe(){ # repo/worktree dir, deletion boundary (the dir apply would rm) → 
     || [ -d "$(GITS -C "$d" rev-parse --path-format=absolute --git-dir 2>/dev/null)/modules" ] \
     || GITS -C "$d" ls-files -s 2>/dev/null | /usr/bin/awk '$1=="160000"{f=1} END{exit !f}'; } \
     && { REASON=has-submodules; return 1; }   # gitlinks found by index mode 160000, not only by .gitmodules
-  st=$(GITS -C "$d" -c diff.ignoreSubmodules=all status --porcelain --ignore-submodules=all 2>/dev/null) || { REASON=git-status-failed; return 1; }
+  # --untracked-files=all on the command line overrides a repo's status.showUntrackedFiles=no, which
+  # would otherwise make untracked files read clean and go with the rm (PR #80 review B2).
+  st=$(GITS -C "$d" -c diff.ignoreSubmodules=all status --porcelain --untracked-files=all --ignore-submodules=all 2>/dev/null) || { REASON=git-status-failed; return 1; }
   [ -z "$st" ] || { REASON=dirty-uncommitted-work; return 1; }
   # owner/name only from an anchored github.com URL; anything else ⇒ empty ⇒ no gh call ⇒ KEEP
   repo=$(GITS -C "$d" remote get-url origin 2>/dev/null | /usr/bin/sed -nE 's#^(https://|ssh://git@|git@)github\.com[:/]([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)$#\2#p' | /usr/bin/sed -E 's#\.git$##')
   case "$repo" in *..*|.*|*/.*) repo="";; esac
-  if [ -d "$d/.git" ]; then   # a full clone owns its stash and every local branch; a linked worktree shares them with its parent
+  if [ -d "$d/.git" ]; then   # a full clone owns its stash, every local ref and its linked worktrees' git data
     [ -z "$(GITS -C "$d" stash list 2>/dev/null)" ] || { REASON=clone-has-stash; return 1; }
-    while IFS= read -r br; do [ -n "$br" ] || continue
+    # Linked worktrees keep their HEAD, index and rebase state under $d/.git/worktrees/: the rm takes them
+    # even when the worktree folder lives elsewhere. KEEP when any registered worktree is outside the
+    # deletion boundary, or cannot be resolved (missing/prunable), or the list cannot be read (B1).
+    local wtl wp wr
+    wtl=$(GITS -C "$d" worktree list --porcelain 2>/dev/null) || { REASON=git-worktree-list-failed; return 1; }
+    [ -n "$wtl" ] || { REASON=git-worktree-list-failed; return 1; }
+    rb=$(cd -P -- "$bound" 2>/dev/null && pwd -P) || { REASON=boundary-unresolvable; return 1; }
+    [ -n "$rb" ] || { REASON=boundary-unresolvable; return 1; }
+    while IFS= read -r wp; do
+      case "$wp" in "worktree "*) wp="${wp#worktree }";; *) continue;; esac
+      wr=$(cd -P -- "$wp" 2>/dev/null && pwd -P) || wr=""
+      case "$wr/" in "$rb"/*) ;; *) REASON=has-linked-worktrees; return 1;; esac
+    done <<< "$wtl"
+    # Every local ref, not only branches: a commit held only by a tag (or notes, replace, bisect, ...)
+    # is lost with the clone (B3). Remote-tracking refs are the yardstick, not candidates. A tag is
+    # peeled to its commit; a ref that is not a commit fails --contains ⇒ KEEP.
+    local refs rn o pe kind
+    refs=$(GITS -C "$d" for-each-ref --format='%(refname)%09%(objectname)%09%(*objectname)' 2>/dev/null) \
+      || { REASON=git-for-each-ref-failed; return 1; }
+    while IFS=$'\t' read -r rn o pe; do [ -n "$rn" ] || continue
+      case "$rn" in refs/remotes/*) continue;; refs/heads/*) kind=branch;; refs/tags/*) kind=tag;; *) kind=ref;; esac
+      br="${pe:-$o}"
       [ -n "$(GITS -C "$d" branch -r --contains "$br" 2>/dev/null | /usr/bin/head -1)" ] || in_github_default "$repo" "$br" \
-        || { REASON=clone-has-unpushed-branch; return 1; }
-    done < <(GITS -C "$d" for-each-ref --format='%(objectname)' refs/heads 2>/dev/null)
+        || { REASON=has-unpushed-$kind; return 1; }
+    done <<< "$refs"
   fi
   h=$(GITS -C "$d" rev-parse HEAD 2>/dev/null) || { REASON=no-head; return 1; }
   if [ -n "$(GITS -C "$d" branch -r --contains "$h" 2>/dev/null | /usr/bin/head -1)" ]; then REASON=pushed; return 0; fi

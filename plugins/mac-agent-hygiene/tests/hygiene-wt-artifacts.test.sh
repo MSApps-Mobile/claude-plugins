@@ -5,6 +5,7 @@
 #   KNOWN-POSITIVE  every top-level folder appears in the plan (session-dirs or worktrees), clones included
 #   KNOWN-POSITIVE  a stale top-level full clone, clean and pushed → session-dirs remove
 #   KNOWN-NEGATIVE  a stale top-level clone with dirty work / an unpushed branch → kept whole
+#   KNOWN-NEGATIVE  a top-level clone owning a linked worktree outside its folder → kept, survives apply
 #   KNOWN-NEGATIVE  a session the routines registry calls running → kept (session-dirs and artifacts)
 #   KNOWN-NEGATIVE  an unreadable registry → every session kept
 #   KNOWN-POSITIVE  gitignored node_modules/.next/dist/coverage in an idle DIRTY clone → removed, dirty work survives
@@ -61,8 +62,10 @@ mkclone clone-cwd; mkart "$W/clone-cwd/node_modules"; old "$W/clone-cwd"
 mkclone clone-nested-git; mkart "$W/clone-nested-git/node_modules"; git init -q "$W/clone-nested-git/node_modules/pkg"; old "$W/clone-nested-git"
 # plain session folders
 mkdir -p "$W/plain-node/app"; echo '{}' > "$W/plain-node/app/package.json"; mkart "$W/plain-node/app/node_modules" "$W/plain-node/app/dist"; old "$W/plain-node"
-# a linked worktree at top level: the worktrees pass owns it, not session-dirs
-git -C "$W/clone-clean" worktree add -q -b wt-branch "$W/top-linked" 2>/dev/null; old "$W/top-linked"
+# a linked worktree at top level: the worktrees pass owns it, not session-dirs. Its parent clone is a
+# separate session folder, which session-dirs must KEEP: the rm would take the worktree's git data.
+mkclone clone-wtowner; git -C "$W/clone-wtowner" worktree add -q -b wt-branch "$W/top-linked" 2>/dev/null
+old "$W/clone-wtowner" "$W/top-linked"
 cat > "$HYG_SESSIONS_JSON" <<JSON
 [ {"session":"clone-alive","status":"running"}, {"session":"clone-clean","status":"done"}, {"session":"plain-node","status":"dead"} ]
 JSON
@@ -79,6 +82,8 @@ missing=0; for d in "$W"/*/; do d="${d%/}"
 [ "$missing" = 0 ] && ok "every top-level folder evaluated exactly once" || bad "$missing folders not evaluated exactly once"
 [ "$(/usr/bin/awk -F'\t' -v p="$W/top-linked" '$1=="worktrees" && $5==p' "$P" | wc -l | tr -d ' ')" = 1 ] && ! /usr/bin/awk -F'\t' -v p="$W/top-linked" '$1=="session-dirs" && $5==p{f=1} END{exit !f}' "$P" \
   && ok "top-level linked worktree → worktrees pass only" || bad "top-linked: $(grep top-linked "$P")"
+grep -q "clone-has-linked-worktrees	$W/clone-wtowner$" "$P" && ok "clone owning a linked worktree outside its folder → keep" \
+  || bad "clone-wtowner: $(grep 'clone-wtowner$' "$P")"
 
 # --- session-dirs on clones
 [ "$(act "$P" "$W/clone-clean")" = remove ] && ok "stale clean pushed top-level clone → remove" || bad "clone-clean: $(grep -F "$W/clone-clean	" "$P"; grep "clone-clean$" "$P")"
@@ -117,6 +122,8 @@ bash "$HYG" apply "$FX/apply.tsv" > "$FX/apply.out" 2>&1
 [ -f "$W/clone-tracked/tools/build/script.sh" ] && [ -d "$W/clone-alive/node_modules" ] && [ -d "$W/clone-fresh/node_modules" ] \
   && ok "kept artifacts are intact after apply" || bad "a kept artifact was removed"
 [ "$(act "$P" "$W/plain-node")" = remove ] && [ ! -e "$W/plain-node" ] && ok "dead idle plain folder (registry: dead) → session-dirs removed it whole" || bad "plain-node: $(grep 'plain-node$' "$P")"
+[ -d "$W/clone-wtowner/.git" ] && [ "$(git -C "$W/clone-wtowner" rev-parse wt-branch 2>/dev/null)" != "" ] \
+  && ok "the linked worktree's owner clone survives apply" || bad "clone-wtowner gone after apply"
 [ ! -e "$W/clone-clean" ] && ok "apply removed the clean stale top-level clone" || bad "clone-clean still there: $(cat "$FX/apply.out")"
 [ -z "$(/usr/bin/awk -F'\t' '$2=="refused"' "$FX/apply.out")" ] && ok "apply refused nothing it planned" || bad "refused: $(awk -F'\t' '$2=="refused"' "$FX/apply.out")"
 
