@@ -1,15 +1,14 @@
 {
   "name": "sosa-compliance-checker",
+  "displayName": "SOSA Compliance Checker",
   "version": "0.2.2",
   "description": "SOSA™ compliance auditor for Claude plugins, skills, and coding agents. Scans your entire ecosystem against the four SOSA pillars (Supervised, Orchestrated, Secured, Agents) across both enterprise operations and software engineering domains. Includes SOSA for Code governance: graduated supervision levels, trust gradients, Plan-Code-Verify execution model, codebase knowledge models, and adaptive CLAUDE.md institutional memory.",
   "author": {
     "name": "MSApps",
-    "url": "https://msapps.mobi"
+    "url": "https://claudeservices.ai"
   },
   "license": "MIT",
-  "privacy_policy": "https://opsagents.agency/privacy",
-  "terms_of_service": "https://opsagents.agency/terms",
-  "homepage": "https://msapps.mobi/plugins",
+  "homepage": "https://claudeservices.ai/plugins",
   "platforms": [
     "claude-code",
     "cowork"
@@ -39,5 +38,10 @@
       "secured": "Read-only access to skill files, no credential handling. Audits sandboxed execution, scoped repo permissions, and secrets isolation.",
       "agents": "R=compliance-auditor, T=Read+Grep+Glob, M=none, P=scan-score-report, K=sosa-checklist"
     }
-  }
+  },
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "documentationUrl": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/sosa-compliance-checker/README.md",
+  "supportUrl": "https://github.com/MSApps-Mobile/claude-plugins/issues",
+  "privacyPolicyUrl": "https://opsagents.agency/privacy",
+  "termsOfServiceUrl": "https://opsagents.agency/terms"
 }

@@ -1,9 +1,11 @@
 {
   "name": "zoho-mail-health",
+  "displayName": "Zoho Mail Health",
   "version": "0.1.0",
-  "description": "Daily Zoho Mail health check \u2014 verifies both MSApps accounts are reachable, reads recent inbox messages, sends test emails, and produces a status report.",
+  "description": "Daily Zoho Mail health check — verifies both MSApps accounts are reachable, reads recent inbox messages, sends test emails, and produces a status report.",
   "author": {
-    "name": "MSApps"
+    "name": "MSApps",
+    "url": "https://claudeservices.ai"
   },
   "keywords": [
     "zoho",
@@ -16,13 +18,18 @@
   "sosa": {
     "level": 2,
     "supervised": "MCP tool calls require user approval for send operations. Read operations are autonomous.",
-    "orchestrated": "R=zoho-mail-health-check. T=zohomail MCP tools + Python fallback. M=none. P=check-auth \u2192 list-messages \u2192 test-send \u2192 report.",
+    "orchestrated": "R=zoho-mail-health-check. T=zohomail MCP tools + Python fallback. M=none. P=check-auth → list-messages → test-send → report.",
     "secured": "No hardcoded credentials. Uses env vars for OAuth tokens. Credential references use placeholders.",
     "agents": "R=mail-health-checker, T=zohomail_* MCP tools, M=none, P=sequential-health-check"
   },
   "topics": [
     "sosa-agents"
   ],
-  "privacy_policy": "https://opsagents.agency/privacy",
-  "terms_of_service": "https://opsagents.agency/terms"
+  "homepage": "https://claudeservices.ai/plugins",
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "license": "MIT",
+  "documentationUrl": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/zoho-mail-health/README.md",
+  "supportUrl": "https://github.com/MSApps-Mobile/claude-plugins/issues",
+  "privacyPolicyUrl": "https://opsagents.agency/privacy",
+  "termsOfServiceUrl": "https://opsagents.agency/terms"
 }

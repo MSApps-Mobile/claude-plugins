@@ -1,16 +1,15 @@
 {
   "name": "token-efficiency-audit",
+  "displayName": "Token Efficiency Audit",
   "version": "1.0.3",
   "description": "SOSA Level 3 plugin that audits and optimizes token usage across skills, scheduled tasks, plugins, and MCP connectors. Enforces the Orchestrated pillar's efficiency requirements (O6).",
   "author": {
     "name": "MSApps",
-    "email": "michal@msapps.mobi",
-    "url": "https://msapps.mobi"
+    "url": "https://claudeservices.ai",
+    "email": "michal@msapps.mobi"
   },
-  "homepage": "https://github.com/MSApps-Mobile/claude-plugins/tree/main/plugins/token-efficiency-audit",
+  "homepage": "https://claudeservices.ai/plugins",
   "license": "MIT",
-  "privacy_policy": "https://opsagents.agency/privacy",
-  "terms_of_service": "https://opsagents.agency/terms",
   "sosa": {
     "level": 3,
     "impact": "high",
@@ -30,5 +29,18 @@
     "modify_scheduled_tasks",
     "notion_read_write",
     "present_files"
+  ],
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "documentationUrl": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/token-efficiency-audit/README.md",
+  "supportUrl": "https://github.com/MSApps-Mobile/claude-plugins/issues",
+  "privacyPolicyUrl": "https://opsagents.agency/privacy",
+  "termsOfServiceUrl": "https://opsagents.agency/terms",
+  "keywords": [
+    "tokens",
+    "cost",
+    "context-window",
+    "efficiency",
+    "audit",
+    "claude-code"
   ]
 }

@@ -1,14 +1,13 @@
 {
   "name": "google-drive-upload",
+  "displayName": "Google Drive Upload",
   "description": "Upload files from Claude directly to Google Drive — completely free, unlimited uploads",
   "version": "1.2.1",
   "author": {
     "name": "MSApps",
-    "url": "https://msapps.mobi"
+    "url": "https://claudeservices.ai"
   },
   "license": "MIT",
-  "privacy_policy": "https://opsagents.agency/privacy",
-  "terms_of_service": "https://opsagents.agency/terms",
   "keywords": [
     "google-drive",
     "upload",
@@ -16,7 +15,7 @@
     "productivity",
     "sosa-agents"
   ],
-  "homepage": "https://msapps.mobi/plugins",
+  "homepage": "https://claudeservices.ai/plugins",
   "platforms": [
     "claude-code",
     "cowork"
@@ -36,5 +35,10 @@
   },
   "topics": [
     "sosa-agents"
-  ]
+  ],
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "documentationUrl": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/google-drive-upload/README.md",
+  "supportUrl": "https://github.com/MSApps-Mobile/claude-plugins/issues",
+  "privacyPolicyUrl": "https://opsagents.agency/privacy",
+  "termsOfServiceUrl": "https://opsagents.agency/terms"
 }

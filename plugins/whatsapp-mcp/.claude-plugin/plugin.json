@@ -1,15 +1,14 @@
 {
   "name": "whatsapp-mcp",
+  "displayName": "WhatsApp MCP",
   "version": "0.2.3",
   "description": "Connect Claude to WhatsApp — search messages, read conversations, send texts and media, and manage business outreach. Works in any language.",
   "author": {
     "name": "MSApps",
-    "url": "https://msapps.mobi"
+    "url": "https://claudeservices.ai"
   },
   "license": "MIT",
-  "privacy_policy": "https://opsagents.agency/privacy",
-  "terms_of_service": "https://opsagents.agency/terms",
-  "homepage": "https://msapps.mobi/plugins",
+  "homepage": "https://claudeservices.ai/plugins",
   "platforms": [
     "claude-code",
     "cowork"
@@ -39,5 +38,10 @@
   },
   "topics": [
     "sosa-agents"
-  ]
+  ],
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "documentationUrl": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/whatsapp-mcp/README.md",
+  "supportUrl": "https://github.com/MSApps-Mobile/claude-plugins/issues",
+  "privacyPolicyUrl": "https://opsagents.agency/privacy",
+  "termsOfServiceUrl": "https://opsagents.agency/terms"
 }

@@ -1,14 +1,13 @@
 {
   "name": "notion-memory",
+  "displayName": "Notion Memory",
   "description": "Long-term memory for Claude across sessions via Notion — plus the 4 official Anthropic Notion skills (knowledge-capture, meeting-intelligence, research-documentation, spec-to-implementation) bundled in",
   "version": "2.0.1",
   "author": {
     "name": "MSApps",
-    "url": "https://msapps.mobi"
+    "url": "https://claudeservices.ai"
   },
   "license": "MIT",
-  "privacy_policy": "https://opsagents.agency/privacy",
-  "terms_of_service": "https://opsagents.agency/terms",
   "keywords": [
     "notion",
     "memory",
@@ -72,5 +71,11 @@
   "sources": {
     "anthropic_skills_announcement": "https://www.linkedin.com/posts/claude_claude-skills-in-notion-activity-7392288254068420608-atoy",
     "anthropic_skills_origin": "https://notiondevs.notion.site/notion-skills-for-claude"
-  }
+  },
+  "homepage": "https://claudeservices.ai/plugins",
+  "repository": "https://github.com/MSApps-Mobile/claude-plugins",
+  "documentationUrl": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/notion-memory/README.md",
+  "supportUrl": "https://github.com/MSApps-Mobile/claude-plugins/issues",
+  "privacyPolicyUrl": "https://opsagents.agency/privacy",
+  "termsOfServiceUrl": "https://opsagents.agency/terms"
 }
