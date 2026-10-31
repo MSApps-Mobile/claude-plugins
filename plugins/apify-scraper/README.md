@@ -4,6 +4,8 @@ Full Apify web scraping platform integration for Claude. Run Actors, manage data
 
 ## Setup
 
+> **Settings:** when you turn this plugin on, Claude asks for APIFY_API_TOKEN. Secret values are stored in secure storage, not in a settings file. You no longer need to export them as environment variables. Change them later from `/config` (Claude Code) or the plugin's settings.
+
 ### 1. Get your Apify API Token
 1. Go to [Apify Console](https://console.apify.com/) → Settings → Integrations
 2. Copy your API token

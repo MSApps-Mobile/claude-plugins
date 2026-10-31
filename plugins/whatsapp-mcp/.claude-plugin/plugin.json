@@ -43,5 +43,13 @@
   "documentationUrl": "https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/whatsapp-mcp/README.md",
   "supportUrl": "https://github.com/MSApps-Mobile/claude-plugins/issues",
   "privacyPolicyUrl": "https://opsagents.agency/privacy",
-  "termsOfServiceUrl": "https://opsagents.agency/terms"
+  "termsOfServiceUrl": "https://opsagents.agency/terms",
+  "userConfig": {
+    "WHATSAPP_MCP_PATH": {
+      "type": "directory",
+      "title": "WhatsApp MCP folder",
+      "description": "Folder where you cloned whatsapp-mcp (it holds whatsapp-mcp-server/).",
+      "required": true
+    }
+  }
 }
