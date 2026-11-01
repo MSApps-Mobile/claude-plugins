@@ -77,6 +77,8 @@ HYG_WT_ROOTS="$HOME/code:*wt-* $HOME/code/wt:*"   # extra worktree roots, dir:gl
 HYG_SESSION_ROOT="$HOME/code/wt"; HYG_SESSION_AGE_HOURS=24
 HYG_SESSIONS_JSON="$HOME/.local/state/opsagents-routines/sessions.json"   # unreadable ⇒ every session alive
 HYG_ARTIFACT_IDLE_HOURS=24; HYG_ARTIFACT_DEPTH=6
+HYG_PLAN_BUDGET_MIN=12        # worktrees + build-artifacts + session-dirs wall clock; 0 = no limit. The rest waits for the next run
+HYG_REPORT_AGE_DAYS=7         # `hygiene.sh report`: the age every kept folder is grouped by
 HYG_GRADLE_AGE_DAYS=30; HYG_DEVICE_SUPPORT_AGE_DAYS=90; HYG_ANDROID_CACHE_AGE_DAYS=7
 HYG_PKG_CACHES="$HOME/Library/Caches/CocoaPods"; HYG_PKG_CACHE_AGE_DAYS=30
 ```

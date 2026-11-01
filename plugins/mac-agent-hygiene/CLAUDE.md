@@ -39,6 +39,14 @@
 - Paths compared as fixed strings (never a grep pattern); `.`/`..` components refused at the apply gate; every
   category checks `dirname`/`basename`, not a glob across `/`. Environment > config file > defaults.
 
+## Scan cost (card iTGD34Ub)
+
+- `plan` decides first and sizes after: `du` runs on remove rows and on keeps over `HYG_REPORT_AGE_DAYS` only.
+- `repo_inventory` is the ONE unpruned walk per folder per run, cached in `$TMPD`. `apply` calls `drop_run_caches` first,
+  so its re-check always reads the disk. Never read a cached answer after that point.
+- `HYG_PLAN_BUDGET_MIN` caps the three slow passes (a third, two thirds, all of it). Over budget ⇒ `keep/scan-budget-exceeded`,
+  never remove. `fair_order` puts the longest-unscanned folder first, so a cut run resumes where it stopped.
+
 ## Testing
 
 ```bash
