@@ -25,8 +25,12 @@
   git data lives in the clone's `.git`), when any local ref outside `refs/remotes` (branch, tag, notes, ...) points at a
   commit no remote ref contains, or when `worktree list`/`for-each-ref` fails. `status` runs with
   `--untracked-files=all`, so a repo's `status.showUntrackedFiles=no` cannot hide untracked files.
+  Any repo (clone, nested, linked worktree) also fails when the index flags a file assume-unchanged or skip-worktree
+  (`ls-files -v` lowercase or `S`: status cannot see edits to it, and a sparse checkout counts), or when its physical
+  `rev-parse --show-toplevel` is not the repo folder itself (`core.worktree` elsewhere: the folder's own files are checked nowhere).
 - Build artifacts (`node_modules .next dist build .turbo coverage` inside `~/code/wt/<session>`): only when the session
-  is idle 24 h, nobody's cwd, not alive in the registry, the dir holds no `.git`, and git IGNORES it with no tracked file
+  is idle 24 h, nobody's cwd, not alive in the registry, the dir holds no `.git`, bare repo or separate git-dir (any `HEAD`
+  file or symlink), it lies inside the work tree git resolves (not a `core.worktree` elsewhere), and git IGNORES it with no tracked file
   (no repo: node_modules/.next/.turbo beside package.json only). An unreadable registry ⇒ every session alive.
 - Gradle: never the newest two versions or one a running process names. iOS: never the newest DeviceSupport,
   never a simulator whose runtime is installed, never `Xcode/Archives`. Android AVDs / SDK images: report only.

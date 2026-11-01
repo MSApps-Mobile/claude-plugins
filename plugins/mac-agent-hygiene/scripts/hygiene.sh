@@ -28,7 +28,7 @@
 #   build-artifacts  node_modules, .next, dist, build, .turbo, coverage dirs inside any ~/code/wt/<session>
 #                    folder (down to HYG_ARTIFACT_DEPTH) when the session folder is idle HYG_ARTIFACT_IDLE_HOURS,
 #                    nobody's cwd is inside it, the session is not alive in HYG_SESSIONS_JSON, the dir holds
-#                    no .git and is git-IGNORED with no tracked file (outside a repo: only node_modules /
+#                    no .git, bare repo or separate git-dir, and is git-IGNORED with no tracked file (outside a repo: only node_modules /
 #                    .next / .turbo beside a package.json). The repo and its branches are never touched.
 #   gradle           ~/.gradle/wrapper/dists/* and ~/.gradle/daemon/* versions older than
 #                    HYG_GRADLE_AGE_DAYS, never the newest two, never one a running Gradle uses
@@ -157,6 +157,9 @@ list_artifacts(){ local t
 # Every .git at any depth, nothing pruned: a repo the search skipped would be rm -rf'd unchecked, so the
 # search fails closed (slower on a big node_modules, which only runs on folders already idle 24 h).
 nested_repos(){ /usr/bin/find "$1" -mindepth 2 -name .git -print 2>/dev/null | /usr/bin/sed 's#/\.git$##'; }
+# nested_repos only finds `.git`: a bare repo or separate git-dir has none. Its HEAD (a file, or a symlink
+# in an old-style repo) outside any .git path gives it away. Used by session-dirs and build-artifacts.
+holds_bare_or_separate_git_dir(){ [ -n "$(/usr/bin/find "$1" -path '*/.git' -prune -o \( -type f -o -type l \) -name HEAD -print -quit 2>/dev/null)" ]; }
 # Newest-first listing helpers for "never the newest N" rules
 newest_first(){ /bin/ls -1td "$@" 2>/dev/null; }
 list_clones(){ [ -d "$HYG_PLUGIN_CACHE" ] && /usr/bin/find "$HYG_PLUGIN_CACHE" -maxdepth 1 -mindepth 1 -type d -name 'temp_git_*' 2>/dev/null | /usr/bin/sort; }
@@ -235,8 +238,14 @@ in_github_default(){ local repo="$1" sha="$2" key f n def
   fi
   [ "$(/bin/cat "$f")" = 1 ]; }
 git_safe(){ # repo/worktree dir, deletion boundary (the dir apply would rm) → 0 clean and on a remote ref or merged-PR head (REASON=pushed|merged-pr-head)
-  local d="$1" bound="${2:-$1}" b h repo f st br cdir rc rb wg
+  local d="$1" bound="${2:-$1}" b h repo f st br cdir rc rb wg tl iv rd
   repo_config_runs_commands "$d" && { REASON=repo-config-can-run-commands; return 1; }
+  # status only inspects the work tree git resolves. A repo's core.worktree (or a broken .git that sends
+  # discovery up to an outer repo) puts that somewhere other than $d: $d's own files are then checked
+  # nowhere and go with the rm (PR #80 review B5). KEEP unless it physically IS $d.
+  tl=$(GITS -C "$d" rev-parse --show-toplevel 2>/dev/null) || { REASON=worktree-not-this-folder; return 1; }
+  rd=$(cd -P -- "$d" 2>/dev/null && pwd -P) || { REASON=worktree-not-this-folder; return 1; }
+  [ -n "$tl" ] && [ -n "$rd" ] && [ "$(cd -P -- "$tl" 2>/dev/null && pwd -P)" = "$rd" ] || { REASON=worktree-not-this-folder; return 1; }
   # status recurses into submodules under THEIR config, which the scan above never read: keep, unread.
   { [ -e "$d/.gitmodules" ] || [ -d "$(GITS -C "$d" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)/modules" ] \
     || [ -d "$(GITS -C "$d" rev-parse --path-format=absolute --git-dir 2>/dev/null)/modules" ] \
@@ -246,6 +255,11 @@ git_safe(){ # repo/worktree dir, deletion boundary (the dir apply would rm) → 
   # would otherwise make untracked files read clean and go with the rm (PR #80 review B2).
   st=$(GITS -C "$d" -c diff.ignoreSubmodules=all status --porcelain --untracked-files=all --ignore-submodules=all 2>/dev/null) || { REASON=git-status-failed; return 1; }
   [ -z "$st" ] || { REASON=dirty-uncommitted-work; return 1; }
+  # status never reports edits to a tracked file flagged assume-unchanged (lowercase tag in `ls-files -v`)
+  # or skip-worktree (tag S), so they read clean and go with the rm (B4). Any flagged entry ⇒ KEEP, unread:
+  # that includes a sparse checkout, whose out-of-cone entries all carry S.
+  iv=$(GITS -C "$d" ls-files -v 2>/dev/null) || { REASON=git-ls-files-failed; return 1; }
+  printf '%s\n' "$iv" | LC_ALL=C /usr/bin/grep -q '^[a-zS] ' && { REASON=index-hides-changes; return 1; }
   # owner/name only from an anchored github.com URL; anything else ⇒ empty ⇒ no gh call ⇒ KEEP
   repo=$(GITS -C "$d" remote get-url origin 2>/dev/null | /usr/bin/sed -nE 's#^(https://|ssh://git@|git@)github\.com[:/]([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)$#\2#p' | /usr/bin/sed -E 's#\.git$##')
   case "$repo" in *..*|.*|*/.*) repo="";; esac
@@ -314,10 +328,8 @@ check_session(){ local d="$1" r
   session_alive "$d" && { REASON=session-alive-in-registry; return 1; }
   [ -n "$(/usr/bin/find "$d" \( -name .git -o -name node_modules -o -name .venv -o -name Pods \) -prune -o -type f -mmin -"$((HYG_SESSION_AGE_HOURS*60))" -print -quit 2>/dev/null)" ] && { REASON=touched-recently; return 1; }
   cwd_inside "$d" && { REASON=a-process-is-inside; return 1; }
-  # nested_repos only finds `.git`; a bare repo or separate git-dir elsewhere in the folder would go
-  # with the rm unchecked. Any HEAD file outside a .git path ⇒ keep the folder, unread.
-  [ -n "$(/usr/bin/find "$d" -path '*/.git' -prune -o -type f -name HEAD -print -quit 2>/dev/null)" ] \
-    && { REASON=contains-bare-or-separate-git-dir; return 1; }
+  # A bare repo or separate git-dir elsewhere in the folder would go with the rm unchecked: keep, unread.
+  holds_bare_or_separate_git_dir "$d" && { REASON=contains-bare-or-separate-git-dir; return 1; }
   if [ -d "$d/.git" ]; then git_safe "$d" "$d" || { REASON="clone-$REASON"; return 1; }; fi   # the folder IS a clone
   while IFS= read -r r; do [ -n "$r" ] || continue
     git_safe "$r" "$d" || { REASON="nested-$REASON"; return 1; }
@@ -331,7 +343,7 @@ session_idle(){ local t="$1" f k; k=$(printf '%s' "$t" | /usr/bin/shasum | /usr/
         -o -name coverage -o -name .venv -o -name Pods \) -prune -o -type f -mmin -"$((HYG_ARTIFACT_IDLE_HOURS*60))" -print -quit 2>/dev/null)" ]
     then echo 0 > "$f"; else echo 1 > "$f"; fi
   fi; [ "$(/bin/cat "$f")" = 1 ]; }
-check_artifact(){ local p="$1" rel top name parent tracked
+check_artifact(){ local p="$1" rel top name parent tracked tl
   case "$p" in "$HYG_SESSION_ROOT"/*/*) ;; *) REASON=outside-session-root; return 1;; esac
   has_dot_component "$p" && { REASON=dot-path; return 1; }
   rel="${p#"$HYG_SESSION_ROOT"/}"; top="$HYG_SESSION_ROOT/${rel%%/*}"; name=$(/usr/bin/basename "$p"); parent=$(/usr/bin/dirname "$p")
@@ -345,8 +357,13 @@ check_artifact(){ local p="$1" rel top name parent tracked
   cwd_inside "$top" && { REASON=a-process-is-inside; return 1; }
   session_idle "$top" || { REASON=session-touched-recently; return 1; }
   [ -n "$(/usr/bin/find "$p" -name .git -print -quit 2>/dev/null)" ] && { REASON=contains-a-repo; return 1; }
+  holds_bare_or_separate_git_dir "$p" && { REASON=contains-bare-or-separate-git-dir; return 1; }   # B6: the only copy of a commit can sit here
   if GITS -C "$parent" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     repo_config_runs_commands "$parent" && { REASON=repo-config-can-run-commands; return 1; }
+    # With core.worktree elsewhere, the two answers below describe that other tree, not this dir (B5).
+    tl=$(GITS -C "$parent" rev-parse --show-toplevel 2>/dev/null) && [ -n "$tl" ] || { REASON=worktree-not-this-folder; return 1; }
+    tl=$(cd -P -- "$tl" 2>/dev/null && pwd -P) && [ -n "$tl" ] || { REASON=worktree-not-this-folder; return 1; }
+    case "$(cd -P -- "$parent" 2>/dev/null && pwd -P)/" in "$tl"/*) ;; *) REASON=worktree-not-this-folder; return 1;; esac
     tracked=$(GITS -C "$parent" ls-files -- "$name" 2>/dev/null | /usr/bin/head -1) || { REASON=git-ls-files-failed; return 1; }
     [ -z "$tracked" ] || { REASON=has-tracked-files; return 1; }
     GITS -C "$parent" check-ignore -q -- "$name/" 2>/dev/null || { REASON=not-gitignored; return 1; }

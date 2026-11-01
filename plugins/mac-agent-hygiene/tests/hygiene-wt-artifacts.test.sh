@@ -15,6 +15,9 @@
 #   KNOWN-NEGATIVE  dist/ in a plain (non-git) folder → kept (not provably regenerable)
 #   KNOWN-NEGATIVE  artifacts in a recently touched session, or one a process has its cwd in → kept
 #   KNOWN-NEGATIVE  a node_modules holding a .git → kept
+#   KNOWN-NEGATIVE  B6 an ignored build/ or dist/ holding a bare repo, a separate git-dir, or a repo whose
+#                   HEAD is a symlink → kept, the only copy of the commit survives apply
+#   KNOWN-NEGATIVE  B5 an ignored-looking build/ in a clone whose core.worktree points elsewhere → kept
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
 HYG="$HERE/../scripts/hygiene.sh"
@@ -60,6 +63,17 @@ mkclone clone-alive; mkart "$W/clone-alive/node_modules"; old "$W/clone-alive"
 mkclone clone-fresh; mkart "$W/clone-fresh/node_modules"   # touched now
 mkclone clone-cwd; mkart "$W/clone-cwd/node_modules"; old "$W/clone-cwd"
 mkclone clone-nested-git; mkart "$W/clone-nested-git/node_modules"; git init -q "$W/clone-nested-git/node_modules/pkg"; old "$W/clone-nested-git"
+# B6: git repos a `.git` search cannot see, inside an ignored artifact dir
+mkclone clone-bare-build; git init -q --bare "$W/clone-bare-build/build/backup.git"
+(cd "$W/clone-bare-build" && git checkout -q --detach && echo only > only.txt && git add only.txt && git commit -qm only-in-backup \
+  && git push -q "$W/clone-bare-build/build/backup.git" HEAD:refs/heads/only 2>/dev/null); BARE_SHA=$(git -C "$W/clone-bare-build" rev-parse HEAD)
+git -C "$W/clone-bare-build" checkout -q -; git -C "$W/clone-bare-build" update-ref -d refs/heads/only 2>/dev/null; old "$W/clone-bare-build"
+mkclone clone-sep-dist; mkdir -p "$W/clone-sep-dist/dist" "$FX/sep-work"; git init -q --separate-git-dir="$W/clone-sep-dist/dist/sep-data" "$FX/sep-work"; old "$W/clone-sep-dist"
+mkclone clone-symhead; git init -q --bare "$W/clone-symhead/build/sym.git"; rm "$W/clone-symhead/build/sym.git/HEAD"
+ln -s refs/heads/main "$W/clone-symhead/build/sym.git/HEAD"; old "$W/clone-symhead"
+# B5: to git this folder's build/ is outside the work tree, and the elsewhere tree's .gitignore covers the name
+mkclone clone-elsewhere; mkdir -p "$FX/art-elsewhere"; cp "$W/clone-elsewhere/.gitignore" "$W/clone-elsewhere/package.json" "$FX/art-elsewhere/"
+git -C "$W/clone-elsewhere" config core.worktree "$FX/art-elsewhere"; mkart "$W/clone-elsewhere/build"; echo precious > "$W/clone-elsewhere/build/notes.txt"; old "$W/clone-elsewhere"
 # plain session folders
 mkdir -p "$W/plain-node/app"; echo '{}' > "$W/plain-node/app/package.json"; mkart "$W/plain-node/app/node_modules" "$W/plain-node/app/dist"; old "$W/plain-node"
 # a linked worktree at top level: the worktrees pass owns it, not session-dirs. Its parent clone is a
@@ -102,6 +116,10 @@ case "$(art "$W/clone-alive/node_modules")" in keep/session-alive-in-registry) o
 case "$(art "$W/clone-fresh/node_modules")" in keep/session-touched-recently) ok "artifact in a recently touched session → keep";; *) bad "fresh nm: $(art "$W/clone-fresh/node_modules")";; esac
 case "$(art "$W/clone-cwd/node_modules")" in keep/a-process-is-inside) ok "artifact in a session a process sits in → keep";; *) bad "cwd nm: $(art "$W/clone-cwd/node_modules")";; esac
 case "$(art "$W/clone-nested-git/node_modules")" in keep/contains-a-repo) ok "node_modules holding a .git → keep";; *) bad "nested-git nm: $(art "$W/clone-nested-git/node_modules")";; esac
+case "$(art "$W/clone-bare-build/build")" in keep/contains-bare-or-separate-git-dir) ok "B6 ignored build/ holding a bare repo → keep";; *) bad "B6 bare: $(art "$W/clone-bare-build/build")";; esac
+case "$(art "$W/clone-sep-dist/dist")" in keep/contains-bare-or-separate-git-dir) ok "B6 ignored dist/ holding a separate git-dir → keep";; *) bad "B6 sep: $(art "$W/clone-sep-dist/dist")";; esac
+case "$(art "$W/clone-symhead/build")" in keep/contains-bare-or-separate-git-dir) ok "B6 ignored build/ holding a repo with a symlink HEAD → keep";; *) bad "B6 symhead: $(art "$W/clone-symhead/build")";; esac
+case "$(art "$W/clone-elsewhere/build")" in keep/worktree-not-this-folder) ok "B5 build/ in a clone whose core.worktree is elsewhere → keep";; *) bad "B5 elsewhere: $(art "$W/clone-elsewhere/build")";; esac
 case "$(art "$W/plain-node/app/node_modules")" in remove/node-artifact-beside-package-json) ok "plain folder: node_modules beside package.json → remove";; *) bad "plain nm: $(art "$W/plain-node/app/node_modules")";; esac
 case "$(art "$W/plain-node/app/dist")" in keep/not-provably-regenerable) ok "plain folder: dist/ → keep";; *) bad "plain dist: $(art "$W/plain-node/app/dist")";; esac
 
@@ -121,6 +139,9 @@ bash "$HYG" apply "$FX/apply.tsv" > "$FX/apply.out" 2>&1
   && ok "apply stripped build/; the unpushed branch survives" || bad "clone-unpushed after apply"
 [ -f "$W/clone-tracked/tools/build/script.sh" ] && [ -d "$W/clone-alive/node_modules" ] && [ -d "$W/clone-fresh/node_modules" ] \
   && ok "kept artifacts are intact after apply" || bad "a kept artifact was removed"
+git -C "$W/clone-bare-build/build/backup.git" cat-file -e "$BARE_SHA^{commit}" 2>/dev/null && [ -e "$W/clone-sep-dist/dist/sep-data/HEAD" ] && [ -L "$W/clone-symhead/build/sym.git/HEAD" ] \
+  && ok "B6 apply left the repos inside artifact dirs alone; the commit held only by the bare repo survives" || bad "B6 a repo inside an artifact dir is gone"
+[ -f "$W/clone-elsewhere/build/notes.txt" ] && ok "B5 apply left the folder's own build/ alone" || bad "B5 clone-elsewhere/build gone"
 [ "$(act "$P" "$W/plain-node")" = remove ] && [ ! -e "$W/plain-node" ] && ok "dead idle plain folder (registry: dead) → session-dirs removed it whole" || bad "plain-node: $(grep 'plain-node$' "$P")"
 [ -d "$W/clone-wtowner/.git" ] && [ "$(git -C "$W/clone-wtowner" rev-parse wt-branch 2>/dev/null)" != "" ] \
   && ok "the linked worktree's owner clone survives apply" || bad "clone-wtowner gone after apply"
