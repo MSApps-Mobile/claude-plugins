@@ -31,6 +31,7 @@
 ```bash
 bash -n scripts/*.sh && node --check server/index.js
 bash tests/hygiene-worktrees.test.sh        # fixture git repos + stubbed gh; runs on Linux too
+bash tests/hygiene-wt-scan-roots.test.sh    # default scope incl. ~/code/_worktrees, keep rules, status count
 bash tests/hygiene-keeps-logins.test.sh     # macOS only
 bash scripts/hygiene.sh status
 bash scripts/hygiene.sh plan | awk -F'\t' '{print $1, $2, $4}' | sort | uniq -c
