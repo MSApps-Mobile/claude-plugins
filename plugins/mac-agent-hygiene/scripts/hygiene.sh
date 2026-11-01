@@ -17,7 +17,8 @@
 #                    re-downloaded on next use; raise the window for models that must stay warm)
 #   worktrees        linked git worktrees (.git is a FILE) up to HYG_WT_DEPTH levels under HYG_WT_ROOT:
 #                    a direct child matching HYG_WT_GLOB, or anything below a top-level dir named in
-#                    HYG_WT_NESTED (default "wt": ~/code/wt/{sup,ref,pipe}-*/...). No file newer than
+#                    HYG_WT_NESTED (default "wt _worktrees": ~/code/wt/{sup,ref,pipe}-*/..., ~/code/_worktrees/...).
+#                    No file newer than
 #                    HYG_WT_AGE_DAYS, clean, nobody's cwd, and HEAD on a remote ref, or a merged PR for
 #                    the branch: exact head SHA, or (rebased / force-pushed heads) every local-only
 #                    commit subject matches one of the PR's commits. Dirty / unpushed / in-use: KEPT.
@@ -47,7 +48,7 @@ HYG_MODEL_CACHES="${HYG_MODEL_CACHES:-$HOME/.cache/whisper $HOME/.cache/codex-ru
 HYG_MODEL_CACHE_AGE_DAYS="${HYG_MODEL_CACHE_AGE_DAYS:-7}"
 HYG_WT_ROOT="${HYG_WT_ROOT:-$HOME/code}"; HYG_WT_ROOT="${HYG_WT_ROOT%/}"
 HYG_WT_GLOB="${HYG_WT_GLOB:-*wt-*}"
-HYG_WT_NESTED="${HYG_WT_NESTED-wt}"   # set to "" to scan direct children only
+HYG_WT_NESTED="${HYG_WT_NESTED-wt _worktrees}"   # set to "" to scan direct children only
 HYG_WT_DEPTH="${HYG_WT_DEPTH:-3}"
 HYG_WT_AGE_DAYS="${HYG_WT_AGE_DAYS:-7}"
 HYG_WT_MERGED_PR_CHECK="${HYG_WT_MERGED_PR_CHECK:-1}"
@@ -91,7 +92,8 @@ trap '/bin/rm -rf "$TMPD"' EXIT
 # ---------- enumerators (shared by status, plan and the candidate list) ----------
 # Is $1 a place agent worktrees live? A direct child of HYG_WT_ROOT whose name matches HYG_WT_GLOB, or
 # a path at most HYG_WT_DEPTH levels deep under a top-level dir listed in HYG_WT_NESTED (card SIDmENpf:
-# phase sessions put them under ~/code/wt/{sup,ref,pipe}-*/..., 163 GB the direct-child scan never saw).
+# phase sessions put them under ~/code/wt/{sup,ref,pipe}-*/..., 163 GB the direct-child scan never saw;
+# card uO9PFYg8: ~/code/_worktrees/<card>/, 21 GB in 62 linked worktrees, the same gap).
 # A human's own ~/code/project/feature worktree stays out of scope.
 wt_in_scope(){ local rel top slashes n
   case "$1" in "$HYG_WT_ROOT"/*) ;; *) return 1;; esac

@@ -48,8 +48,9 @@ can be the only copy of real work, and no board signal says which. Removal there
    missing or fails, the merged-PR file is empty and the worktree is KEPT.
 
 Scope: a direct child of `HYG_WT_ROOT` matching `HYG_WT_GLOB`, or a worktree at most `HYG_WT_DEPTH`
-levels deep under a top-level dir named in `HYG_WT_NESTED` (default `wt`, where phase sessions create
-`wt/{sup,ref,pipe}-*/...`; 163 GB in 842 dirs the direct-child scan never saw). A person's own
+levels deep under a top-level dir named in `HYG_WT_NESTED` (default `wt _worktrees`: phase sessions create
+`wt/{sup,ref,pipe}-*/...`, 163 GB in 842 dirs the direct-child scan never saw; other agents create
+`_worktrees/<card>/`, 21 GB in 62 worktrees, card uO9PFYg8). A person's own
 `~/code/project/feature` worktree is out of scope. `tests/hygiene-worktrees.test.sh` covers these rules
 with fixture repos and a stubbed `gh`.
 
