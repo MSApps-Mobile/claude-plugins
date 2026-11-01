@@ -152,9 +152,13 @@ trap '/bin/rm -rf "$TMPD"' EXIT
 
 # ---------- scan budget (card iTGD34Ub): a loaded Mac took 72 min; the plan now stops on the clock ----------
 PLAN_T0=$SECONDS
-# Seconds after PLAN_T0 at which a category stops being scanned; 0 = never. The slow passes share the budget.
-budget_deadline(){ local b=$((HYG_PLAN_BUDGET_MIN*60))
-  case "$1" in worktrees) echo $((b/3));; build-artifacts) echo $((b*2/3));; session-dirs) echo "$b";; *) echo 0;; esac; }
+# Seconds after PLAN_T0 at which a category stops being scanned; 0 = never. Each slow pass gets a share of what
+# is LEFT when it starts, so a slow cache pass ahead of them can never read as "over budget at 0 s".
+budget_deadline(){ local b=$((HYG_PLAN_BUDGET_MIN*60)) now=$((SECONDS-PLAN_T0)) left
+  [ "$b" -gt 0 ] || { echo 0; return; }; left=$((b-now)); [ "$left" -gt 0 ] || left=0
+  case "$1" in worktrees) echo $((now+left/3));; build-artifacts) echo $((now+left/2));; session-dirs) echo "$((now+left))";; *) echo 0;; esac; }
+# Where the artifact walks stop. They run ahead of the plan loop, so they use a fixed share of the whole budget.
+walk_deadline(){ echo $((HYG_PLAN_BUDGET_MIN*60*2/3)); }
 # Longest unscanned first, then oldest: a run the budget cuts short resumes where it stopped.
 fair_order(){ local st="$HYG_STATE_DIR/scanned-$1.tsv"; [ -f "$st" ] || st=/dev/null
   /usr/bin/tr '\n' '\0' | /usr/bin/xargs -0 /usr/bin/stat -f '%m%t%N' 2>/dev/null \
@@ -193,7 +197,7 @@ ARTIFACT_NAMES=( node_modules .next dist build .turbo coverage )   # the ONE lis
 name_expr(){ local n first=1; for n in "$@"; do [ "$first" = 1 ] || printf '%s\n' -o; first=0; printf '%s\n%s\n' -name "$n"; done; }
 # Artifact dirs in every top-level folder (worktrees and clones included); prune at .git and at each hit.
 list_artifacts(){ local t e=() dl; while IFS= read -r t; do e+=( "$t" ); done < <(name_expr "${ARTIFACT_NAMES[@]}")
-  [ -d "$HYG_SESSION_ROOT" ] || return 0; dl=$(budget_deadline build-artifacts)
+  [ -d "$HYG_SESSION_ROOT" ] || return 0; dl=$(walk_deadline)
   /usr/bin/find "$HYG_SESSION_ROOT" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | fair_order build-artifacts | while IFS= read -r t; do
     [ "$dl" = 0 ] || [ $((SECONDS-PLAN_T0)) -lt "$dl" ] || break
     session_idle "$t" || continue   # a folder in use has nothing to strip, so it costs no depth-6 walk

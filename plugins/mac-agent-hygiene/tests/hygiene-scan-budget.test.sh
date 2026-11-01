@@ -61,6 +61,14 @@ bash "$FX/hyg-spent.sh" plan > "$FX/spent.tsv" 2>/dev/null
 /usr/bin/awk -F'\t' '($1=="session-dirs"||$1=="worktrees"||$1=="build-artifacts") && $2=="remove"{f=1} END{exit f}' "$FX/spent.tsv" && ok "spent budget removes nothing" || bad "spent budget removed: $(cat "$FX/spent.tsv")"
 [ "$(/usr/bin/awk -F'\t' '$1=="session-dirs" && $4=="scan-budget-exceeded"{n++} END{print n+0}' "$FX/spent.tsv")" -ge 4 ] && ok "spent budget reads scan-budget-exceeded" || bad "spent rows: $(cat "$FX/spent.tsv")"
 
+# A slow pass ahead of the budget must not eat the slow passes' share: 12 min budget, 5 min gone
+sed '/^case "\${1:-}" in$/,$d' "$HYG" > "$FX/hyg-dl.sh"
+cat >> "$FX/hyg-dl.sh" <<'INNER'
+PLAN_T0=$((SECONDS-300)); w=$(budget_deadline worktrees); a=$(budget_deadline build-artifacts); s=$(budget_deadline session-dirs); g=$(budget_deadline gradle)
+HYG_PLAN_BUDGET_MIN=0; z=$(budget_deadline session-dirs); echo "$w $a $s $g $z"
+INNER
+[ "$(bash "$FX/hyg-dl.sh" 2>/dev/null)" = "440 510 720 0 0" ] && ok "each pass gets a share of what is left, cache passes and budget 0 have no limit" || bad "deadlines: $(bash "$FX/hyg-dl.sh" 2>&1)"
+
 # Fairness: the folder never scanned goes first
 mkdir -p "$FX/state"; printf '%s\t%s\n' "$W/s-clean" "$(/bin/date +%s)" "$W/s-week" "$(/bin/date +%s)" "$W/s-fresh" "$(/bin/date +%s)" "$W/s-denied" "$(/bin/date +%s)" > "$FX/state/scanned-session-dirs.tsv"
 bash "$HYG" plan > "$FX/fair.tsv" 2>/dev/null
