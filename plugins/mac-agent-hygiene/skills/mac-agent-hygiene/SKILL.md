@@ -79,6 +79,9 @@ HYG_SESSIONS_JSON="$HOME/.local/state/opsagents-routines/sessions.json"   # unre
 HYG_ARTIFACT_IDLE_HOURS=24; HYG_ARTIFACT_DEPTH=6
 HYG_PLAN_BUDGET_MIN=12        # worktrees + build-artifacts + session-dirs wall clock; 0 = no limit. The rest waits for the next run
 HYG_REPORT_AGE_DAYS=7         # `hygiene.sh report`: the age every kept folder is grouped by
+HYG_RETENTION_DAYS=           # unset = off. Set with HYG_RESCUE_CMD: older folders leave once their work is archived (references/safety-model.md)
+HYG_RESCUE_CMD=               # <dir> <object-prefix>; exit 0 only when every file in <dir> is stored and verified
+HYG_RETENTION_MAX_PER_RUN=10
 HYG_GRADLE_AGE_DAYS=30; HYG_DEVICE_SUPPORT_AGE_DAYS=90; HYG_ANDROID_CACHE_AGE_DAYS=7
 HYG_PKG_CACHES="$HOME/Library/Caches/CocoaPods"; HYG_PKG_CACHE_AGE_DAYS=30
 ```

@@ -18,6 +18,13 @@
 - Browser profiles: cache-subfolder allowlist only; profile with `SingletonLock` or open files skipped.
 - Worktrees: linked (`[ -f .git ]`), untouched > age, nobody's cwd, clean, pushed or merged-PR head.
   `gh` failure ⇒ keep. Never `--force`.
+- Retention (off unless `HYG_RETENTION_DAYS` and an executable `HYG_RESCUE_CMD` are set; CTO ruling 6ae7919566f264486f337e8e on
+  card iTGD34Ub): a direct child of `HYG_SESSION_ROOT` only. `remove_rescued` is the ONLY path that removes dirty or unpushed work,
+  and it uses `rm` + `worktree prune`, not `git worktree remove`: archive verified by the command, ledger line written, idle and cwd
+  read again, then rm. Any failure keeps the folder. Everywhere else "never `--force`" stands. `HYG_RESCUE_CMD <dir> <prefix>` must
+  exit 0 only when every file in `<dir>` is stored and verified; the plugin itself names no bucket and no CLI.
+  Not archived: ignored files, `RESCUE_DENY_NAMES` wherever they sit, files over 5 MiB (listed with sha256). Commits and patches over
+  20 MB, untrusted repos (`repo_trusted`) and linked worktrees outside the folder KEEP.
 - DerivedData skipped while Xcode builds. Never sudo. Paths outside `$HOME` refused at apply.
 - Session dirs (every `~/code/wt/*` except a linked worktree; a top-level full clone is one too): kept whole if the clone
   or ANY nested repo fails the worktree test, the session is alive in `HYG_SESSIONS_JSON`, or anything was touched < 24 h.

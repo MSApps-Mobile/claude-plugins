@@ -63,6 +63,21 @@ other than one array whose entries all carry a string `.session`. A missing regi
 idle `HYG_ARTIFACT_IDLE_HOURS`: inside a repo only when git-ignored with no tracked file; outside a repo only
 `node_modules`, `.next` or `.turbo` beside a `package.json`. A dir holding any repo is kept.
 
+### Retention: dirty and unpushed work (opt-in)
+
+With `HYG_RETENTION_DAYS` and an executable `HYG_RESCUE_CMD` set, a direct child of `HYG_SESSION_ROOT` idle that long leaves even when
+dirty or unpushed, only after an archive is verified: per repo a patch of tracked edits (deleted paths listed instead) and a bundle of
+what no remote holds, stash entries included; plus untracked and loose files up to 5 MiB. Idle also reads each repo's `.git/index`,
+`HEAD` and `logs/HEAD`. A non-terminal registry row counts as alive while its start date is within 14 days, and always when it has none.
+
+Never archived, so lost with the folder: ignored files, and `.env*`, `*.pem`, `*.key`, `*.p12`, `id_rsa*`, `*credentials*.json`,
+`*service-account*.json` wherever they sit. Files over 5 MiB are dropped and listed with size and sha256. The rest of the archive
+lives as long as your bucket's lifecycle says.
+
+Kept with a named blocker: an unverified upload, commits and patches over 20 MB, repo config that can run commands, submodules,
+`core.worktree` elsewhere, a bare repo or separate git-dir, a linked worktree outside the folder. `hygiene_status` counts these past
+twice the window as `retention_overdue`: only their owner can decide them. To stop retention, delete `HYG_RETENTION_DAYS` from the config.
+
 **What these guards do not read, and which goes with the `rm -rf`:**
 
 - ignored files in a clone, such as a local `.env`; keep anything you need outside `~/code/wt`;
