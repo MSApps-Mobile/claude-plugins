@@ -19,7 +19,9 @@
 - Worktrees: linked (`[ -f .git ]` AND git-dir ≠ common-dir), in scope (direct child matching
   `HYG_WT_GLOB`, or ≤ `HYG_WT_DEPTH` deep under a `HYG_WT_NESTED` dir), untouched > age, nobody's cwd,
   clean, and pushed / merged-PR head / merged PR on the same branch whose commits cover every local-only
-  commit subject. `gh` failure ⇒ keep. Never `--force`. macOS `/bin/bash` is 3.2: no `declare -A`;
+  commit subject. `gh` failure ⇒ keep. Never `--force`, except under the user's explicit `HYG_WT_KEEP_UNPUSHED=0`
+  opt-in, and only after HEAD (and tracked edits) are pinned under `refs/hygiene-archive/`; archive failure ⇒ keep.
+  Full clones are never removed except as `wt-clones` under that same opt-in, after a git bundle of local-only work. macOS `/bin/bash` is 3.2: no `declare -A`;
   per-repo gh results are cache files in `$TMPD`.
 - DerivedData skipped while Xcode builds. Never sudo. Paths outside `$HOME` refused at apply.
 - System binaries by absolute path; explicit PATH in the plist; `mktemp` with a `${TMPDIR:-/tmp}` template.
