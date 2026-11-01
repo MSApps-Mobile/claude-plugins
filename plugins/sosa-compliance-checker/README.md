@@ -28,6 +28,16 @@ This checker now includes full support for auditing AI coding agent governance:
 
 ## Usage
 
+```
+/sosa-compliance-checker:audit [scope: plugin, skill, repo path]
+
+# Examples:
+/sosa-compliance-checker:audit
+/sosa-compliance-checker:audit plugins/whatsapp-mcp
+/sosa-compliance-checker:audit this repository
+```
+
+
 Just say: "Run a SOSA audit", "Check SOSA compliance", "Audit my plugins", or "Check SOSA for Code compliance"
 
 ## Whitepaper

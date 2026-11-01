@@ -41,6 +41,14 @@ You only need to do this once — it gives you access to all MSApps plugins.
 Go to **Settings → Plugins**, search for **vm-disk-cleanup**, and click **Install**.
 ## Usage
 
+```
+/vm-disk-cleanup:clean [no arguments]
+
+# Examples:
+/vm-disk-cleanup:clean
+```
+
+
 Just say any of these naturally:
 
 - "clean VM" / "clean disk"

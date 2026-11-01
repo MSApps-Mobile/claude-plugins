@@ -30,6 +30,28 @@ The companion `opsagent-shopify-mcp` desktop extension provides the Storefront M
 - **Secured** — Storefront tokens are sensitive; never logged.
 - **Agents** — clear scope per skill (no Admin API, no Partner API write, no Liquid edits).
 
+## Usage
+
+```
+/opsagent-shopify:storefront <shop domain> <what to look up>
+
+# Examples:
+/opsagent-shopify:storefront example.myshopify.com search for running shoes
+/opsagent-shopify:storefront example.myshopify.com shipping policy
+
+/opsagent-shopify:partner-marketing [your offering or goal]
+
+# Examples:
+/opsagent-shopify:partner-marketing
+/opsagent-shopify:partner-marketing position my agency's theme customization service
+
+/opsagent-shopify:install-theme [theme name] [store]
+
+# Examples:
+/opsagent-shopify:install-theme
+/opsagent-shopify:install-theme Symmetry on example.myshopify.com
+```
+
 ## License
 
 MIT — see top-level LICENSE in the claude-plugins repo.

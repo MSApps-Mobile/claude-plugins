@@ -49,3 +49,14 @@ That's it. Your API token stays on your machine and is never shared.
 ---
 
 Built by [MSApps](https://msapps.mobi) · Support: michal@msapps.mobi
+
+## Usage
+
+```
+/toggl-time-tracker:timer <start | stop | status | report> [description or period]
+
+# Examples:
+/toggl-time-tracker:timer start writing proposal
+/toggl-time-tracker:timer stop
+/toggl-time-tracker:timer report this week
+```

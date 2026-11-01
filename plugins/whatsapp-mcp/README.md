@@ -148,6 +148,22 @@ The plugin connects to WhatsApp through a two-component bridge:
 
 Based on [whatsapp-mcp](https://github.com/lharries/whatsapp-mcp) by Luke Harries.
 
+## Usage
+
+```
+/whatsapp-mcp:search <contact name or keywords>
+
+# Examples:
+/whatsapp-mcp:search messages from Dana this week
+/whatsapp-mcp:search who asked about pricing?
+
+/whatsapp-mcp:send <contact> <message or file>
+
+# Examples:
+/whatsapp-mcp:send Dana I will be 10 minutes late
+/whatsapp-mcp:send Dana ~/Documents/proposal.pdf
+```
+
 ## License
 
 MIT

@@ -76,6 +76,25 @@ This typically reduces the docs backup from ~140 MB to ~8 MB.
 | `/backup-setup` | Configure the backup connection |
 | `/backup-status` | Check last backup status |
 
+## Usage
+
+```
+/session-backup:backup-now [no arguments]
+
+# Examples:
+/session-backup:backup-now
+
+/session-backup:backup-setup [no arguments]
+
+# Examples:
+/session-backup:backup-setup
+
+/session-backup:backup-status [no arguments]
+
+# Examples:
+/session-backup:backup-status
+```
+
 ## License
 
 MIT — Free and open source.

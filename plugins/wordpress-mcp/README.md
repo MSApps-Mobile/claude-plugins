@@ -42,6 +42,27 @@ Set these environment variables before using the plugin:
 
 ## Usage
 
+```
+/wordpress-mcp:admin <task>
+
+# Examples:
+/wordpress-mcp:admin check site health
+/wordpress-mcp:admin list users
+
+/wordpress-mcp:content <task>
+
+# Examples:
+/wordpress-mcp:content list my recent posts
+/wordpress-mcp:content draft a blog post about our new service
+
+/wordpress-mcp:store <task>
+
+# Examples:
+/wordpress-mcp:store show this week's orders
+/wordpress-mcp:store which products are low on stock?
+```
+
+
 Once connected, just ask Claude naturally:
 
 - "List my recent blog posts"
