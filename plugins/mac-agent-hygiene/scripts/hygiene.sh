@@ -113,6 +113,7 @@ inuse(){ /usr/sbin/lsof +D "$1" >/dev/null 2>&1; }
 xcode_building(){ /usr/bin/pgrep -qx xcodebuild || /usr/bin/pgrep -qx Xcode || /usr/bin/pgrep -qx XCBBuildService; }
 simulator_running(){ /usr/bin/pgrep -qx Simulator || /usr/bin/pgrep -qf 'CoreSimulator/.*launchd_sim'; }
 older_than_days(){ [ -n "$(/usr/bin/find "$1" -maxdepth 0 -mtime +"$2" 2>/dev/null)" ]; }
+physical(){ cd -P -- "$1" 2>/dev/null && pwd -P; }   # the real path, symlinks resolved; fails on a path that does not resolve
 has_dot_component(){ case "/$1/" in */./*|*/../*) return 0;; esac; return 1; }
 # Every process's cwd, read ONCE per run; compared as fixed strings (never as a pattern).
 CWDS=""; load_cwds(){ [ -n "$CWDS" ] || CWDS=$(/usr/sbin/lsof -d cwd -Fn 2>/dev/null | /usr/bin/sed -n 's/^n//p'); }
@@ -120,12 +121,14 @@ cwd_inside(){ local c; load_cwds
   while IFS= read -r c; do [ -n "$c" ] || continue; [ "$c" = "$1" ] && return 0; case "$c" in "$1"/*) return 0;; esac; done <<< "$CWDS"; return 1; }
 JQ="${HYG_JQ:-}"; if [ -z "$JQ" ]; then for c in /usr/bin/jq /opt/homebrew/bin/jq /usr/local/bin/jq; do [ -x "$c" ] && { JQ="$c"; break; }; done; fi
 # Sessions the routines registry does not call finished. Read ONCE per run. No registry ⇒ none alive
-# (cwd + idle still bind). A registry we cannot read (no jq, bad JSON) ⇒ the sentinel "*" ⇒ all alive.
+# (cwd + idle still bind). A registry we cannot read ⇒ the sentinel "*" ⇒ all alive: no jq, bad JSON, a
+# truncated (0-byte) file, or any shape other than one array whose entries all carry a string .session.
 ALIVE=""; ALIVE_LOADED=0
 load_alive(){ [ "$ALIVE_LOADED" = 1 ] && return 0; ALIVE_LOADED=1
   [ -e "$HYG_SESSIONS_JSON" ] || return 0
-  [ -n "$JQ" ] && ALIVE=$("$JQ" -r '.[] | select(((.status // "") | IN("done","dead","stopped","failed","killed","finished")) | not) | .session // empty' \
-      "$HYG_SESSIONS_JSON" 2>/dev/null) || ALIVE="*"; }
+  [ -n "$JQ" ] && ALIVE=$("$JQ" -rs 'if length == 1 and (.[0] | type) == "array" and (.[0] | all(type == "object" and (.session | type) == "string"))
+      then .[0][] | select(((.status // "") | IN("done","dead","stopped","failed","killed","finished")) | not) | .session
+      else error("unreadable registry") end' "$HYG_SESSIONS_JSON" 2>/dev/null) || ALIVE="*"; }
 session_alive(){ local n s; n=$(/usr/bin/basename "$1"); load_alive
   [ "$ALIVE" = "*" ] && return 0
   while IFS= read -r s; do [ -n "$s" ] || continue
@@ -146,13 +149,14 @@ wt_root_glob_ok(){ local pair r g; for pair in $HYG_WT_ROOTS; do r="${pair%%:*}"
 # top-level clones that no pass ever evaluated).
 list_sessions(){ [ -d "$HYG_SESSION_ROOT" ] && /usr/bin/find "$HYG_SESSION_ROOT" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | /usr/bin/sort |
   while IFS= read -r d; do [ -f "$d/.git" ] || printf '%s\n' "$d"; done; }
-ARTIFACT_NAMES="node_modules .next dist build .turbo coverage"
+ARTIFACT_NAMES=( node_modules .next dist build .turbo coverage )   # the ONE list: find expressions below are built from it
+# -name a -o -name b ... for find, from one or more names.
+name_expr(){ local n first=1; for n in "$@"; do [ "$first" = 1 ] || printf '%s\n' -o; first=0; printf '%s\n%s\n' -name "$n"; done; }
 # Artifact dirs in every top-level folder (worktrees and clones included); prune at .git and at each hit.
-list_artifacts(){ local t
+list_artifacts(){ local t e=(); while IFS= read -r t; do e+=( "$t" ); done < <(name_expr "${ARTIFACT_NAMES[@]}")
   [ -d "$HYG_SESSION_ROOT" ] || return 0
   /usr/bin/find "$HYG_SESSION_ROOT" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | /usr/bin/sort | while IFS= read -r t; do
-    /usr/bin/find "$t" -mindepth 1 -maxdepth "$HYG_ARTIFACT_DEPTH" -name .git -prune -o -type d \( -name node_modules -o -name .next \
-      -o -name dist -o -name build -o -name .turbo -o -name coverage \) -prune -print 2>/dev/null | /usr/bin/sort
+    /usr/bin/find "$t" -mindepth 1 -maxdepth "$HYG_ARTIFACT_DEPTH" -name .git -prune -o -type d \( "${e[@]}" \) -prune -print 2>/dev/null | /usr/bin/sort
   done; }
 # Every .git at any depth, nothing pruned: a repo the search skipped would be rm -rf'd unchecked, so the
 # search fails closed (slower on a big node_modules, which only runs on folders already idle 24 h).
@@ -244,8 +248,8 @@ git_safe(){ # repo/worktree dir, deletion boundary (the dir apply would rm) → 
   # discovery up to an outer repo) puts that somewhere other than $d: $d's own files are then checked
   # nowhere and go with the rm (PR #80 review B5). KEEP unless it physically IS $d.
   tl=$(GITS -C "$d" rev-parse --show-toplevel 2>/dev/null) || { REASON=worktree-not-this-folder; return 1; }
-  rd=$(cd -P -- "$d" 2>/dev/null && pwd -P) || { REASON=worktree-not-this-folder; return 1; }
-  [ -n "$tl" ] && [ -n "$rd" ] && [ "$(cd -P -- "$tl" 2>/dev/null && pwd -P)" = "$rd" ] || { REASON=worktree-not-this-folder; return 1; }
+  rd=$(physical "$d") || { REASON=worktree-not-this-folder; return 1; }
+  [ -n "$tl" ] && [ -n "$rd" ] && [ "$(physical "$tl")" = "$rd" ] || { REASON=worktree-not-this-folder; return 1; }
   # status recurses into submodules under THEIR config, which the scan above never read: keep, unread.
   { [ -e "$d/.gitmodules" ] || [ -d "$(GITS -C "$d" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)/modules" ] \
     || [ -d "$(GITS -C "$d" rev-parse --path-format=absolute --git-dir 2>/dev/null)/modules" ] \
@@ -271,11 +275,11 @@ git_safe(){ # repo/worktree dir, deletion boundary (the dir apply would rm) → 
     local wtl wp wr
     wtl=$(GITS -C "$d" worktree list --porcelain 2>/dev/null) || { REASON=git-worktree-list-failed; return 1; }
     [ -n "$wtl" ] || { REASON=git-worktree-list-failed; return 1; }
-    rb=$(cd -P -- "$bound" 2>/dev/null && pwd -P) || { REASON=boundary-unresolvable; return 1; }
+    rb=$(physical "$bound") || { REASON=boundary-unresolvable; return 1; }
     [ -n "$rb" ] || { REASON=boundary-unresolvable; return 1; }
     while IFS= read -r wp; do
       case "$wp" in "worktree "*) wp="${wp#worktree }";; *) continue;; esac
-      wr=$(cd -P -- "$wp" 2>/dev/null && pwd -P) || wr=""
+      wr=$(physical "$wp") || wr=""
       case "$wr/" in "$rb"/*) ;; *) REASON=has-linked-worktrees; return 1;; esac
     done <<< "$wtl"
     # Every local ref, not only branches: a commit held only by a tag (or notes, replace, bisect, ...)
@@ -301,11 +305,11 @@ git_safe(){ # repo/worktree dir, deletion boundary (the dir apply would rm) → 
   # this dir as one of its worktrees ($cdir/worktrees/<name>/gitdir points back at $d/.git).
   if [ -f "$d/.git" ]; then
     cdir=$(GITS -C "$d" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
-    rc=$(cd -P -- "$cdir" 2>/dev/null && pwd -P); rb=$(cd -P -- "$bound" 2>/dev/null && pwd -P)
+    rc=$(physical "$cdir"); rb=$(physical "$bound")
     wg=$(GITS -C "$d" rev-parse --path-format=absolute --git-dir 2>/dev/null)
     if [ -n "$rc" ] && [ -n "$rb" ] && case "$rc/" in "$rb"/*) false;; *) true;; esac \
        && case "$wg" in "$cdir"/worktrees/*) true;; *) false;; esac \
-       && [ "$(cd -P -- "$(/usr/bin/dirname "$(/bin/cat "$wg/gitdir" 2>/dev/null)")" 2>/dev/null && pwd -P)" = "$(cd -P -- "$d" && pwd -P)" ] \
+       && [ "$(physical "$(/usr/bin/dirname "$(/bin/cat "$wg/gitdir" 2>/dev/null)")")" = "$(physical "$d")" ] \
        && [ -n "$(GITS -C "$d" for-each-ref --contains "$h" --format=x refs/heads 2>/dev/null | /usr/bin/head -1)" ]; then
       REASON=branch-kept-in-parent-repo; return 0; fi
   fi
@@ -337,22 +341,22 @@ check_session(){ local d="$1" r
   REASON=stale-session-all-nested-pushed; return 0; }
 # Session folder idle: no file (outside .git and the artifact dirs themselves) newer than the window.
 # Cached per folder for the run.
-session_idle(){ local t="$1" f k; k=$(printf '%s' "$t" | /usr/bin/shasum | /usr/bin/cut -c1-16); f="$TMPD/idle-$k"
+session_idle(){ local t="$1" f k n e=(); k=$(printf '%s' "$t" | /usr/bin/shasum | /usr/bin/cut -c1-16); f="$TMPD/idle-$k"
   if [ ! -f "$f" ]; then
-    if [ -n "$(/usr/bin/find "$t" \( -name .git -o -name node_modules -o -name .next -o -name dist -o -name build -o -name .turbo \
-        -o -name coverage -o -name .venv -o -name Pods \) -prune -o -type f -mmin -"$((HYG_ARTIFACT_IDLE_HOURS*60))" -print -quit 2>/dev/null)" ]
+    while IFS= read -r n; do e+=( "$n" ); done < <(name_expr .git "${ARTIFACT_NAMES[@]}" .venv Pods)
+    if [ -n "$(/usr/bin/find "$t" \( "${e[@]}" \) -prune -o -type f -mmin -"$((HYG_ARTIFACT_IDLE_HOURS*60))" -print -quit 2>/dev/null)" ]
     then echo 0 > "$f"; else echo 1 > "$f"; fi
   fi; [ "$(/bin/cat "$f")" = 1 ]; }
 check_artifact(){ local p="$1" rel top name parent tracked tl
   case "$p" in "$HYG_SESSION_ROOT"/*/*) ;; *) REASON=outside-session-root; return 1;; esac
   has_dot_component "$p" && { REASON=dot-path; return 1; }
   rel="${p#"$HYG_SESSION_ROOT"/}"; top="$HYG_SESSION_ROOT/${rel%%/*}"; name=$(/usr/bin/basename "$p"); parent=$(/usr/bin/dirname "$p")
-  case " $ARTIFACT_NAMES " in *" $name "*) ;; *) REASON=not-an-artifact-name; return 1;; esac
+  case " ${ARTIFACT_NAMES[*]} " in *" $name "*) ;; *) REASON=not-an-artifact-name; return 1;; esac
   [ -d "$p" ] || { REASON=gone; return 1; }
   [ -L "$p" ] && { REASON=is-a-symlink; return 1; }
   case "/$rel/" in */.git/*) REASON=inside-git-dir; return 1;; esac
   # resolved path must stay inside the session folder (no symlinked parent leading elsewhere)
-  case "$(cd -P -- "$p" 2>/dev/null && pwd -P)/" in "$(cd -P -- "$top" 2>/dev/null && pwd -P)"/*) ;; *) REASON=resolves-outside-session; return 1;; esac
+  case "$(physical "$p")/" in "$(physical "$top")"/*) ;; *) REASON=resolves-outside-session; return 1;; esac
   session_alive "$top" && { REASON=session-alive-in-registry; return 1; }
   cwd_inside "$top" && { REASON=a-process-is-inside; return 1; }
   session_idle "$top" || { REASON=session-touched-recently; return 1; }
@@ -362,8 +366,8 @@ check_artifact(){ local p="$1" rel top name parent tracked tl
     repo_config_runs_commands "$parent" && { REASON=repo-config-can-run-commands; return 1; }
     # With core.worktree elsewhere, the two answers below describe that other tree, not this dir (B5).
     tl=$(GITS -C "$parent" rev-parse --show-toplevel 2>/dev/null) && [ -n "$tl" ] || { REASON=worktree-not-this-folder; return 1; }
-    tl=$(cd -P -- "$tl" 2>/dev/null && pwd -P) && [ -n "$tl" ] || { REASON=worktree-not-this-folder; return 1; }
-    case "$(cd -P -- "$parent" 2>/dev/null && pwd -P)/" in "$tl"/*) ;; *) REASON=worktree-not-this-folder; return 1;; esac
+    tl=$(physical "$tl") && [ -n "$tl" ] || { REASON=worktree-not-this-folder; return 1; }
+    case "$(physical "$parent")/" in "$tl"/*) ;; *) REASON=worktree-not-this-folder; return 1;; esac
     tracked=$(GITS -C "$parent" ls-files -- "$name" 2>/dev/null | /usr/bin/head -1) || { REASON=git-ls-files-failed; return 1; }
     [ -z "$tracked" ] || { REASON=has-tracked-files; return 1; }
     GITS -C "$parent" check-ignore -q -- "$name/" 2>/dev/null || { REASON=not-gitignored; return 1; }

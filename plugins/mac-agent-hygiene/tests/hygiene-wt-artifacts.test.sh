@@ -7,7 +7,7 @@
 #   KNOWN-NEGATIVE  a stale top-level clone with dirty work / an unpushed branch → kept whole
 #   KNOWN-NEGATIVE  a top-level clone owning a linked worktree outside its folder → kept, survives apply
 #   KNOWN-NEGATIVE  a session the routines registry calls running → kept (session-dirs and artifacts)
-#   KNOWN-NEGATIVE  an unreadable registry → every session kept
+#   KNOWN-NEGATIVE  an unreadable registry → every session kept: bad JSON, empty, {}, name-keyed, no string .session (B7)
 #   KNOWN-POSITIVE  gitignored node_modules/.next/dist/coverage in an idle DIRTY clone → removed, dirty work survives
 #   KNOWN-POSITIVE  gitignored build/ in an idle clone with an unpushed branch → removed, the branch survives
 #   KNOWN-NEGATIVE  a tracked build/ dir, a dist/ that is not ignored → kept
@@ -128,6 +128,19 @@ echo '{not json' > "$FX/bad.json"
 HYG_SESSIONS_JSON="$FX/bad.json" bash "$HYG" plan > "$FX/plan-bad.tsv" 2>/dev/null
 /usr/bin/awk -F'\t' '($1=="session-dirs"||$1=="build-artifacts") && $2=="remove"{f=1} END{exit f}' "$FX/plan-bad.tsv" \
   && ok "unreadable registry → no session or artifact removed" || bad "bad registry still removes: $(awk -F'\t' '$2=="remove"' "$FX/plan-bad.tsv")"
+
+# --- B7: every registry shape that is not one array of objects with a string .session keeps everything
+i=0
+for shape in '' '{}' '{"reg1":{"status":"running"}}' '[{"id":"reg1","status":"running"}]' '{"sessions":[{"session":"reg1","status":"running"}]}' '[{"session":1,"status":"done"}]' '[] []' '["reg1"]'; do
+  i=$((i+1)); printf '%s' "$shape" > "$FX/shape$i.json"
+  HYG_SESSIONS_JSON="$FX/shape$i.json" bash "$HYG" plan > "$FX/plan-shape$i.tsv" 2>/dev/null
+  /usr/bin/awk -F'\t' '($1=="session-dirs"||$1=="build-artifacts") && $2=="remove"{f=1} END{exit f}' "$FX/plan-shape$i.tsv" \
+    && ok "B7 registry shape [$shape] → no session or artifact removed" || bad "B7 registry shape [$shape] still removes"
+done
+echo '[]' > "$FX/empty.json"
+HYG_SESSIONS_JSON="$FX/empty.json" bash "$HYG" plan > "$FX/plan-empty.tsv" 2>/dev/null
+/usr/bin/awk -F'\t' '$1=="session-dirs" && $2=="remove"{f=1} END{exit !f}' "$FX/plan-empty.tsv" \
+  && ok "B7 an empty array stays a valid registry (a removal is still planned)" || bad "B7 [] should stay valid"
 
 # --- apply: artifacts first, then sessions; dirty work and unpushed branches survive
 kill "$SLEEPER" 2>/dev/null; SLEEPER=""

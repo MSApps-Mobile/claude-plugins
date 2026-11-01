@@ -31,7 +31,8 @@ can be the only copy of real work, and no board signal says which. Removal there
 1. untouched for `HYG_WT_AGE_DAYS` — no regular file inside (outside `.git`) newer than the age, not
    just the directory mtime (editing a nested file would otherwise leave the top-level mtime old);
 2. no process has its cwd inside (`lsof -d cwd`) — a live session may be parked there;
-3. `.git` is a FILE (a linked worktree). A `.git` directory means a full clone, which is left alone.
+3. `.git` is a FILE (a linked worktree). A `.git` directory means a full clone, which this pass leaves
+   alone: the `session-dirs` pass below owns top-level clones under `HYG_SESSION_ROOT`.
    The common idiom `[ -d .git ]` is false for a worktree and is exactly the wrong test here;
 4. `git status --porcelain` is empty — no modified, staged or untracked files;
 5. HEAD is contained in a remote-tracking ref (`git branch -r --contains HEAD`), OR equals the head
@@ -45,6 +46,30 @@ second line of defence) followed by `git worktree prune` in the main repository.
 
 The first real run on the reference machine removed 420 worktrees / 133 GB and kept 80 — every kept
 one was dirty, unpushed, in use, or a full clone.
+
+## Session folders and full clones under `~/code/wt`
+
+`session-dirs` evaluates every folder directly under `HYG_SESSION_ROOT` except a linked worktree, so a
+**full clone parked there can be deleted**, after only `HYG_SESSION_AGE_HOURS` (24) idle. It is removed when
+nobody's cwd is inside it, the routines registry does not call it alive, and it and every repo nested in it
+pass `git_safe`: status empty including untracked files, no flagged index entries, no stash, every local ref
+on a remote or in GitHub's default branch, no linked worktree outside the folder, no command-running repo
+config, no submodules, no `core.worktree` pointing elsewhere, no bare repo or separate git-dir.
+
+A registry that cannot be read means every session is alive: no `jq`, bad JSON, a 0-byte file, or any shape
+other than one array whose entries all carry a string `.session`. A missing registry means none is alive.
+
+`build-artifacts` removes `node_modules`, `.next`, `dist`, `build`, `.turbo`, `coverage` from a session folder
+idle `HYG_ARTIFACT_IDLE_HOURS`: inside a repo only when git-ignored with no tracked file; outside a repo only
+`node_modules`, `.next` or `.turbo` beside a `package.json`. A dir holding any repo is kept.
+
+**What these guards do not read, and which goes with the `rm -rf`:**
+
+- ignored files in a clone, such as a local `.env`; keep anything you need outside `~/code/wt`;
+- loose files in a plain session folder, outside any repo;
+- commits only the reflog holds;
+- commits held only by a stale remote-tracking ref: `branch -r --contains` reads local refs and never asks the remote;
+- objects another clone borrows through alternates (`git clone --shared`): the borrower must re-fetch them.
 
 ## Paths are compared as strings, never as patterns
 
