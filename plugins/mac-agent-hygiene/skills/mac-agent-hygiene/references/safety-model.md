@@ -70,9 +70,11 @@ dirty or unpushed, only after an archive is verified: per repo a patch of tracke
 what no remote holds, stash entries included; plus untracked and loose files up to 5 MiB. Idle also reads each repo's `.git/index`,
 `HEAD` and `logs/HEAD`. A non-terminal registry row counts as alive while its start date is within 14 days, and always when it has none.
 
-Never archived, so lost with the folder: ignored files, and loose or untracked files named `.env*`, `*.pem`, `*.key`, `*.p12`, `*.pfx`,
-`*.jks`, `*.keystore`, `id_rsa*`, `id_dsa*`, `id_ecdsa*`, `id_ed25519*`, `.npmrc`, `.netrc`, `.pypirc`, `*.tfstate*`, `*credentials*.json`,
-`*service-account*.json` (each listed by name). The same names inside the patch of tracked edits or in a commit the bundle would carry
+Never archived, so lost with the folder: ignored files, and loose or untracked files named (case folded) `.env*`, `.envrc`, `*.pem`,
+`*.key`, `*.p8`, `*.p12`, `*.pfx`, `*.jks`, `*.keystore`, `id_rsa*`, `id_dsa*`, `id_ecdsa*`, `id_ed25519*`, `.npmrc`, `.netrc`, `.pypirc`,
+`.git-credentials`, `credentials`, `*.tfstate*`, `*credentials*.json`, `*service-account*.json` (each listed by name). A file reached
+through a symlinked parent dir lies outside the folder: listed `outside-folder-not-archived`, never copied. The same names inside the patch of tracked edits or in a commit the bundle would carry
+(read from `rev-list --objects`, what the bundle packs)
 cannot be dropped without losing the commit, so they KEEP the folder (`rescue-denied-name-in-patch`, `rescue-denied-name-in-commits`).
 Files over 5 MiB are dropped and listed with size and sha256; symlinks are listed with their target. The rest of the archive lives as
 long as your bucket's lifecycle says.
