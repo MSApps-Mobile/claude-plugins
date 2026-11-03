@@ -33,7 +33,7 @@ set -u
 umask 077
 
 # ---------- configuration: defaults < config file < environment ----------
-VARS="HYG_LOG HYG_DERIVED_DATA HYG_PLUGIN_CACHE HYG_PLUGIN_CLONE_MIN_AGE_MIN HYG_PW_GLOB HYG_MODEL_CACHES HYG_MODEL_CACHE_AGE_DAYS HYG_WT_ROOT HYG_WT_GLOB HYG_WT_NESTED HYG_WT_DEPTH HYG_WT_AGE_DAYS HYG_WT_MERGED_PR_CHECK HYG_WT_BUDGET_SEC HYG_GIT HYG_GH"
+VARS="HYG_LOG HYG_DERIVED_DATA HYG_PLUGIN_CACHE HYG_PLUGIN_CLONE_MIN_AGE_MIN HYG_PW_GLOB HYG_MODEL_CACHES HYG_MODEL_CACHE_AGE_DAYS HYG_WT_ROOT HYG_WT_GLOB HYG_WT_NESTED HYG_WT_DEPTH HYG_WT_AGE_DAYS HYG_WT_MERGED_PR_CHECK HYG_WT_BUDGET_SEC HYG_GIT HYG_GH HYG_LSOF"
 for v in $VARS; do eval "ENV_$v=\"\${$v-}\""; done
 CONF="${XDG_CONFIG_HOME:-$HOME/.config}/mac-agent-hygiene/config.env"
 # shellcheck disable=SC1090
@@ -68,6 +68,8 @@ if [ -z "$GH" ]; then
     [ -n "$c" ] && [ -x "$c" ] && { GH="$c"; break; }
   done
 fi
+first_exec(){ local c; for c in "$@"; do [ -n "$c" ] && [ -x "$c" ] && { printf '%s' "$c"; return 0; }; done; return 0; }
+LSOF="${HYG_LSOF:-$(first_exec /usr/sbin/lsof /usr/bin/lsof)}"   # /usr/sbin on macOS, /usr/bin on Linux
 
 # Cache subfolders that Chromium regenerates. Fixed in code on purpose — not user-editable.
 PW_CACHE_ALLOWLIST=(
@@ -88,7 +90,7 @@ inuse(){ /usr/sbin/lsof +D "$1" >/dev/null 2>&1; }
 xcode_building(){ /usr/bin/pgrep -qx xcodebuild || /usr/bin/pgrep -qx Xcode || /usr/bin/pgrep -qx XCBBuildService; }
 has_dot_component(){ case "/$1/" in */./*|*/../*) return 0;; esac; return 1; }
 # Every process's cwd, read ONCE per run; compared as fixed strings (never as a pattern).
-CWDS=""; load_cwds(){ [ -n "$CWDS" ] || CWDS=$(/usr/sbin/lsof -d cwd -Fn 2>/dev/null | /usr/bin/sed -n 's/^n//p'); }
+CWDS=""; load_cwds(){ [ -n "$CWDS" ] || [ -z "$LSOF" ] || CWDS=$("$LSOF" -d cwd -Fn 2>/dev/null | /usr/bin/sed -n 's/^n//p'); }
 # One awk pass (card NISFIbub): the bash read loop over ~1000 cwds cost ~0.5 s per worktree. index()==1 and
 # == are fixed-string tests, never a regex.
 cwd_inside(){ load_cwds; [ -n "$CWDS" ] || return 1

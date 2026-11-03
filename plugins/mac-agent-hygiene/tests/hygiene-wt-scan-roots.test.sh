@@ -46,7 +46,7 @@ export HYG_LOG="$FX/hygiene.log" HYG_DERIVED_DATA="$HOME/dd-none" HYG_PLUGIN_CAC
 export HYG_PW_GLOB="$HOME/pw-none-*" HYG_MODEL_CACHES="$HOME/mc-none"
 export HYG_WT_AGE_DAYS=1 HYG_WT_MERGED_PR_CHECK=0 HYG_GIT="$GITBIN" HYG_GH=""
 
-PASS=0; FAILN=0
+PASS=0; FAILN=0; CWD_SEEN=0
 ok(){ PASS=$((PASS+1)); echo "ok   - $1"; }
 bad(){ FAILN=$((FAILN+1)); echo "FAIL - $1"; }
 q(){ "$GITBIN" "$@" >/dev/null 2>&1 || { echo "setup failed: git $*"; exit 1; }; }
@@ -78,7 +78,8 @@ find "$CODE" -exec touch -t 202001010000 {} + 2>/dev/null
 touch "$K_RECENT/wt-recent_work"
 
 # A process whose cwd is inside K_CWD (only meaningful when lsof exists).
-if [ -x /usr/sbin/lsof ]; then (cd "$K_CWD" && exec sleep 300) & SLEEPER=$!; sleep 1; fi
+LSOFBIN=""; for c in /usr/sbin/lsof /usr/bin/lsof; do [ -x "$c" ] && { LSOFBIN="$c"; break; }; done
+if [ -n "$LSOFBIN" ]; then (cd "$K_CWD" && exec sleep 300) & SLEEPER=$!; sleep 1; fi
 
 PLAN="$FX/plan.tsv"
 WT_BEFORE="$("$GITBIN" -C "$MAIN" worktree list --porcelain | grep -c '^worktree ')"
@@ -95,7 +96,8 @@ expect "$K_DIRTY"     "keep dirty-uncommitted-work" "_worktrees dirty"
 expect "$K_UNPUSHED"  "keep unpushed-commits"       "_worktrees unpushed"
 expect "$K_RECENT"    "keep touched-recently"       "_worktrees touched recently"
 expect "$K_SESSDIRTY" "keep dirty-uncommitted-work" "AC-2 wt/<session>/<wt> dirty"
-if [ -n "$SLEEPER" ] && /usr/sbin/lsof -d cwd -Fn 2>/dev/null | grep -qxF "n$K_CWD"; then
+if [ -n "$SLEEPER" ] && "$LSOFBIN" -d cwd -Fn 2>/dev/null | grep -qxF "n$K_CWD"; then
+  CWD_SEEN=1
   expect "$K_CWD" "keep a-process-is-inside" "_worktrees with a process cwd inside"
 else echo "SKIP - cwd-inside case (lsof cannot see the fixture process)"; fi
 [ -z "$(row "$CLONE" "$PLAN")" ] && ok "full clone under _worktrees is not listed" || bad "clone listed: $(row "$CLONE" "$PLAN")"
@@ -128,7 +130,9 @@ OUT="$(bash "$HYG" apply "$FX/evil.tsv" 2>&1)"
 awk -F'\t' '$2=="remove"{print $1"\t"$5}' "$PLAN" > "$FX/real.tsv"
 bash "$HYG" apply "$FX/real.tsv" > "$FX/apply.out" 2>&1
 for d in "$P_FLAT" "$P_NEST" "$P_SESS"; do [ ! -e "$d" ] && ok "removed $d" || bad "still present: $d"; done
-for d in "$K_DIRTY" "$K_UNPUSHED" "$K_RECENT" "$K_CWD" "$K_SESSDIRTY" "$DEEP" "$CLONE" "$MAIN"; do [ -d "$d" ] && ok "kept $d" || bad "removed $d"; done
+# Without a visible fixture process (no lsof) nothing is "inside" busy, so removing it is correct there.
+KEEP_CWD="$K_CWD"; [ "$CWD_SEEN" = 1 ] || { KEEP_CWD=""; echo "SKIP - busy kept-check (no process cwd was observable)"; }
+for d in "$K_DIRTY" "$K_UNPUSHED" "$K_RECENT" $KEEP_CWD "$K_SESSDIRTY" "$DEEP" "$CLONE" "$MAIN"; do [ -d "$d" ] && ok "kept $d" || bad "removed $d"; done
 [ -f "$K_DIRTY/wt-dirty_work" ] && grep -q edit "$K_DIRTY/wt-dirty_work" && ok "dirty edit survives" || bad "dirty edit lost"
 "$GITBIN" -C "$MAIN" rev-parse -q --verify refs/heads/wt-flat >/dev/null && ok "branch wt-flat survives removal" || bad "branch ref wt-flat is gone"
 
