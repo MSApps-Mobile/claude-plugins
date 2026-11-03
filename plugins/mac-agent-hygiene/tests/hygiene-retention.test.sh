@@ -29,6 +29,7 @@
 #   S1  KNOWN-NEGATIVE  a denied name in an unpushed commit, or in the patch of tracked edits → kept
 #   S1  KNOWN-NEGATIVE  a decoy x.pem in the cwd no longer turns *.pem into a literal (server.pem stays out)
 #   S1  KNOWN-NEGATIVE  Server.PEM (upper case) stays out; a .env in an orphan root commit keeps under log.showRoot=false
+#   S1  KNOWN-NEGATIVE  a committed name holding a newline ("n<LF>x.pem") → kept, rescue-path-unrepresentable
 #       KNOWN-NEGATIVE  a tracked file behind a symlinked parent dir (outside the folder) is listed, never copied
 #       KNOWN-NEGATIVE  HYG_RETENTION_DAYS=0 is refused; refs/hygiene-rescue/* are gone after a refused rescue
 set -u
@@ -108,6 +109,7 @@ mk u-stashfail; ( cd "$W/u-stashfail" && echo s1 >> tracked && git stash -q && e
 mk v-envcommit; ( cd "$W/v-envcommit" && echo S3CRET > .env && git add -f .env && git commit -qm env ); old "$W/v-envcommit"
 mk v-keypatch; ( cd "$W/v-keypatch" && git checkout -q -b s1 && echo k1 > cfg.key && git add cfg.key && git commit -qm key && git push -q origin s1 && echo S3CRET >> cfg.key ) 2>/dev/null; old "$W/v-keypatch"
 mk v-rootenv; ( cd "$W/v-rootenv" && git checkout -q --orphan o && git rm -rqf --cached . && echo S3CRET > .env && git add -f .env && git commit -qm root-env && git config log.showRoot false ); old "$W/v-rootenv"
+mk v-nlname; ( cd "$W/v-nlname" && echo S3CRET > "n"$'\n'"x.pem" && git add -A && git commit -qm nl ); old "$W/v-nlname"
 mkdir -p "$FX/outside-sub"; mk x-symparent; ( cd "$W/x-symparent" && git checkout -q -b x1 && mkdir sub && echo in > sub/x && git add sub/x && git commit -qm sub && git push -q origin x1 && git update-index --assume-unchanged sub/x && rm -rf sub && echo OUTSIDE > "$FX/outside-sub/x" && ln -s "$FX/outside-sub" sub ) 2>/dev/null; old "$W/x-symparent"
 mk w-stashup; ( cd "$W/w-stashup" && echo s1 >> tracked && git stash -q ); old "$W/w-stashup"
 cat > "$HYG_SESSIONS_JSON" <<JSON
@@ -210,6 +212,8 @@ one session-dirs v-keypatch; env $RET bash "$HYG" apply "$FX/one.tsv" > "$FX/v2.
 [ -f "$W/v-keypatch/cfg.key" ] && /usr/bin/grep -q $'refused\t.*rescue-denied-name-in-patch' "$FX/v2.out" && ok "S1 edited tracked *.key → kept" || bad "S1 patch: $(cat "$FX/v2.out")"
 one session-dirs v-rootenv; env $RET bash "$HYG" apply "$FX/one.tsv" > "$FX/v3.out" 2>&1
 [ -f "$W/v-rootenv/.env" ] && /usr/bin/grep -q $'refused\t.*rescue-denied-name-in-commits' "$FX/v3.out" && ok "S1 .env in a root commit under log.showRoot=false → kept" || bad "S1 root: $(cat "$FX/v3.out")"
+one session-dirs v-nlname; env $RET bash "$HYG" apply "$FX/one.tsv" > "$FX/v4.out" 2>&1
+[ -d "$W/v-nlname/.git" ] && /usr/bin/grep -q $'refused\t.*rescue-path-unrepresentable' "$FX/v4.out" && ok "S1 committed name with a newline → kept" || bad "S1 newline: $(cat "$FX/v4.out")"
 one session-dirs x-symparent; env $RET bash "$HYG" apply "$FX/one.tsv" > "$FX/x.out" 2>&1
 pfx=$(restore x-symparent 2>/dev/null)
 [ ! -e "$W/x-symparent" ] && [ -f "$FX/outside-sub/x" ] && ! /usr/bin/grep -rqs OUTSIDE "$FX/r/x-symparent" && /usr/bin/jq -e '.entries[]|select(.kind=="outside-folder-not-archived" and .path=="sub/x")' "$pfx/manifest.json" >/dev/null \
