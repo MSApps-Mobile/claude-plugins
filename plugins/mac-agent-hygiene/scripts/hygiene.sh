@@ -22,6 +22,8 @@
 #                    HYG_WT_AGE_DAYS, clean, nobody's cwd, and HEAD on a remote ref, or a merged PR for
 #                    the branch: exact head SHA, or (rebased / force-pushed heads) every local-only
 #                    commit subject matches one of the PR's commits. Dirty / unpushed / in-use: KEPT.
+#                    Exception (card d9GJrXfc): dirt that is ONLY untracked agent scaffolding (PROMPT.md,
+#                    docs/qa/<card>/...) is tarred to HYG_SCAFFOLD_ARCHIVE/<date>/ first, then the tree goes.
 #                    Note: "clean" is `git status --porcelain`, so gitignored files (a local .env,
 #                    node_modules) go with the worktree. The branch ref stays — nothing is unrecoverable.
 #
@@ -32,7 +34,7 @@ set -u
 umask 077
 
 # ---------- configuration: defaults < config file < environment ----------
-VARS="HYG_LOG HYG_DERIVED_DATA HYG_PLUGIN_CACHE HYG_PLUGIN_CLONE_MIN_AGE_MIN HYG_PW_GLOB HYG_MODEL_CACHES HYG_MODEL_CACHE_AGE_DAYS HYG_WT_ROOT HYG_WT_GLOB HYG_WT_NESTED HYG_WT_DEPTH HYG_WT_AGE_DAYS HYG_WT_MERGED_PR_CHECK HYG_GIT HYG_GH"
+VARS="HYG_LOG HYG_DERIVED_DATA HYG_PLUGIN_CACHE HYG_PLUGIN_CLONE_MIN_AGE_MIN HYG_PW_GLOB HYG_MODEL_CACHES HYG_MODEL_CACHE_AGE_DAYS HYG_WT_ROOT HYG_WT_GLOB HYG_WT_NESTED HYG_WT_DEPTH HYG_WT_AGE_DAYS HYG_WT_MERGED_PR_CHECK HYG_SCAFFOLD_ARCHIVE HYG_GIT HYG_GH"
 for v in $VARS; do eval "ENV_$v=\"\${$v-}\""; done
 CONF="${XDG_CONFIG_HOME:-$HOME/.config}/mac-agent-hygiene/config.env"
 # shellcheck disable=SC1090
@@ -52,6 +54,7 @@ HYG_WT_NESTED="${HYG_WT_NESTED-wt _worktrees}"   # set to "" to scan direct chil
 HYG_WT_DEPTH="${HYG_WT_DEPTH:-3}"
 HYG_WT_AGE_DAYS="${HYG_WT_AGE_DAYS:-7}"
 HYG_WT_MERGED_PR_CHECK="${HYG_WT_MERGED_PR_CHECK:-1}"
+HYG_SCAFFOLD_ARCHIVE="${HYG_SCAFFOLD_ARCHIVE:-${XDG_STATE_HOME:-$HOME/.local/state}/mac-agent-hygiene/scaffold-archive}"; HYG_SCAFFOLD_ARCHIVE="${HYG_SCAFFOLD_ARCHIVE%/}"
 HYG_DERIVED_DATA="${HYG_DERIVED_DATA%/}"; HYG_PLUGIN_CACHE="${HYG_PLUGIN_CACHE%/}"
 case "$HYG_WT_AGE_DAYS$HYG_MODEL_CACHE_AGE_DAYS$HYG_PLUGIN_CLONE_MIN_AGE_MIN$HYG_WT_DEPTH" in *[!0-9]*) echo "age settings must be integers" >&2; exit 2;; esac
 
@@ -172,7 +175,56 @@ merged_pr_commits_match(){ local d="$1" repo="$2" f="$3" b="$4" ls="$TMPD/local-
     subjects_all_in "$ls" "$pf" && return 0
   done < "$f"
   return 1; }
+# ---------- agent scaffolding (card d9GJrXfc) ----------
+# Untracked files an agent session writes into its own worktree: the phase prompt and a QA evidence
+# folder. Fixed in code on purpose, exact shapes only, never a broad glob. A worktree whose ONLY dirt is
+# these is not "uncommitted work": apply archives them (wt_archive_scaffold) and then removes the tree.
+#   PROMPT.md                  top level only, exact case
+#   docs/qa/<card>/<file>      <card> = an 8-character Trello shortLink ([A-Za-z0-9]{8})
+wt_scaffold_path(){ local c
+  [ "$1" = PROMPT.md ] && return 0
+  case "$1" in docs/qa/*/*) ;; *) return 1;; esac
+  case "$1" in */) return 1;; esac                      # a nested repo / dir entry is never scaffolding
+  c="${1#docs/qa/}"; c="${c%%/*}"
+  [ ${#c} -eq 8 ] || return 1
+  case "$c" in *[!A-Za-z0-9]*) return 1;; esac
+  return 0; }
+# Called only when `git status --porcelain` is non-empty. 0 = every entry is an untracked scaffold path
+# (the NUL list is left in $TMPD/scaffold-list for apply); 1 = keep, REASON says why:
+#   dirty-uncommitted-work  any tracked change, staged or not (rescue doctrine: it may be the only copy)
+#   dirty-untracked-only    untracked files only, at least one outside the scaffold shapes
+#   git-status-failed       the second, file-level read failed or listed nothing
+SCAFFOLD=""
+wt_dirt_scaffold_only(){ local d="$1" e other=0 z="$TMPD/status.z" list="$TMPD/scaffold-list"
+  : > "$list"
+  "$GIT" -C "$d" status --porcelain=v1 -z --untracked-files=all > "$z" 2>/dev/null || { REASON=git-status-failed; return 1; }
+  while IFS= read -r -d '' e; do
+    case "$e" in '?? '?*) ;; *) REASON=dirty-uncommitted-work; return 1;; esac
+    wt_scaffold_path "${e#\?\? }" || other=1
+    printf '%s\0' "${e#\?\? }" >> "$list"
+  done < "$z"
+  [ -s "$list" ] || { REASON=git-status-failed; return 1; }        # dirty a moment ago, nothing now: doubt ⇒ keep
+  [ $other = 0 ] || { REASON=dirty-untracked-only; return 1; }
+  return 0; }
+# Copy the scaffold files of $1 (listed in $TMPD/scaffold-list) to a dated tarball under
+# HYG_SCAFFOLD_ARCHIVE, verify every path is in it, then delete exactly those files so the plain
+# `git worktree remove` (never --force) can run; git itself refuses if anything else is left.
+wt_archive_scaffold(){ local d="$1" list="$TMPD/scaffold-list" dir tgz p
+  [ -s "$list" ] || return 1
+  dir="$HYG_SCAFFOLD_ARCHIVE/$(/bin/date +%F)"
+  /bin/mkdir -p "$dir" 2>/dev/null || return 1
+  tgz="$dir/$(printf '%s' "${d#"$HYG_WT_ROOT"/}" | /usr/bin/tr -c 'A-Za-z0-9._-' _)-$(/bin/date +%H%M%S)-$$.tar.gz"
+  /usr/bin/tar -czf "$tgz" -C "$d" --null -T "$list" 2>>"$HYG_LOG" || { /bin/rm -f "$tgz"; return 1; }
+  /usr/bin/tar -tzf "$tgz" > "$TMPD/scaffold-listed" 2>/dev/null || { /bin/rm -f "$tgz"; return 1; }
+  while IFS= read -r -d '' p; do
+    /usr/bin/grep -qxF -- "$p" "$TMPD/scaffold-listed" || { /bin/rm -f "$tgz"; return 1; }
+  done < "$list"
+  log "archived scaffold of $d to $tgz"
+  while IFS= read -r -d '' p; do /bin/rm -f -- "$d/$p" || return 1; done < "$list"
+  return 0; }
+
 check_worktree(){ local d="$1" b h repo f st rb ro rn gd cdir
+  SCAFFOLD=""
   wt_in_scope "$d" || { REASON=outside-worktree-scope; return 1; }
   [ -f "$d/.git" ] || { REASON=not-a-linked-worktree; return 1; }        # a full clone has a .git DIR — left alone
   gd=$("$GIT" -C "$d" rev-parse --path-format=absolute --git-dir 2>/dev/null)
@@ -181,7 +233,7 @@ check_worktree(){ local d="$1" b h repo f st rb ro rn gd cdir
   wt_recently_touched "$d" && { REASON=touched-recently; return 1; }
   cwd_inside "$d" && { REASON=a-process-is-inside; return 1; }
   st=$("$GIT" -C "$d" status --porcelain 2>/dev/null) || { REASON=git-status-failed; return 1; }
-  [ -z "$st" ] || { REASON=dirty-uncommitted-work; return 1; }
+  if [ -n "$st" ]; then wt_dirt_scaffold_only "$d" || return 1; SCAFFOLD=1; fi   # only agent scaffolding ⇒ go on
   h=$("$GIT" -C "$d" rev-parse HEAD 2>/dev/null) || { REASON=no-head; return 1; }
   if [ -n "$("$GIT" -C "$d" branch -r --contains "$h" 2>/dev/null | /usr/bin/head -1)" ]; then REASON=pushed; return 0; fi
   if [ "$HYG_WT_MERGED_PR_CHECK" = 1 ] && [ -n "$GH" ]; then
@@ -200,9 +252,12 @@ check_worktree(){ local d="$1" b h repo f st rb ro rn gd cdir
 check_item(){ # category path → 0 removable (REASON=why) / 1 keep (REASON=why)
   case "$2" in "$HOME"/*) ;; *) REASON=outside-home; return 1;; esac
   has_dot_component "$2" && { REASON=dot-component-in-path; return 1; }
+  if [ "$1" = worktrees ]; then
+    check_worktree "$2" || return 1
+    [ -z "$SCAFFOLD" ] || REASON="$REASON-scaffold-only"; return 0; fi   # removable once its scaffolding is archived
   case "$1" in
     derived-data) check_derived "$2";; plugin-clones) check_clone "$2";; browser-caches) check_pwcache "$2";;
-    model-caches) check_model "$2";; worktrees) check_worktree "$2";; *) REASON=unknown-category; return 1;; esac; }
+    model-caches) check_model "$2";; *) REASON=unknown-category; return 1;; esac; }
 
 # ---------- candidates ----------
 candidates(){  # category<TAB>path
@@ -233,6 +288,7 @@ plan(){ local cat p k prev="" n=0 r=0 t0=$SECONDS
 remove_item(){ local cat="$1" p="$2" common
   if [ "$cat" = worktrees ]; then
     common=$("$GIT" -C "$p" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
+    if [ -n "$SCAFFOLD" ]; then wt_archive_scaffold "$p" || { log "scaffold archive failed, kept $p"; return 1; }; fi
     "$GIT" -C "$p" worktree remove "$p" >>"$HYG_LOG" 2>&1 || return 1
     [ -n "$common" ] && "$GIT" --git-dir="$common" worktree prune >/dev/null 2>&1
   else /bin/rm -rf -- "$p" || return 1; fi; return 0; }
