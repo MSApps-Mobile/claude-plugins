@@ -15,16 +15,22 @@
 #   model-caches     whole directories listed in HYG_MODEL_CACHES, not MODIFIED for HYG_MODEL_CACHE_AGE_DAYS
 #                    (directory mtime — a model that is only read is still removed after the window and
 #                    re-downloaded on next use; raise the window for models that must stay warm)
-#   worktrees        linked git worktrees under HYG_WT_ROOT matching HYG_WT_GLOB with no file newer
-#                    than HYG_WT_AGE_DAYS, clean, nobody's cwd, HEAD on a remote ref or a merged-PR
-#                    head. Dirty / unpushed / in-use: KEPT. Note: "clean" is `git status --porcelain`,
-#                    so gitignored files (a local .env, node_modules) go with the worktree.
-#                    HYG_WT_ROOTS adds more "dir:glob" roots (default also ~/code/wt:*).
+#   worktrees        linked git worktrees (.git is a FILE) up to HYG_WT_DEPTH levels under HYG_WT_ROOT:
+#                    a direct child matching HYG_WT_GLOB, or anything below a top-level dir named in
+#                    HYG_WT_NESTED (default "wt _worktrees": ~/code/wt/{sup,ref,pipe}-*/..., ~/code/_worktrees/...).
+#                    No file newer than
+#                    HYG_WT_AGE_DAYS, clean, nobody's cwd, and HEAD on a remote ref, or a merged PR for
+#                    the branch: exact head SHA, or (rebased / force-pushed heads) every local-only
+#                    commit subject matches one of the PR's commits. Dirty / unpushed / in-use: KEPT.
+#                    Note: "clean" is `git status --porcelain`, so gitignored files (a local .env,
+#                    node_modules) go with the worktree. The branch ref stays — nothing is unrecoverable.
 #   session-dirs     EVERY folder directly under HYG_SESSION_ROOT (~/code/wt) that is not a linked worktree
 #                    (those are the worktrees pass): plain session folders AND full clones. Nothing touched
 #                    for HYG_SESSION_AGE_HOURS, nobody's cwd, the session not alive in HYG_SESSIONS_JSON,
 #                    and the folder's own clone plus EVERY git repo or worktree nested inside is clean and
-#                    pushed (same test as worktrees). One dirty or unpushed repo keeps the whole folder.
+#                    pushed (same git_safe test as worktrees). One dirty or unpushed repo keeps the whole
+#                    folder; a folder holding no repo at all is kept (no-nested-repo). "Held by a parent-repo
+#                    branch" counts only when HYG_SESSION_PARENT_BRANCH_OK=1 (default 0).
 #   build-artifacts  node_modules, .next, dist, build, .turbo, coverage dirs inside any ~/code/wt/<session>
 #                    folder (down to HYG_ARTIFACT_DEPTH) when the session folder is idle HYG_ARTIFACT_IDLE_HOURS,
 #                    nobody's cwd is inside it, the session is not alive in HYG_SESSIONS_JSON, the dir holds
@@ -46,7 +52,7 @@ set -u
 umask 077
 
 # ---------- configuration: defaults < config file < environment ----------
-VARS="HYG_LOG HYG_DERIVED_DATA HYG_PLUGIN_CACHE HYG_PLUGIN_CLONE_MIN_AGE_MIN HYG_PW_GLOB HYG_MODEL_CACHES HYG_MODEL_CACHE_AGE_DAYS HYG_WT_ROOT HYG_WT_GLOB HYG_WT_ROOTS HYG_WT_AGE_DAYS HYG_WT_MERGED_PR_CHECK HYG_GH_SHA_CHECK_MAX HYG_GIT HYG_GH HYG_SESSION_ROOT HYG_SESSION_AGE_HOURS HYG_GRADLE_HOME HYG_GRADLE_AGE_DAYS HYG_DEVICE_SUPPORT HYG_DEVICE_SUPPORT_AGE_DAYS HYG_SIM_DEVICES HYG_ANDROID_HOME HYG_ANDROID_CACHE_AGE_DAYS HYG_ANDROID_SDK HYG_PKG_CACHES HYG_PKG_CACHE_AGE_DAYS HYG_LOCK HYG_SESSIONS_JSON HYG_ARTIFACT_IDLE_HOURS HYG_ARTIFACT_DEPTH HYG_JQ"
+VARS="HYG_LOG HYG_DERIVED_DATA HYG_PLUGIN_CACHE HYG_PLUGIN_CLONE_MIN_AGE_MIN HYG_PW_GLOB HYG_MODEL_CACHES HYG_MODEL_CACHE_AGE_DAYS HYG_WT_ROOT HYG_WT_GLOB HYG_WT_NESTED HYG_WT_DEPTH HYG_WT_AGE_DAYS HYG_WT_MERGED_PR_CHECK HYG_GIT HYG_GH HYG_GH_SHA_CHECK_MAX HYG_SESSION_ROOT HYG_SESSION_AGE_HOURS HYG_SESSION_PARENT_BRANCH_OK HYG_GRADLE_HOME HYG_GRADLE_AGE_DAYS HYG_DEVICE_SUPPORT HYG_DEVICE_SUPPORT_AGE_DAYS HYG_SIM_DEVICES HYG_ANDROID_HOME HYG_ANDROID_CACHE_AGE_DAYS HYG_ANDROID_SDK HYG_PKG_CACHES HYG_PKG_CACHE_AGE_DAYS HYG_LOCK HYG_SESSIONS_JSON HYG_ARTIFACT_IDLE_HOURS HYG_ARTIFACT_DEPTH HYG_JQ"
 for v in $VARS; do eval "ENV_$v=\"\${$v-}\""; done
 CONF="${XDG_CONFIG_HOME:-$HOME/.config}/mac-agent-hygiene/config.env"
 # shellcheck disable=SC1090
@@ -62,15 +68,17 @@ HYG_MODEL_CACHES="${HYG_MODEL_CACHES:-$HOME/.cache/whisper $HOME/.cache/codex-ru
 HYG_MODEL_CACHE_AGE_DAYS="${HYG_MODEL_CACHE_AGE_DAYS:-7}"
 HYG_WT_ROOT="${HYG_WT_ROOT:-$HOME/code}"; HYG_WT_ROOT="${HYG_WT_ROOT%/}"
 HYG_WT_GLOB="${HYG_WT_GLOB:-*wt-*}"
+HYG_WT_NESTED="${HYG_WT_NESTED-wt _worktrees}"   # set to "" to scan direct children only
+HYG_WT_DEPTH="${HYG_WT_DEPTH:-3}"
 HYG_WT_AGE_DAYS="${HYG_WT_AGE_DAYS:-7}"
 HYG_WT_MERGED_PR_CHECK="${HYG_WT_MERGED_PR_CHECK:-1}"
 HYG_GH_SHA_CHECK_MAX="${HYG_GH_SHA_CHECK_MAX:-500}"   # gh compare calls per run for in_github_default; over it ⇒ KEEP
-HYG_WT_ROOTS="${HYG_WT_ROOTS-$HYG_WT_ROOT:$HYG_WT_GLOB $HOME/code/wt:*}"   # space-separated dir:glob pairs
 HYG_SESSION_ROOT="${HYG_SESSION_ROOT:-$HOME/code/wt}"; HYG_SESSION_ROOT="${HYG_SESSION_ROOT%/}"
 HYG_SESSION_AGE_HOURS="${HYG_SESSION_AGE_HOURS:-24}"
 HYG_SESSIONS_JSON="${HYG_SESSIONS_JSON:-$HOME/.local/state/opsagents-routines/sessions.json}"
 HYG_ARTIFACT_IDLE_HOURS="${HYG_ARTIFACT_IDLE_HOURS:-24}"
 HYG_ARTIFACT_DEPTH="${HYG_ARTIFACT_DEPTH:-6}"
+HYG_SESSION_PARENT_BRANCH_OK="${HYG_SESSION_PARENT_BRANCH_OK:-0}"   # 1 = a session worktree held only by a parent-repo branch counts as safe
 HYG_GRADLE_HOME="${HYG_GRADLE_HOME:-${GRADLE_USER_HOME:-$HOME/.gradle}}"; HYG_GRADLE_HOME="${HYG_GRADLE_HOME%/}"
 HYG_GRADLE_AGE_DAYS="${HYG_GRADLE_AGE_DAYS:-30}"
 HYG_DEVICE_SUPPORT="${HYG_DEVICE_SUPPORT:-$HOME/Library/Developer/Xcode/iOS DeviceSupport}"; HYG_DEVICE_SUPPORT="${HYG_DEVICE_SUPPORT%/}"
@@ -83,7 +91,8 @@ HYG_PKG_CACHES="${HYG_PKG_CACHES-$HOME/Library/Caches/CocoaPods}"
 HYG_PKG_CACHE_AGE_DAYS="${HYG_PKG_CACHE_AGE_DAYS:-30}"
 HYG_LOCK="${HYG_LOCK:-${TMPDIR:-/tmp}/mac-agent-hygiene.lock}"
 HYG_DERIVED_DATA="${HYG_DERIVED_DATA%/}"; HYG_PLUGIN_CACHE="${HYG_PLUGIN_CACHE%/}"
-case "$HYG_WT_AGE_DAYS$HYG_MODEL_CACHE_AGE_DAYS$HYG_PLUGIN_CLONE_MIN_AGE_MIN$HYG_SESSION_AGE_HOURS$HYG_GRADLE_AGE_DAYS$HYG_DEVICE_SUPPORT_AGE_DAYS$HYG_ANDROID_CACHE_AGE_DAYS$HYG_PKG_CACHE_AGE_DAYS$HYG_GH_SHA_CHECK_MAX$HYG_ARTIFACT_IDLE_HOURS$HYG_ARTIFACT_DEPTH" in *[!0-9]*) echo "age settings must be integers" >&2; exit 2;; esac
+case "$HYG_WT_AGE_DAYS$HYG_MODEL_CACHE_AGE_DAYS$HYG_PLUGIN_CLONE_MIN_AGE_MIN$HYG_WT_DEPTH$HYG_SESSION_AGE_HOURS$HYG_GRADLE_AGE_DAYS$HYG_DEVICE_SUPPORT_AGE_DAYS$HYG_ANDROID_CACHE_AGE_DAYS$HYG_PKG_CACHE_AGE_DAYS$HYG_GH_SHA_CHECK_MAX$HYG_ARTIFACT_IDLE_HOURS$HYG_ARTIFACT_DEPTH" in *[!0-9]*) echo "age settings must be integers" >&2; exit 2;; esac
+case "$HYG_SESSION_PARENT_BRANCH_OK" in 0|1) ;; *) echo "HYG_SESSION_PARENT_BRANCH_OK must be 0 or 1" >&2; exit 2;; esac
 
 GIT="${HYG_GIT:-}"
 if [ -z "$GIT" ]; then GIT=/usr/bin/git; [ -x "$HOME/.local/bin/git" ] && GIT="$HOME/.local/bin/git"; fi   # honour a user's git shim unless HYG_GIT is explicit
@@ -138,12 +147,24 @@ TMPD=$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/mac-agent-hygiene.XXXXXX") || { echo 
 trap '/bin/rm -rf "$TMPD"' EXIT
 
 # ---------- enumerators (shared by status, plan and the candidate list) ----------
-list_worktrees(){ local pair r g
-  for pair in $HYG_WT_ROOTS; do r="${pair%%:*}"; r="${r%/}"; g="${pair#*:}"
-    [ -d "$r" ] && /usr/bin/find "$r" -maxdepth 1 -mindepth 1 -type d -name "$g" 2>/dev/null
-  done | /usr/bin/sort -u | while IFS= read -r d; do [ -f "$d/.git" ] && printf '%s\n' "$d"; done; }
-wt_root_glob_ok(){ local pair r g; for pair in $HYG_WT_ROOTS; do r="${pair%%:*}"; r="${r%/}"; g="${pair#*:}"
-    [ "$(dirname "$1")" = "$r" ] || continue; case "$(basename "$1")" in $g) return 0;; esac; done; return 1; }
+# Is $1 a place agent worktrees live? A direct child of HYG_WT_ROOT whose name matches HYG_WT_GLOB, or
+# a path at most HYG_WT_DEPTH levels deep under a top-level dir listed in HYG_WT_NESTED (card SIDmENpf:
+# phase sessions put them under ~/code/wt/{sup,ref,pipe}-*/..., 163 GB the direct-child scan never saw;
+# card uO9PFYg8: ~/code/_worktrees/<card>/, 21 GB in 62 linked worktrees, the same gap).
+# A human's own ~/code/project/feature worktree stays out of scope.
+wt_in_scope(){ local rel top slashes n
+  case "$1" in "$HYG_WT_ROOT"/*) ;; *) return 1;; esac
+  rel="${1#"$HYG_WT_ROOT"/}"; top="${rel%%/*}"
+  slashes="${rel//[!\/]/}"; [ $(( ${#slashes} + 1 )) -le "$HYG_WT_DEPTH" ] || return 1
+  if [ "$rel" = "$top" ]; then case "$top" in $HYG_WT_GLOB) return 0;; esac; fi
+  for n in $HYG_WT_NESTED; do [ "$top" = "$n" ] && [ "$rel" != "$top" ] && return 0; done
+  return 1; }
+# Linked worktrees only (.git is a FILE); a full clone's .git DIR is pruned, never listed.
+list_worktrees(){ local g d
+  [ -d "$HYG_WT_ROOT" ] || return 0
+  /usr/bin/find "$HYG_WT_ROOT" -mindepth 2 -maxdepth $((HYG_WT_DEPTH+1)) \( -type d \( -name .git -o -name node_modules \) -prune \) \
+      -o \( -type f -name .git -print \) 2>/dev/null | /usr/bin/sort |
+  while IFS= read -r g; do d="${g%/.git}"; wt_in_scope "$d" && printf '%s\n' "$d"; done; }
 # Every top-level folder except a linked worktree (.git is a FILE: the worktrees pass owns it). A full
 # clone (.git is a DIR) is a session folder too (card JsY0DY3A: 118 of 536 ~/code/wt folders were
 # top-level clones that no pass ever evaluated).
@@ -203,12 +224,6 @@ check_model(){ local m; for m in $HYG_MODEL_CACHES; do
     [ -n "$(/usr/bin/find "$1" -maxdepth 0 -mtime +"$HYG_MODEL_CACHE_AGE_DAYS" 2>/dev/null)" ] || { REASON=used-recently; return 1; }
     REASON=re-downloadable-model-cache; return 0; done
   REASON=not-a-listed-model-cache; return 1; }
-check_worktree(){ local d="$1"
-  wt_root_glob_ok "$d" || { REASON=outside-worktree-roots; return 1; }
-  [ -f "$d/.git" ] || { REASON=not-a-linked-worktree; return 1; }        # a full clone has a .git DIR — left alone
-  wt_recently_touched "$d" && { REASON=touched-recently; return 1; }
-  cwd_inside "$d" && { REASON=a-process-is-inside; return 1; }
-  git_safe "$d" "$d"; }
 # git run on repos an agent made: repo-local config must not be able to run a command while we only
 # look (core.fsmonitor and hooks are the command-executing keys `status` would honour).
 GITS(){ GIT_CONFIG_NOSYSTEM=1 "$GIT" --no-optional-locks -c core.fsmonitor=false -c core.hooksPath=/dev/null \
@@ -241,8 +256,56 @@ in_github_default(){ local repo="$1" sha="$2" key f n def
       > "$f" 2>/dev/null || echo 0 > "$f"
   fi
   [ "$(/bin/cat "$f")" = 1 ]; }
-git_safe(){ # repo/worktree dir, deletion boundary (the dir apply would rm) → 0 clean and on a remote ref or merged-PR head (REASON=pushed|merged-pr-head)
-  local d="$1" bound="${2:-$1}" b h repo f st br cdir rc rb wg tl iv rd
+# Every subject in file $1 equals a headline in file $2, or starts with a headline gh truncated ("…").
+subjects_all_in(){ local s p pp hit
+  while IFS= read -r s; do hit=1
+    while IFS= read -r p; do [ -n "$p" ] || continue
+      [ "$s" = "$p" ] && { hit=0; break; }
+      case "$p" in *…) ;; *) continue;; esac
+      pp="${p%…}"; pp="${pp%"${pp##*[! ]}"}"                       # drop the ellipsis and trailing blanks
+      [ ${#pp} -ge 20 ] || continue                                   # never match on a stub prefix
+      case "$s" in "$pp"*) hit=0; break;; esac
+    done < "$2"
+    [ $hit = 0 ] || return 1
+  done < "$1"; return 0; }
+# A rebased / force-pushed branch: its MERGED PR's head SHA is not our HEAD, but every commit we hold
+# that no remote has must appear among the PR's commits by subject. Any doubt (no commits, gh failure,
+# one subject without a match) ⇒ 1 ⇒ KEEP.
+merged_pr_commits_match(){ local d="$1" repo="$2" f="$3" b="$4" ls="$TMPD/local-subjects" rb ro rn pf
+  GITS -C "$d" log --format=%s HEAD --not --remotes > "$ls" 2>/dev/null || return 1
+  [ -s "$ls" ] || return 1
+  [ "$(/usr/bin/wc -l < "$ls")" -le 200 ] || return 1
+  while read -r rb ro rn; do
+    [ "$rb" = "$b" ] && [ -n "$rn" ] || continue
+    case "$rn" in *[!0-9]*) continue;; esac
+    pf="$f.pr$rn"
+    [ -f "$pf" ] || "$GH" pr view "$rn" --repo "$repo" --json commits --jq '.commits[].messageHeadline' > "$pf" 2>/dev/null || : > "$pf"
+    subjects_all_in "$ls" "$pf" && return 0
+  done < "$f"
+  return 1; }
+# Physical path of an existing directory, or empty.
+realdir(){ physical "$1"; }   # same as `physical` (B8: one real-path helper)
+# A full clone owns the object store of every worktree registered in $gd/worktrees/*. rm -rf of the
+# clone orphans them (no HEAD, no index, no repo). 0 ⇒ a registered worktree resolves OUTSIDE the
+# deletion boundary $2 and still exists (or is locked, e.g. on an unmounted volume, or its gitdir file is
+# unreadable) ⇒ the clone must stay. Worktrees inside the boundary are nested repos checked on their own.
+clone_has_live_worktree_outside(){ local gd rbound w g wt rw
+  gd=$(GITS -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 0
+  rbound=$(realdir "$2"); [ -n "$rbound" ] || return 0
+  for w in "$gd"/worktrees/*; do [ -d "$w" ] || continue
+    [ -f "$w/locked" ] && return 0
+    g=$(/bin/cat "$w/gitdir" 2>/dev/null) || return 0; [ -n "$g" ] || return 0
+    wt=$(/usr/bin/dirname "$g")
+    [ -e "$wt" ] || continue                                        # gone: `git worktree prune` material
+    rw=$(realdir "$wt"); [ -n "$rw" ] || return 0
+    case "$rw/" in "$rbound"/*) ;; *) return 0;; esac
+  done; return 1; }
+# git_safe dir bound allow_parent_branch → 0 removable (REASON=pushed|in-github-default-branch|
+# merged-pr-head|merged-pr-commits|branch-kept-in-parent-repo) / 1 keep. bound = the dir apply would rm.
+# allow_parent_branch=1 only for session-dirs with HYG_SESSION_PARENT_BRANCH_OK=1: it loosens "unpushed ⇒
+# KEPT", so the worktrees category always passes 0.
+git_safe(){
+  local d="$1" bound="${2:-$1}" allow_pb="${3:-0}" b h repo prrepo f st br cdir rc rbound wg pb po pn tl iv rd rb
   repo_config_runs_commands "$d" && { REASON=repo-config-can-run-commands; return 1; }
   # status only inspects the work tree git resolves. A repo's core.worktree (or a broken .git that sends
   # discovery up to an outer repo) puts that somewhere other than $d: $d's own files are then checked
@@ -264,14 +327,16 @@ git_safe(){ # repo/worktree dir, deletion boundary (the dir apply would rm) → 
   # that includes a sparse checkout, whose out-of-cone entries all carry S.
   iv=$(GITS -C "$d" ls-files -v 2>/dev/null) || { REASON=git-ls-files-failed; return 1; }
   printf '%s\n' "$iv" | LC_ALL=C /usr/bin/grep -q '^[a-zS] ' && { REASON=index-hides-changes; return 1; }
-  # owner/name only from an anchored github.com URL; anything else ⇒ empty ⇒ no gh call ⇒ KEEP
+  # owner/name only from an anchored github.com URL; anything else ⇒ empty ⇒ no gh compare call ⇒ KEEP
   repo=$(GITS -C "$d" remote get-url origin 2>/dev/null | /usr/bin/sed -nE 's#^(https://|ssh://git@|git@)github\.com[:/]([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)$#\2#p' | /usr/bin/sed -E 's#\.git$##')
   case "$repo" in *..*|.*|*/.*) repo="";; esac
   if [ -d "$d/.git" ]; then   # a full clone owns its stash, every local ref and its linked worktrees' git data
     [ -z "$(GITS -C "$d" stash list 2>/dev/null)" ] || { REASON=clone-has-stash; return 1; }
+    clone_has_live_worktree_outside "$d" "$bound" && { REASON=clone-has-live-worktree-outside; return 1; }
     # Linked worktrees keep their HEAD, index and rebase state under $d/.git/worktrees/: the rm takes them
-    # even when the worktree folder lives elsewhere. KEEP when any registered worktree is outside the
-    # deletion boundary, or cannot be resolved (missing/prunable), or the list cannot be read (B1).
+    # even when the worktree folder lives elsewhere. clone_has_live_worktree_outside (above) keeps the clone
+    # for a live one outside the boundary; this stricter pass also keeps it when any registered worktree
+    # cannot be resolved (missing/prunable) or the list cannot be read (B1).
     local wtl wp wr
     wtl=$(GITS -C "$d" worktree list --porcelain 2>/dev/null) || { REASON=git-worktree-list-failed; return 1; }
     [ -n "$wtl" ] || { REASON=git-worktree-list-failed; return 1; }
@@ -298,33 +363,45 @@ git_safe(){ # repo/worktree dir, deletion boundary (the dir apply would rm) → 
   h=$(GITS -C "$d" rev-parse HEAD 2>/dev/null) || { REASON=no-head; return 1; }
   if [ -n "$(GITS -C "$d" branch -r --contains "$h" 2>/dev/null | /usr/bin/head -1)" ]; then REASON=pushed; return 0; fi
   in_github_default "$repo" "$h" && { REASON=in-github-default-branch; return 0; }
-  # A clean linked worktree whose HEAD a local branch holds loses nothing: removing the worktree leaves
-  # that branch (and its unpushed commits) in the parent repo — provided the parent survives the removal.
-  # So: the parent's real path lies outside the deletion boundary (the whole session folder for a
-  # session-dir; a bare parent there is not found by nested_repos), and the parent really registers
-  # this dir as one of its worktrees ($cdir/worktrees/<name>/gitdir points back at $d/.git).
-  if [ -f "$d/.git" ]; then
+  if [ "$HYG_WT_MERGED_PR_CHECK" = 1 ] && [ -n "$GH" ]; then
+    b=$(GITS -C "$d" rev-parse --abbrev-ref HEAD 2>/dev/null)
+    prrepo=$(GITS -C "$d" remote get-url origin 2>/dev/null | /usr/bin/sed -E 's#.*github.com[:/]##; s#\.git$##')
+    [[ "$prrepo" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || prrepo=""   # owner/name or nothing ⇒ no gh call
+    case "$prrepo" in *..*|.*|*/.*) prrepo="";; esac
+    if [ -n "$prrepo" ]; then
+      f="$TMPD/$(echo "$prrepo" | tr / _)"
+      [ -f "$f" ] || "$GH" pr list --repo "$prrepo" --state merged --limit 3000 --json headRefName,headRefOid,number \
+          --jq '.[] | "\(.headRefName) \(.headRefOid) \(.number)"' > "$f" 2>/dev/null || : > "$f"   # gh failure ⇒ empty ⇒ KEEP
+      while read -r pb po pn; do [ "$pb" = "$b" ] && [ "$po" = "$h" ] && { REASON=merged-pr-head; return 0; }; done < "$f"
+      if [ -n "$b" ] && [ "$b" != HEAD ] && merged_pr_commits_match "$d" "$prrepo" "$f" "$b"; then REASON=merged-pr-commits; return 0; fi
+    fi
+  fi
+  # Gated (HYG_SESSION_PARENT_BRANCH_OK, default 0): a clean linked worktree whose HEAD a local branch
+  # holds loses nothing when the worktree goes — provided the parent survives the removal. So: the
+  # parent's real path lies outside the deletion boundary, and the parent really registers this dir as
+  # one of its worktrees ($cdir/worktrees/<name>/gitdir points back at $d/.git).
+  if [ "$allow_pb" = 1 ] && [ -f "$d/.git" ]; then
     cdir=$(GITS -C "$d" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
-    rc=$(physical "$cdir"); rb=$(physical "$bound")
+    rc=$(realdir "$cdir"); rbound=$(realdir "$bound")
     wg=$(GITS -C "$d" rev-parse --path-format=absolute --git-dir 2>/dev/null)
-    if [ -n "$rc" ] && [ -n "$rb" ] && case "$rc/" in "$rb"/*) false;; *) true;; esac \
+    if [ -n "$rc" ] && [ -n "$rbound" ] && case "$rc/" in "$rbound"/*) false;; *) true;; esac \
        && case "$wg" in "$cdir"/worktrees/*) true;; *) false;; esac \
-       && [ "$(physical "$(/usr/bin/dirname "$(/bin/cat "$wg/gitdir" 2>/dev/null)")")" = "$(physical "$d")" ] \
+       && [ "$(realdir "$(/usr/bin/dirname "$(/bin/cat "$wg/gitdir" 2>/dev/null)")")" = "$(realdir "$d")" ] \
        && [ -n "$(GITS -C "$d" for-each-ref --contains "$h" --format=x refs/heads 2>/dev/null | /usr/bin/head -1)" ]; then
       REASON=branch-kept-in-parent-repo; return 0; fi
   fi
-  if [ "$HYG_WT_MERGED_PR_CHECK" = 1 ] && [ -n "$GH" ]; then
-    b=$(GITS -C "$d" rev-parse --abbrev-ref HEAD 2>/dev/null)
-    if [ -n "$repo" ]; then
-      f="$TMPD/$(echo "$repo" | tr / _)"
-      [ -f "$f" ] || "$GH" pr list --repo "$repo" --state merged --limit 3000 --json headRefName,headRefOid \
-          --jq '.[] | "\(.headRefName) \(.headRefOid)"' > "$f" 2>/dev/null || : > "$f"   # gh failure ⇒ empty ⇒ KEEP
-      /usr/bin/grep -qxF "$b $h" "$f" && { REASON=merged-pr-head; return 0; }
-    fi
-  fi
   REASON=unpushed-commits; return 1; }
+check_worktree(){ local d="$1" gd cdir
+  wt_in_scope "$d" || { REASON=outside-worktree-scope; return 1; }
+  [ -f "$d/.git" ] || { REASON=not-a-linked-worktree; return 1; }        # a full clone has a .git DIR — left alone
+  gd=$(GITS -C "$d" rev-parse --path-format=absolute --git-dir 2>/dev/null)
+  cdir=$(GITS -C "$d" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
+  [ -n "$gd" ] && [ "$gd" != "$cdir" ] || { REASON=not-a-linked-worktree; return 1; }   # submodule / separate git-dir
+  wt_recently_touched "$d" && { REASON=touched-recently; return 1; }
+  cwd_inside "$d" && { REASON=a-process-is-inside; return 1; }
+  git_safe "$d" "$d" 0; }
 
-check_session(){ local d="$1" r
+check_session(){ local d="$1" r n=0
   [ "$(dirname "$d")" = "$HYG_SESSION_ROOT" ] || { REASON=outside-session-root; return 1; }
   [ -L "$d" ] && { REASON=is-a-symlink; return 1; }
   [ -f "$d/.git" ] && { REASON=linked-worktree-see-worktrees-pass; return 1; }
@@ -334,10 +411,13 @@ check_session(){ local d="$1" r
   cwd_inside "$d" && { REASON=a-process-is-inside; return 1; }
   # A bare repo or separate git-dir elsewhere in the folder would go with the rm unchecked: keep, unread.
   holds_bare_or_separate_git_dir "$d" && { REASON=contains-bare-or-separate-git-dir; return 1; }
-  if [ -d "$d/.git" ]; then git_safe "$d" "$d" || { REASON="clone-$REASON"; return 1; }; fi   # the folder IS a clone
+  if [ -d "$d/.git" ]; then n=1; git_safe "$d" "$d" 0 || { REASON="clone-$REASON"; return 1; }; fi   # the folder IS a clone (a repo git_safe vouched for)
   while IFS= read -r r; do [ -n "$r" ] || continue
-    git_safe "$r" "$d" || { REASON="nested-$REASON"; return 1; }
+    git_safe "$r" "$d" "$HYG_SESSION_PARENT_BRANCH_OK" || { REASON="nested-$REASON"; return 1; }
   done < <(nested_repos "$d")
+  # The category reclaims checkouts: with no repo there is nothing git_safe vouched for (research notes,
+  # review outputs), so the folder stays.
+  [ "$n" -gt 0 ] || { REASON=no-nested-repo; return 1; }
   REASON=stale-session-all-nested-pushed; return 0; }
 # Session folder idle: no file (outside .git and the artifact dirs themselves) newer than the window.
 # Cached per folder for the run.
@@ -502,18 +582,27 @@ status(){ local prof lock=0 inu=0 nprof=0 d stale=0 total=0
 
 run(){ local pf="$TMPD/plan.tsv"
   # Runs every few hours: a slow run must never overlap the next one. mkdir is atomic; a lock older
-  # than 6 h is a crashed run and is taken over.
+  # than 6 h is a crashed run and is taken over. The lock is an EMPTY directory this script made: it is
+  # released with rmdir (never rm -rf — HYG_LOCK can come from config), a non-empty or non-directory
+  # HYG_LOCK is refused untouched, and a takeover re-creates the dir so its mtime restarts.
   if ! /bin/mkdir "$HYG_LOCK" 2>/dev/null; then
+    if [ -L "$HYG_LOCK" ] || [ ! -d "$HYG_LOCK" ] || [ -n "$(/bin/ls -A "$HYG_LOCK" 2>/dev/null)" ]; then
+      log "=== scheduled run refused: $HYG_LOCK exists and is not an empty lock directory"
+      echo "run: HYG_LOCK $HYG_LOCK exists and is not an empty lock directory; refusing" >&2; return 2
+    fi
     if [ -n "$(/usr/bin/find "$HYG_LOCK" -maxdepth 0 -mmin +360 2>/dev/null)" ]; then
-      log "stale lock $HYG_LOCK taken over"; else log "=== scheduled run skipped: previous run still holds $HYG_LOCK"; return 0; fi
+      /bin/rmdir "$HYG_LOCK" 2>/dev/null && /bin/mkdir "$HYG_LOCK" 2>/dev/null \
+        || { log "=== scheduled run skipped: could not take over stale lock $HYG_LOCK"; return 0; }
+      log "stale lock $HYG_LOCK taken over"
+    else log "=== scheduled run skipped: previous run still holds $HYG_LOCK"; return 0; fi
   fi
-  trap '/bin/rm -rf "$TMPD" "$HYG_LOCK"' EXIT
+  trap '/bin/rm -rf "$TMPD"; /bin/rmdir "$HYG_LOCK" 2>/dev/null' EXIT
   log "=== scheduled run"
   plan | /usr/bin/awk -F'\t' '$2=="remove"{print $1"\t"$5}' > "$pf"
   apply "$pf"; }
 
 case "${1:-}" in
-  status) status;; plan) plan;; apply) apply "${2:?plan file}";; run) run;;
+  status) status;; plan) plan;; apply) apply "${2:?plan file}";; run) run || exit $?;;
   *) echo "usage: hygiene.sh status|plan|apply <planfile>|run" >&2; exit 2;;
 esac
 exit 0

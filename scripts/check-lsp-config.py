@@ -16,6 +16,11 @@ What is checked, for every plugins/*/ directory:
 Each config maps a server name to an object that must have `command` and
 `extensionToLanguage`, and no key outside ALLOWED_KEYS.
 
+An `lspServers` path must stay inside the plugin directory (card DMqfyLzZ):
+an absolute path, or one whose realpath leaves the plugin root (`../..`, a
+symlink out), is reported and never opened. Claude Code refuses such a path
+too ("path escapes plugin directory").
+
     check-lsp-config.py [--root .]        exit 1 on any problem
 """
 
@@ -25,7 +30,12 @@ import os
 import sys
 
 # The ONE place the Claude Code LSP server schema is pinned. Value: the JSON
-# type(s) the key accepts (None = any JSON value).
+# type(s) the key accepts (None = any JSON value). Source for every key: the
+# `lspServers` table in the plugin manifest reference,
+# https://code.claude.com/docs/en/plugins-reference#lspservers
+# (`requestTimeout` there: milliseconds, positive integer, Claude Code v2.1.288+;
+# re-read 2026-10-21, card DMqfyLzZ; `diagnostics` there: optional boolean,
+# whether to push diagnostics into context after edits, default true, card 3P7ZxakX).
 ALLOWED_KEYS = {
     "command": (str,),
     "args": (list,),
@@ -40,6 +50,7 @@ ALLOWED_KEYS = {
     "requestTimeout": (int, float),
     "restartOnCrash": (bool,),
     "maxRestarts": (int,),
+    "diagnostics": (bool,),
 }
 REQUIRED_KEYS = ("command", "extensionToLanguage")
 TRANSPORTS = ("stdio", "socket")
@@ -99,6 +110,18 @@ def _load(path, rel):
         return None, [f"{rel}: invalid JSON: {e}"]
 
 
+def _inside(path, base):
+    """True when the realpath of `path` is `base` itself or below it."""
+    real, top = os.path.realpath(path), os.path.realpath(base)
+    return real == top or real.startswith(top + os.sep)
+
+
+def workflow_text(message):
+    """Escape a message for a `::error::` line the way GitHub's own toolkit does,
+    so a CR/LF inside a JSON key cannot start a new (forged) workflow command."""
+    return message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+
+
 def check_plugin(root, plugin):
     """Returns (problems, number of configs checked)."""
     pdir = os.path.join(root, "plugins", plugin)
@@ -131,7 +154,15 @@ def check_plugin(root, plugin):
             entries = lsp if isinstance(lsp, list) else [lsp]
             for entry in entries:
                 if isinstance(entry, str):
-                    check_file(os.path.join(pdir, entry))
+                    where = f"{pj_rel} lspServers {entry!r}"
+                    if os.path.isabs(entry):
+                        problems.append(f"{where}: absolute path; it must be relative to the plugin root")
+                        continue
+                    target = os.path.join(pdir, entry)
+                    if not _inside(target, pdir):
+                        problems.append(f"{where}: path escapes the plugin directory")
+                        continue
+                    check_file(target)
                 elif isinstance(entry, dict):
                     checked += 1
                     problems.extend(check_servers(entry, f"{pj_rel} lspServers"))
@@ -159,7 +190,7 @@ def main():
     args = ap.parse_args()
     problems, checked = audit(args.root)
     for p in problems:
-        print(f"::error::{p}")
+        print(f"::error::{workflow_text(p)}")
     if problems:
         print(f"\n{len(problems)} LSP config problem(s) across {checked} config(s)")
         return 1

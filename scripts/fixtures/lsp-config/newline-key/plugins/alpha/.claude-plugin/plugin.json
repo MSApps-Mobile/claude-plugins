@@ -1,0 +1,13 @@
+{
+  "name": "alpha",
+  "version": "1.0.0",
+  "lspServers": {
+    "go": {
+      "command": "gopls",
+      "extensionToLanguage": {
+        ".go": "go"
+      },
+      "bad\n::warning::forged": 1
+    }
+  }
+}

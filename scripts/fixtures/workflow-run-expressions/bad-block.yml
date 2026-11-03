@@ -1,0 +1,13 @@
+on: pull_request
+jobs:
+  validate:
+    name: Validate ${{ matrix.plugin }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        plugin: ${{ fromJson(needs.detect.outputs.plugins) }}
+    steps:
+      - name: Check plugin structure
+        run: |
+          PLUGIN="${{ matrix.plugin }}"
+          test -d "plugins/$PLUGIN"

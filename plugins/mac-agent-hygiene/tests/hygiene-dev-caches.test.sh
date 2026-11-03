@@ -8,7 +8,11 @@
 #   KNOWN-NEGATIVE  a nested full clone with a stash, or with a local branch on no remote, keeps the folder
 #   KNOWN-POSITIVE  a clone branch its stale origin ref misses but GitHub's default branch contains → remove
 #   KNOWN-NEGATIVE  the same when GitHub's default branch lacks it, origin is a crafted URL, or the gh cap is hit → keep
-#   KNOWN-POSITIVE  a clean linked worktree whose HEAD a parent-repo branch holds → remove; the branch survives apply
+#   KNOWN-NEGATIVE  a clean linked worktree whose HEAD only a parent-repo branch holds → keep by default
+#   KNOWN-POSITIVE  the same with HYG_SESSION_PARENT_BRANCH_OK=1 → remove; the branch survives apply
+#   KNOWN-NEGATIVE  a stale session folder with no git repo at all → keep (no-nested-repo), survives apply
+#   KNOWN-NEGATIVE  a clean pushed full clone whose registered worktree lives OUTSIDE the session → keep
+#                   (clone-has-live-worktree-outside); the outside worktree still works after apply
 #   KNOWN-NEGATIVE  a linked worktree on a detached HEAD no branch holds → keep
 #   KNOWN-NEGATIVE  a linked worktree whose parent (a bare repo) sits inside the same session → keep
 #   KNOWN-NEGATIVE  a session holding a bare repo (no .git anywhere) → keep
@@ -20,6 +24,8 @@
 #   KNOWN-POSITIVE  old ~/.android/cache entries and an idle CocoaPods cache are removed
 #   KNOWN-NEGATIVE  an AVD is never a candidate
 #   KNOWN-NEGATIVE  `run` with the lock already held removes nothing
+#   KNOWN-NEGATIVE  an existing NON-EMPTY HYG_LOCK survives `run` untouched (refused, never rm -rf)
+#   KNOWN-POSITIVE  a stale (>6 h) empty lock is taken over with a fresh mtime and released by rmdir
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
 HYG="$HERE/../scripts/hygiene.sh"
@@ -29,7 +35,7 @@ trap 'rm -rf "$FX"' EXIT
 export HOME="$FX/home" XDG_CONFIG_HOME="$FX/home/.config"
 mkdir -p "$HOME"
 export HYG_LOG="$FX/hygiene.log" HYG_DERIVED_DATA="$HOME/dd-none" HYG_PLUGIN_CACHE="$HOME/pc-none"
-export HYG_PW_GLOB="$HOME/pw-none-*" HYG_MODEL_CACHES="$HOME/mc-none" HYG_WT_ROOT="$HOME/wt-none" HYG_WT_ROOTS=""
+export HYG_PW_GLOB="$HOME/pw-none-*" HYG_MODEL_CACHES="$HOME/mc-none" HYG_WT_ROOT="$HOME/wt-none" HYG_WT_NESTED=""
 export HYG_WT_MERGED_PR_CHECK=0 HYG_GH=/usr/bin/false HYG_GIT=/usr/bin/git HYG_LOCK="$FX/lock"
 export HYG_SESSION_ROOT="$HOME/code/wt" HYG_GRADLE_HOME="$HOME/.gradle"
 export HYG_DEVICE_SUPPORT="$HOME/ds" HYG_SIM_DEVICES="$HOME/sims-none" HYG_ANDROID_HOME="$HOME/.android"
@@ -87,6 +93,11 @@ git -C "$HOME/code/wt/wt-parent-inside/store" worktree add -q -b inside-only "$H
 (cd "$HOME/code/wt/wt-parent-inside/repo" && echo i > i && git add i && git commit -qm "only in the inside parent"); old "$HOME/code/wt/wt-parent-inside"
 mkdir -p "$HOME/code/wt/bare-only"; git clone -q --bare "$HOME/code/wt/stale-branch/repo" "$HOME/code/wt/bare-only/store.git" 2>/dev/null; old "$HOME/code/wt/bare-only"
 
+# --- B2: a research / review session folder with notes and no git repo anywhere
+mkdir -p "$HOME/code/wt/res-notes/sub"; echo report > "$HOME/code/wt/res-notes/report.md"; echo n > "$HOME/code/wt/res-notes/sub/n.md"; old "$HOME/code/wt/res-notes"
+# --- B3: a clean, pushed full clone inside a session with a linked worktree OUTSIDE the session holding staged work
+mksession sess-parent; git -C "$HOME/code/wt/sess-parent/repo" worktree add -q -b outside-work "$HOME/outside-wt" 2>/dev/null
+(cd "$HOME/outside-wt" && echo staged > staged.txt && git add staged.txt); old "$HOME/code/wt/sess-parent"
 # --- gradle: three old dists with distinct ages; newest two must stay
 for v in 8.11.1 8.14.3 9.5.0; do mkdir -p "$HOME/.gradle/wrapper/dists/gradle-$v-bin/x"; done
 touch -t 202501010000 "$HOME/.gradle/wrapper/dists/gradle-8.11.1-bin"
@@ -120,7 +131,17 @@ grep -q '/avd' "$FX/plan.tsv" && bad "an AVD appeared in the plan" || ok "AVD ne
 [ "$(action_of "$HOME/Library/Caches/CocoaPods")" = remove ] && ok "idle CocoaPods cache → remove" || bad "cocoapods: $(grep CocoaPods "$FX/plan.tsv")"
 
 # --- linked worktrees need no gh: decided in the first plan
-[ "$(action_of "$HOME/code/wt/wt-on-branch")" = remove ] && ok "clean linked worktree on a parent-repo branch → remove" || bad "wt-on-branch: $(grep wt-on-branch "$FX/plan.tsv")"
+[ "$(action_of "$HOME/code/wt/wt-on-branch")" = keep ] && grep -q $'\tnested-unpushed-commits\t'"$HOME/code/wt/wt-on-branch"'$' "$FX/plan.tsv" \
+  && ok "default HYG_SESSION_PARENT_BRANCH_OK=0: worktree held only by a parent-repo branch → keep" || bad "wt-on-branch default: $(grep wt-on-branch "$FX/plan.tsv")"
+HYG_SESSION_PARENT_BRANCH_OK=1 bash "$HYG" plan > "$FX/plan-pb.tsv" 2>/dev/null
+[ "$(/usr/bin/awk -F'\t' -v p="$HOME/code/wt/wt-on-branch" '$5==p{print $2" "$4}' "$FX/plan-pb.tsv")" = "remove stale-session-all-nested-pushed" ] \
+  && ok "HYG_SESSION_PARENT_BRANCH_OK=1: clean linked worktree on a parent-repo branch → remove" || bad "wt-on-branch gated: $(grep wt-on-branch "$FX/plan-pb.tsv")"
+[ "$(/usr/bin/awk -F'\t' -v p="$HOME/code/wt/wt-detached" '$5==p{print $2}' "$FX/plan-pb.tsv")" = keep ] && ok "gate on: detached HEAD no branch holds → still keep" || bad "wt-detached with gate on"
+[ "$(/usr/bin/awk -F'\t' -v p="$HOME/code/wt/wt-parent-inside" '$5==p{print $2}' "$FX/plan-pb.tsv")" = keep ] && ok "gate on: parent inside the session → still keep" || bad "wt-parent-inside with gate on"
+grep -q $'\tno-nested-repo\t'"$HOME/code/wt/res-notes"'$' "$FX/plan.tsv" && [ "$(action_of "$HOME/code/wt/res-notes")" = keep ] \
+  && ok "B2: stale session with no git repo → keep (no-nested-repo)" || bad "res-notes: $(grep res-notes "$FX/plan.tsv")"
+grep -q $'\tnested-clone-has-live-worktree-outside\t'"$HOME/code/wt/sess-parent"'$' "$FX/plan.tsv" && [ "$(action_of "$HOME/code/wt/sess-parent")" = keep ] \
+  && ok "B3: clone with a live worktree outside the session → keep (clone-has-live-worktree-outside)" || bad "sess-parent: $(grep sess-parent "$FX/plan.tsv")"
 [ "$(action_of "$HOME/code/wt/bare-only")" = keep ] && ok "session holding only a bare repo → keep" || bad "bare-only: $(grep bare-only "$FX/plan.tsv")"
 [ "$(action_of "$HOME/code/wt/wt-parent-inside")" = keep ] && ok "worktree whose bare parent is inside the session → keep" || bad "wt-parent-inside: $(grep wt-parent-inside "$FX/plan.tsv")"
 [ "$(action_of "$HOME/code/wt/wt-detached")" = keep ] && ok "linked worktree on a detached HEAD no branch holds → keep" || bad "wt-detached: $(grep wt-detached "$FX/plan.tsv")"
@@ -143,7 +164,13 @@ rmdir "$HYG_LOCK"
 
 # --- apply the real plan
 /usr/bin/awk -F'\t' '$2=="remove"{print $1"\t"$5}' "$FX/plan.tsv" > "$FX/apply.tsv"
+printf 'session-dirs\t%s\nsession-dirs\t%s\n' "$HOME/code/wt/res-notes" "$HOME/code/wt/sess-parent" >> "$FX/apply.tsv"   # hand-written: must be refused
 bash "$HYG" apply "$FX/apply.tsv" > "$FX/apply.out" 2>&1
+printf 'session-dirs\t%s\n' "$HOME/code/wt/wt-on-branch" > "$FX/apply-pb.tsv"
+HYG_SESSION_PARENT_BRANCH_OK=1 bash "$HYG" apply "$FX/apply-pb.tsv" >> "$FX/apply.out" 2>&1
+[ -f "$HOME/code/wt/res-notes/report.md" ] && [ -f "$HOME/code/wt/res-notes/sub/n.md" ] && ok "B2: apply refused the no-repo session, notes intact" || bad "res-notes lost: $(cat "$FX/apply.out")"
+[ -d "$HOME/code/wt/sess-parent/repo/.git" ] && git -C "$HOME/outside-wt" status --porcelain 2>/dev/null | grep -q '^A  staged.txt' \
+  && ok "B3: apply refused the clone; the outside worktree still works with its staged file" || bad "sess-parent/outside-wt broken: $(git -C "$HOME/outside-wt" status 2>&1 | head -2)"
 [ ! -e "$HOME/code/wt/stale-clean" ] && ok "apply removed the clean stale session" || bad "stale-clean still there: $(cat "$FX/apply.out")"
 [ -f "$HOME/code/wt/stale-dirty/repo/wip.txt" ] && ok "dirty session's work survived" || bad "dirty work lost"
 [ -d "$HOME/.gradle/wrapper/dists/gradle-9.5.0-bin" ] && [ ! -e "$HOME/.gradle/wrapper/dists/gradle-8.11.1-bin" ] && ok "gradle apply kept newest, removed oldest" || bad "gradle apply wrong"
@@ -152,6 +179,25 @@ bash "$HYG" apply "$FX/apply.tsv" > "$FX/apply.out" 2>&1
   && [ -z "$(git -C "$HOME/code/parent" worktree list --porcelain | grep wt-on-branch)" ] \
   && ok "linked worktree removed, its unpushed branch survives in the parent, metadata pruned" || bad "wt-on-branch apply: $(cat "$FX/apply.out")"
 [ -d "$HOME/code/wt/wt-detached/repo" ] && ok "detached worktree survived apply" || bad "detached worktree lost"
+
+# --- B4: the lock is an empty dir this script owns
+mkdir -p "$FX/userdir/keep"; echo precious > "$FX/userdir/keep/data"; touch -t 202001010000 "$FX/userdir" "$FX/userdir/keep"
+HYG_LOCK="$FX/userdir" bash "$HYG" run >/dev/null 2>&1; rc=$?
+[ "$rc" != 0 ] && [ -f "$FX/userdir/keep/data" ] && grep -q 'run refused' "$HYG_LOG" && ok "B4: non-empty week-old HYG_LOCK survives run (refused, rc=$rc)" || bad "B4: non-empty HYG_LOCK touched (rc=$rc)"
+echo f > "$FX/lockfile"; HYG_LOCK="$FX/lockfile" bash "$HYG" run >/dev/null 2>&1
+[ -f "$FX/lockfile" ] && ok "B4: a HYG_LOCK that is a file survives run" || bad "B4: lock file removed"
+# A stale empty lock: the git wrapper records the lock's mtime while the run holds it.
+mkdir "$FX/stale.lock"; touch -t 202001010000 "$FX/stale.lock"
+cat > "$FX/git-wrap" <<WRAP
+#!/bin/bash
+[ -f "$FX/lock-mtime" ] || /usr/bin/stat -f %m "$FX/stale.lock" > "$FX/lock-mtime" 2>/dev/null
+exec /usr/bin/git "\$@"
+WRAP
+chmod +x "$FX/git-wrap"; T0=$(/bin/date +%s)
+HYG_LOCK="$FX/stale.lock" HYG_GIT="$FX/git-wrap" bash "$HYG" run >/dev/null 2>&1
+[ -s "$FX/lock-mtime" ] && [ "$(cat "$FX/lock-mtime")" -ge "$((T0-5))" ] && grep -q 'stale lock .*stale.lock taken over' "$HYG_LOG" \
+  && ok "B4: stale lock taken over with a fresh mtime" || bad "B4: takeover mtime $(cat "$FX/lock-mtime" 2>/dev/null) < start $T0"
+[ ! -e "$FX/stale.lock" ] && ok "B4: lock released (rmdir) at exit" || bad "B4: lock still present after run"
 
 echo "# pass=$PASS fail=$FAILN"
 [ "$FAILN" = 0 ]

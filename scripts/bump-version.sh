@@ -22,6 +22,14 @@ if [[ ! -f "$PLUGIN_JSON" ]]; then
 fi
 
 CURRENT=$(python3 -c "import json; d=json.load(open('$PLUGIN_JSON')); print(d['version'])")
+# Card SNQ5Siev: the version is repo content. Bash arithmetic below evaluates
+# each part as an expression (a part like 'BASH_VERSINFO[$(cmd)]' runs cmd), and the
+# result names the release tag, so accept only plain x.y.z - the same rule
+# validate-pr.yml applies to plugin.json.
+if [[ ! "$CURRENT" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "::error::version in $PLUGIN_JSON is not x.y.z: '$CURRENT'"
+  exit 1
+fi
 IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
 
 case "$BUMP_TYPE" in

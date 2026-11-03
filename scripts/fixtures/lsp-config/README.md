@@ -16,3 +16,6 @@ never treat them as real plugins.
 | `inline-unknown-key/` | an unknown key inside an inline `lspServers` in plugin.json | **exit 1** |
 | `dangling-path/` | `lspServers` points at a file that is not there | **exit 1** |
 | `bad-json/` | a `.lsp.json` that does not parse | **exit 1** as an `::error::`, never a traceback |
+| `absolute-path/` | `lspServers` is an absolute path (card DMqfyLzZ) | **exit 1**, the file is never opened |
+| `escaping-path/` | `lspServers` is `../outside/servers.json`, a valid file outside the plugin (card DMqfyLzZ) | **exit 1**, the file is never opened |
+| `newline-key/` | an inline server key that contains a newline and a forged `::warning::` (card DMqfyLzZ) | **exit 1**, with the newline encoded as `%0A` on ONE `::error::` line |
