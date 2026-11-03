@@ -191,8 +191,8 @@ wt_scaffold_path(){ local c
   return 0; }
 # Called only when `git status --porcelain` is non-empty. 0 = every entry is an untracked scaffold path
 # (the NUL list is left in $TMPD/scaffold-list for apply); 1 = keep, REASON says why:
-#   dirty-uncommitted-work  any tracked change, staged or not (rescue doctrine: it may be the only copy)
-#   dirty-untracked-only    untracked files only, at least one outside the scaffold shapes
+#   dirty-uncommitted-work  any tracked change, staged or not (rescue doctrine: it may be the only copy),
+#                           or any untracked file outside the scaffold shapes (same reason as before)
 #   git-status-failed       the second, file-level read failed or listed nothing
 SCAFFOLD=""
 wt_dirt_scaffold_only(){ local d="$1" e other=0 z="$TMPD/status.z" list="$TMPD/scaffold-list"
@@ -204,7 +204,7 @@ wt_dirt_scaffold_only(){ local d="$1" e other=0 z="$TMPD/status.z" list="$TMPD/s
     printf '%s\0' "${e#\?\? }" >> "$list"
   done < "$z"
   [ -s "$list" ] || { REASON=git-status-failed; return 1; }        # dirty a moment ago, nothing now: doubt ⇒ keep
-  [ $other = 0 ] || { REASON=dirty-untracked-only; return 1; }
+  [ $other = 0 ] || { REASON=dirty-uncommitted-work; return 1; }
   return 0; }
 # Copy the scaffold files of $1 (listed in $TMPD/scaffold-list) to a dated tarball under
 # HYG_SCAFFOLD_ARCHIVE, verify every path is in it, then delete exactly those files so the plain

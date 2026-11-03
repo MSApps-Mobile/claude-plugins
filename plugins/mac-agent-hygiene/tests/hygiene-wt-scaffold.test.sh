@@ -7,14 +7,14 @@
 #   KNOWN-POSITIVE  pushed + only `?? docs/qa/GTFuHzt9/...`             → remove pushed-scaffold-only
 #   KNOWN-POSITIVE  apply archives the scaffolding to a dated .tar.gz first, then removes the worktree;
 #                   the archive holds the files byte for byte and the branch ref survives
-#   KNOWN-NEGATIVE  PROMPT.md + one real untracked file                → keep dirty-untracked-only
+#   KNOWN-NEGATIVE  PROMPT.md + one real untracked file                → keep dirty-uncommitted-work
 #   KNOWN-NEGATIVE  a modified tracked file                            → keep dirty-uncommitted-work
 #   KNOWN-NEGATIVE  a modified tracked file + PROMPT.md                → keep dirty-uncommitted-work
 #   KNOWN-NEGATIVE  PROMPT.md staged (`git add`)                       → keep dirty-uncommitted-work
 #   KNOWN-NEGATIVE  only PROMPT.md, but HEAD is unpushed               → keep unpushed-commits
 #   KNOWN-NEGATIVE  unreadable status (corrupt index)                  → keep git-status-failed
 #   KNOWN-NEGATIVE  look-alikes: sub/PROMPT.md, prompt.md, docs/qa/<not an 8-char id>/x, a docs/qa/<id>
-#                   FILE, PROMPT.md.bak                                → keep dirty-untracked-only
+#                   FILE, PROMPT.md.bak                                → keep dirty-uncommitted-work
 #   KNOWN-NEGATIVE  a real file appears after the plan → apply refuses, PROMPT.md and the tree intact
 #   KNOWN-NEGATIVE  the archive cannot be written → apply refuses (remove-failed), nothing deleted
 #   KNOWN-POSITIVE  the clean pushed worktree still goes as plain `pushed` (no regression)
@@ -94,17 +94,17 @@ expect(){ local got; got="$(row "$1")"
 expect "$CLEAN"    "remove pushed"                "clean pushed worktree (no regression)"
 expect "$PROMPT"   "remove pushed-scaffold-only"  "AC-3 only ?? PROMPT.md"
 expect "$QA"       "remove pushed-scaffold-only"  "only ?? docs/qa/<card>/"
-expect "$MIXED"    "keep dirty-untracked-only"    "PROMPT.md + a real untracked file"
+expect "$MIXED"    "keep dirty-uncommitted-work"    "PROMPT.md + a real untracked file"
 expect "$TRACKED"  "keep dirty-uncommitted-work"  "AC-3 modified tracked file"
 expect "$TRPROMPT" "keep dirty-uncommitted-work"  "modified tracked file + PROMPT.md"
 expect "$STAGED"   "keep dirty-uncommitted-work"  "PROMPT.md staged"
 expect "$UNPUSHED" "keep unpushed-commits"        "only PROMPT.md, unpushed HEAD"
 expect "$CORRUPT"  "keep git-status-failed"       "unreadable status"
-expect "$LOOK1"    "keep dirty-untracked-only"    "look-alike sub/PROMPT.md"
-expect "$LOOK2"    "keep dirty-untracked-only"    "look-alike prompt.md"
-expect "$LOOK3"    "keep dirty-untracked-only"    "look-alike docs/qa/<not an id>/"
-expect "$LOOK4"    "keep dirty-untracked-only"    "look-alike docs/qa/<id> as a file"
-expect "$LOOK5"    "keep dirty-untracked-only"    "look-alike PROMPT.md.bak"
+expect "$LOOK1"    "keep dirty-uncommitted-work"    "look-alike sub/PROMPT.md"
+expect "$LOOK2"    "keep dirty-uncommitted-work"    "look-alike prompt.md"
+expect "$LOOK3"    "keep dirty-uncommitted-work"    "look-alike docs/qa/<not an id>/"
+expect "$LOOK4"    "keep dirty-uncommitted-work"    "look-alike docs/qa/<id> as a file"
+expect "$LOOK5"    "keep dirty-uncommitted-work"    "look-alike PROMPT.md.bak"
 
 # ---- apply: a real file lands in LATE after the plan; NOARCH's archive dir is unwritable ----
 echo "real work" > "$LATE/new-work.txt"; touch -t 202001010000 "$LATE/new-work.txt" "$LATE"   # old, so only the dirt rule can refuse it
@@ -115,7 +115,7 @@ for w in "$TRACKED" "$MIXED" "$CORRUPT"; do printf 'worktrees\t%s\n' "$w" >> "$F
 bash "$HYG" apply "$FX/real.tsv" > "$FX/apply.out" 2>&1
 
 for d in "$CLEAN" "$PROMPT" "$QA"; do [ ! -e "$d" ] && ok "removed $d" || bad "still present: $d ($(cat "$FX/apply.out"))"; done
-awk -F'\t' -v p="$LATE" '$5==p && $2=="refused" && $4=="dirty-untracked-only"{f=1} END{exit !f}' "$FX/apply.out" \
+awk -F'\t' -v p="$LATE" '$5==p && $2=="refused" && $4=="dirty-uncommitted-work"{f=1} END{exit !f}' "$FX/apply.out" \
   && ok "apply refuses a worktree that gained a real file after the plan" || bad "late: $(grep "$LATE" "$FX/apply.out")"
 [ -f "$LATE/PROMPT.md" ] && [ -f "$LATE/new-work.txt" ] && ok "late worktree intact" || bad "late worktree touched"
 for d in "$TRACKED" "$MIXED" "$CORRUPT"; do [ -d "$d" ] && ok "apply refused hand-written $d" || bad "removed $d"; done

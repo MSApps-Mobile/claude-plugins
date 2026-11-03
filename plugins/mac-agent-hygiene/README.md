@@ -88,7 +88,7 @@ HYG_SCAFFOLD_ARCHIVE="$HOME/.local/state/mac-agent-hygiene/scaffold-archive"  # 
 Environment variables win over the config file, so one MCP call can override one value for one run.
 "Clean" means `git status --porcelain` is empty — gitignored files (a local `.env`, `node_modules`)
 are removed together with a clean worktree.
-Agent scaffolding (card d9GJrXfc): a worktree whose ONLY dirt is untracked `PROMPT.md` (top level) or files under `docs/qa/<8-char card id>/` is not "uncommitted work". It is removable (reason `<pushed|merged-pr-head|merged-pr-commits>-scaffold-only`) once apply has tarred those files to `HYG_SCAFFOLD_ARCHIVE/<date>/` and verified the archive; then the plain `git worktree remove` (never `--force`) runs. Any tracked or staged change keeps `dirty-uncommitted-work`; any other untracked file keeps `dirty-untracked-only`.
+Agent scaffolding (card d9GJrXfc): a worktree whose ONLY dirt is untracked `PROMPT.md` (top level) or files under `docs/qa/<8-char card id>/` is not "uncommitted work". It is removable (reason `<pushed|merged-pr-head|merged-pr-commits>-scaffold-only`) once apply has tarred those files to `HYG_SCAFFOLD_ARCHIVE/<date>/` and verified the archive; then the plain `git worktree remove` (never `--force`) runs. Any tracked or staged change, or any other untracked file, keeps `dirty-uncommitted-work` as before.
 
 ### Without the MCP server
 
