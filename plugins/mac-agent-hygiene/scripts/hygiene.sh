@@ -2,7 +2,8 @@
 # mac-agent-hygiene — keeps a Mac that runs Claude Code agents from filling its disk.
 #
 #   hygiene.sh status            key<TAB>value lines (read-only)
-#   hygiene.sh plan              category<TAB>action<TAB>kb<TAB>reason<TAB>path  (read-only dry run)
+#   hygiene.sh plan              category<TAB>action<TAB>kb<TAB>reason<TAB>path  (read-only dry run; kb is "-" on
+#                                worktree keep rows, which are not sized; one duration line per category on stderr)
 #   hygiene.sh apply <planfile>  re-checks every "category<TAB>path" line in <planfile> and removes
 #                                only the ones that STILL qualify; prints result lines
 #   hygiene.sh run               plan + apply everything eligible (what the LaunchAgent calls)
@@ -32,7 +33,7 @@ set -u
 umask 077
 
 # ---------- configuration: defaults < config file < environment ----------
-VARS="HYG_LOG HYG_DERIVED_DATA HYG_PLUGIN_CACHE HYG_PLUGIN_CLONE_MIN_AGE_MIN HYG_PW_GLOB HYG_MODEL_CACHES HYG_MODEL_CACHE_AGE_DAYS HYG_WT_ROOT HYG_WT_GLOB HYG_WT_NESTED HYG_WT_DEPTH HYG_WT_AGE_DAYS HYG_WT_MERGED_PR_CHECK HYG_GIT HYG_GH"
+VARS="HYG_LOG HYG_DERIVED_DATA HYG_PLUGIN_CACHE HYG_PLUGIN_CLONE_MIN_AGE_MIN HYG_PW_GLOB HYG_MODEL_CACHES HYG_MODEL_CACHE_AGE_DAYS HYG_WT_ROOT HYG_WT_GLOB HYG_WT_NESTED HYG_WT_DEPTH HYG_WT_AGE_DAYS HYG_WT_MERGED_PR_CHECK HYG_WT_BUDGET_SEC HYG_GIT HYG_GH"
 for v in $VARS; do eval "ENV_$v=\"\${$v-}\""; done
 CONF="${XDG_CONFIG_HOME:-$HOME/.config}/mac-agent-hygiene/config.env"
 # shellcheck disable=SC1090
@@ -52,8 +53,12 @@ HYG_WT_NESTED="${HYG_WT_NESTED-wt _worktrees}"   # set to "" to scan direct chil
 HYG_WT_DEPTH="${HYG_WT_DEPTH:-3}"
 HYG_WT_AGE_DAYS="${HYG_WT_AGE_DAYS:-7}"
 HYG_WT_MERGED_PR_CHECK="${HYG_WT_MERGED_PR_CHECK:-1}"
+# Wall clock the worktrees pass of one plan may spend (card NISFIbub: a plan over 685 worktrees was killed at
+# 500-630 s, 14 of them checked). Past it each remaining worktree reads keep/scan-budget-exceeded: never
+# checked, never removed, picked up by a later run (the list starts at a random offset). 0 = no limit.
+HYG_WT_BUDGET_SEC="${HYG_WT_BUDGET_SEC:-600}"
 HYG_DERIVED_DATA="${HYG_DERIVED_DATA%/}"; HYG_PLUGIN_CACHE="${HYG_PLUGIN_CACHE%/}"
-case "$HYG_WT_AGE_DAYS$HYG_MODEL_CACHE_AGE_DAYS$HYG_PLUGIN_CLONE_MIN_AGE_MIN$HYG_WT_DEPTH" in *[!0-9]*) echo "age settings must be integers" >&2; exit 2;; esac
+case "$HYG_WT_AGE_DAYS$HYG_MODEL_CACHE_AGE_DAYS$HYG_PLUGIN_CLONE_MIN_AGE_MIN$HYG_WT_DEPTH$HYG_WT_BUDGET_SEC" in *[!0-9]*) echo "age settings must be integers" >&2; exit 2;; esac
 
 GIT="${HYG_GIT:-}"
 if [ -z "$GIT" ]; then GIT=/usr/bin/git; [ -x "$HOME/.local/bin/git" ] && GIT="$HOME/.local/bin/git"; fi   # honour a user's git shim unless HYG_GIT is explicit
@@ -84,8 +89,10 @@ xcode_building(){ /usr/bin/pgrep -qx xcodebuild || /usr/bin/pgrep -qx Xcode || /
 has_dot_component(){ case "/$1/" in */./*|*/../*) return 0;; esac; return 1; }
 # Every process's cwd, read ONCE per run; compared as fixed strings (never as a pattern).
 CWDS=""; load_cwds(){ [ -n "$CWDS" ] || CWDS=$(/usr/sbin/lsof -d cwd -Fn 2>/dev/null | /usr/bin/sed -n 's/^n//p'); }
-cwd_inside(){ local c; load_cwds
-  while IFS= read -r c; do [ -n "$c" ] || continue; [ "$c" = "$1" ] && return 0; case "$c" in "$1"/*) return 0;; esac; done <<< "$CWDS"; return 1; }
+# One awk pass (card NISFIbub): the bash read loop over ~1000 cwds cost ~0.5 s per worktree. index()==1 and
+# == are fixed-string tests, never a regex.
+cwd_inside(){ load_cwds; [ -n "$CWDS" ] || return 1
+  printf '%s\n' "$CWDS" | D="$1" /usr/bin/awk 'BEGIN{d=ENVIRON["D"]; p=d "/"} $0==d || index($0,p)==1 {f=1; exit} END{exit !f}'; }
 TMPD=$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/mac-agent-hygiene.XXXXXX") || { echo "mktemp failed" >&2; exit 2; }
 trap '/bin/rm -rf "$TMPD"' EXIT
 
@@ -172,6 +179,9 @@ merged_pr_commits_match(){ local d="$1" repo="$2" f="$3" b="$4" ls="$TMPD/local-
     subjects_all_in "$ls" "$pf" && return 0
   done < "$f"
   return 1; }
+pushed_head(){ local out
+  out=$("$GIT" -C "$1" rev-list -n 1 "$2" --not --remotes 2>/dev/null) || return 1   # git failure ⇒ not pushed ⇒ KEEP
+  [ -z "$out" ]; }   # no remote refs ⇒ HEAD itself is printed ⇒ not pushed
 check_worktree(){ local d="$1" b h repo f st rb ro rn gd cdir
   wt_in_scope "$d" || { REASON=outside-worktree-scope; return 1; }
   [ -f "$d/.git" ] || { REASON=not-a-linked-worktree; return 1; }        # a full clone has a .git DIR — left alone
@@ -183,7 +193,9 @@ check_worktree(){ local d="$1" b h repo f st rb ro rn gd cdir
   st=$("$GIT" -C "$d" status --porcelain 2>/dev/null) || { REASON=git-status-failed; return 1; }
   [ -z "$st" ] || { REASON=dirty-uncommitted-work; return 1; }
   h=$("$GIT" -C "$d" rev-parse HEAD 2>/dev/null) || { REASON=no-head; return 1; }
-  if [ -n "$("$GIT" -C "$d" branch -r --contains "$h" 2>/dev/null | /usr/bin/head -1)" ]; then REASON=pushed; return 0; fi
+  # HEAD is on a remote ref ⇔ no commit reachable from HEAD is missing from every remote ref. One walk from HEAD
+  # instead of `branch -r --contains`, which tests each remote ref (2-5x slower on repos with 500-5800 of them).
+  if pushed_head "$d" "$h"; then REASON=pushed; return 0; fi
   if [ "$HYG_WT_MERGED_PR_CHECK" = 1 ] && [ -n "$GH" ]; then
     b=$("$GIT" -C "$d" rev-parse --abbrev-ref HEAD 2>/dev/null)
     repo=$("$GIT" -C "$d" remote get-url origin 2>/dev/null | /usr/bin/sed -E 's#.*github.com[:/]##; s#\.git$##')
@@ -214,18 +226,30 @@ candidates(){  # category<TAB>path
     for p in "$prof"/BrowserMetrics*; do [ -e "$p" ] && printf 'browser-caches\t%s\n' "$p"; done
   done
   for d in $HYG_MODEL_CACHES; do [ -d "$d" ] && printf 'model-caches\t%s\n' "${d%/}"; done
-  list_worktrees | while IFS= read -r d; do printf 'worktrees\t%s\n' "$d"; done
+  list_worktrees | rotate | while IFS= read -r d; do printf 'worktrees\t%s\n' "$d"; done
 }
+# Start the list at a random line and wrap, so a pass the budget cuts short does not check the same prefix every run.
+rotate(){ [ "$HYG_WT_BUDGET_SEC" -gt 0 ] || { /bin/cat; return; }
+  /usr/bin/awk -v r="$RANDOM" '{l[NR]=$0} END{if(!NR) exit; o=r%NR; for(i=1;i<=NR;i++) print l[(i+o-1)%NR+1]}'; }
 
-plan(){ local cat p k prev="" n=0 r=0 t0=$SECONDS
-  # One log line per category as it finishes (card ugCwRX0v), so a slow or stuck plan is visible
-  # from `log_tail` / hygiene_status instead of a silent gap after "=== scheduled run".
-  plan_mark(){ [ -n "$prev" ] && log "plan: $prev $n candidates ($r remove) in $((SECONDS-t0))s"; }
+# plan [nosize]. Decide first, size after (card NISFIbub): `du` over a worktree's node_modules took up to 90 s at
+# load 140, and it ran on every candidate before the check. Keep rows of worktrees print kb "-" (not sized);
+# `run` passes nosize because apply re-sizes what it removes, so the scheduled plan runs no du at all.
+plan(){ local cat p k prev="" n=0 r=0 u=0 t0=$SECONDS size=1
+  [ "${1:-}" = nosize ] && size=0
+  # One line per category as it finishes (card ugCwRX0v), to the log and to stderr (card NISFIbub), so a slow
+  # or stuck plan is visible from `log_tail` / hygiene_status instead of a silent gap after "=== scheduled run".
+  plan_mark(){ [ -n "$prev" ] || return 0; local m
+    m="plan: $prev $n candidates ($r remove"; [ "$u" = 0 ] || m="$m, $u not checked: scan-budget-exceeded"
+    m="$m) in $((SECONDS-t0))s"; log "$m"; echo "$m" >&2; }
   while IFS=$'\t' read -r cat p; do
     [ -n "$p" ] || continue
-    if [ "$cat" != "$prev" ]; then plan_mark; prev="$cat"; n=0; r=0; t0=$SECONDS; fi
-    n=$((n+1)); k=$(kb "$p"); [ -n "$k" ] || k=0
-    if check_item "$cat" "$p"; then r=$((r+1)); emit "$cat" remove "$k" "$REASON" "$p"; else emit "$cat" keep "$k" "$REASON" "$p"; fi
+    if [ "$cat" != "$prev" ]; then plan_mark; prev="$cat"; n=0; r=0; u=0; t0=$SECONDS; fi
+    n=$((n+1))
+    if [ "$cat" = worktrees ] && [ "$HYG_WT_BUDGET_SEC" -gt 0 ] && [ $((SECONDS-t0)) -ge "$HYG_WT_BUDGET_SEC" ]; then
+      u=$((u+1)); emit "$cat" keep - scan-budget-exceeded "$p"; continue; fi
+    if check_item "$cat" "$p"; then r=$((r+1)); k=-; [ $size = 1 ] && { k=$(kb "$p"); [ -n "$k" ] || k=0; }; emit "$cat" remove "$k" "$REASON" "$p"
+    else k=-; [ $size = 1 ] && [ "$cat" != worktrees ] && { k=$(kb "$p"); [ -n "$k" ] || k=0; }; emit "$cat" keep "$k" "$REASON" "$p"; fi
   done < <(candidates)
   plan_mark
 }
@@ -268,7 +292,7 @@ status(){ local prof lock=0 inu=0 nprof=0 d stale=0 total=0
 
 run(){ local pf="$TMPD/plan.tsv"
   log "=== scheduled run"
-  plan | /usr/bin/awk -F'\t' '$2=="remove"{print $1"\t"$5}' > "$pf"
+  plan nosize 2>/dev/null | /usr/bin/awk -F'\t' '$2=="remove"{print $1"\t"$5}' > "$pf"
   apply "$pf"; }
 
 case "${1:-}" in

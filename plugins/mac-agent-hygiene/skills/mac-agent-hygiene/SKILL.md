@@ -67,6 +67,7 @@ HYG_WT_AGE_DAYS=7
 HYG_MODEL_CACHES="$HOME/.cache/whisper $HOME/.cache/codex-runtimes"
 HYG_MODEL_CACHE_AGE_DAYS=7    # model caches go when not MODIFIED this long (a read does not count)
 HYG_WT_MERGED_PR_CHECK=1      # 0 = pushed-only (no gh call)
+HYG_WT_BUDGET_SEC=600         # worktrees pass wall clock per plan; past it: keep/scan-budget-exceeded, never removed; 0 = off
 ```
 
 Environment variables win over the config file (an MCP `worktree_age_days` override applies to that
