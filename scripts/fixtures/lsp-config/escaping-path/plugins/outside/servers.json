@@ -1,0 +1,6 @@
+{
+  "py": {
+    "command": "pyright-langserver",
+    "extensionToLanguage": { ".py": "python" }
+  }
+}

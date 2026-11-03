@@ -1,0 +1,7 @@
+on: pull_request
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dry-run package build
+        run: bash scripts/package-plugin.sh ${{ matrix.plugin }} /tmp/dist-test

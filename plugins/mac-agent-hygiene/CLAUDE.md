@@ -16,13 +16,21 @@
 ## Invariants (do not relax)
 
 - Browser profiles: cache-subfolder allowlist only; profile with `SingletonLock` or open files skipped.
-- Worktrees: linked (`[ -f .git ]`), untouched > age, nobody's cwd, clean, pushed or merged-PR head.
-  `gh` failure ⇒ keep. Never `--force`.
+- Worktrees: linked (`[ -f .git ]` AND git-dir ≠ common-dir), in scope (direct child matching
+  `HYG_WT_GLOB`, or ≤ `HYG_WT_DEPTH` deep under a `HYG_WT_NESTED` dir), untouched > age, nobody's cwd,
+  clean, and pushed / merged-PR head / merged PR on the same branch whose commits cover every local-only
+  commit subject. `gh` failure ⇒ keep. Never `--force`. macOS `/bin/bash` is 3.2: no `declare -A`;
+  per-repo gh results are cache files in `$TMPD`.
 - DerivedData skipped while Xcode builds. Never sudo. Paths outside `$HOME` refused at apply.
-- Session dirs (`~/code/wt/*` without `.git`): kept whole if ANY nested repo fails the worktree test; untouched > 24 h.
+- One `git_safe dir bound allow_parent_branch` judges every repo (worktrees pass `0`): repo config that can run a
+  command, submodules, dirty, a full clone's stash / unpushed branch / registered worktree outside `bound` ⇒ keep.
+- Session dirs (`~/code/wt/*` without `.git`): untouched > 24 h, at least one nested repo (none ⇒ keep,
+  `no-nested-repo`), kept whole if ANY nested repo fails `git_safe`. "Held by a parent-repo branch" counts only with
+  `HYG_SESSION_PARENT_BRANCH_OK=1` (default 0): it loosens "unpushed ⇒ KEPT" and needs an explicit ruling to turn on.
 - Gradle: never the newest two versions or one a running process names. iOS: never the newest DeviceSupport,
   never a simulator whose runtime is installed, never `Xcode/Archives`. Android AVDs / SDK images: report only.
-- `run` holds a mkdir lock so a 4-hourly run never overlaps a slow one (stale after 6 h).
+- `run` holds a mkdir lock so a 4-hourly run never overlaps a slow one (stale after 6 h; a takeover re-creates it so
+  its mtime restarts). The lock is released with `rmdir`, never `rm -rf`; a non-empty or non-directory `HYG_LOCK` is refused.
 - System binaries by absolute path; explicit PATH in the plist; `mktemp` with a `${TMPDIR:-/tmp}` template.
 - Paths compared as fixed strings (never a grep pattern); `.`/`..` components refused at the apply gate; every
   category checks `dirname`/`basename`, not a glob across `/`. Environment > config file > defaults.
@@ -31,7 +39,11 @@
 
 ```bash
 bash -n scripts/*.sh && node --check server/index.js
-bash tests/hygiene-keeps-logins.test.sh && bash tests/hygiene-dev-caches.test.sh   # macOS fixtures, throwaway HOME
+bash tests/hygiene-worktrees.test.sh        # fixture git repos + stubbed gh; runs on Linux too
+bash tests/hygiene-wt-scan-roots.test.sh    # default scope incl. ~/code/_worktrees, keep rules, status count
+bash tests/hygiene-port-combined.test.sh    # worktrees + session-dirs at their defaults never disagree destructively
+bash tests/hygiene-keeps-logins.test.sh     # macOS only
+bash tests/hygiene-dev-caches.test.sh       # macOS only: session-dirs, gradle, ios, android, pkg-caches, run lock
 bash scripts/hygiene.sh status
 bash scripts/hygiene.sh plan | awk -F'\t' '{print $1, $2, $4}' | sort | uniq -c
 printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}}' \

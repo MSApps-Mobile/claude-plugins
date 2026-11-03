@@ -31,14 +31,28 @@ can be the only copy of real work, and no board signal says which. Removal there
 1. untouched for `HYG_WT_AGE_DAYS` — no regular file inside (outside `.git`) newer than the age, not
    just the directory mtime (editing a nested file would otherwise leave the top-level mtime old);
 2. no process has its cwd inside (`lsof -d cwd`) — a live session may be parked there;
-3. `.git` is a FILE (a linked worktree). A `.git` directory means a full clone, which is left alone.
-   The common idiom `[ -d .git ]` is false for a worktree and is exactly the wrong test here;
+3. `.git` is a FILE (a linked worktree) and `git rev-parse --git-dir` differs from `--git-common-dir`
+   (a submodule also has a `.git` file). A `.git` directory means a full clone, which is left alone —
+   the enumerator prunes it and never lists it. The common idiom `[ -d .git ]` is false for a worktree
+   and is exactly the wrong test here;
 4. `git status --porcelain` is empty — no modified, staged or untracked files;
 5. HEAD is contained in a remote-tracking ref (`git branch -r --contains HEAD`), OR equals the head
    SHA of a merged pull request (`gh pr list --state merged --json headRefName,headRefOid`). The
    second branch exists because squash merges land content without making the branch commit an
-   ancestor of `main`. If `gh` is missing or fails, the merged-PR file is empty and the worktree is
-   KEPT.
+   ancestor of `main`. OR the branch has a merged PR (same `headRefName`) and EVERY commit reachable
+   from HEAD but from no remote ref (`git log HEAD --not --remotes`) has a subject equal to one of the
+   PR's commit headlines (`gh pr view --json commits`), or starting with one that gh truncated with
+   "…" (prefix ≥ 20 chars). Pipeline sessions rebase or force-push after the worktree's last commit,
+   so the exact-SHA test alone kept 65 merged branches (21.9 GB) on the reference machine. One
+   unmatched subject (work that landed under another title, or never landed) ⇒ KEPT. If `gh` is
+   missing or fails, the merged-PR file is empty and the worktree is KEPT.
+
+Scope: a direct child of `HYG_WT_ROOT` matching `HYG_WT_GLOB`, or a worktree at most `HYG_WT_DEPTH`
+levels deep under a top-level dir named in `HYG_WT_NESTED` (default `wt _worktrees`: phase sessions create
+`wt/{sup,ref,pipe}-*/...`, 163 GB in 842 dirs the direct-child scan never saw; other agents create
+`_worktrees/<card>/`, 21 GB in 62 worktrees, card uO9PFYg8). A person's own
+`~/code/project/feature` worktree is out of scope. `tests/hygiene-worktrees.test.sh` covers these rules
+with fixture repos and a stubbed `gh`.
 
 Removal uses `git worktree remove <path>` without `--force` (git refuses a dirty tree on its own as a
 second line of defence) followed by `git worktree prune` in the main repository.
@@ -53,6 +67,52 @@ made the expression invalid, grep exited 2, and the gate was silently skipped). 
 read once per run and compared with `=` / a quoted `case` prefix. The apply gate also refuses any
 path with a `.` or `..` component before any category check runs, and each category checks
 `dirname`/`basename` equality rather than a glob that `*` could stretch across `/`.
+
+## Session folders are judged by every repo inside them
+
+`~/code/wt/<session>/` folders are created by pipeline and research sessions; once idle they hold
+clones and worktrees nobody returns to. The `session-dirs` category removes the WHOLE folder with
+`rm -rf`, so it needs evidence for everything in it:
+
+1. no regular file (outside `.git`, `node_modules`, `.venv`, `Pods`) touched for `HYG_SESSION_AGE_HOURS`, and
+   nobody's cwd inside;
+2. no `HEAD` file outside a `.git` path (a bare repo or separate git-dir would go unchecked);
+3. at least ONE nested repo. A folder with no git repo is research notes or review output, not a
+   checkout: it is kept (`no-nested-repo`). Measured 2026-11-03: the earlier rule removed 150 such
+   folders in one run on the reference Mac;
+4. every nested repo passes `git_safe` with the folder as the deletion boundary: repo config that can run a
+   command (filter drivers, fsmonitor, hooksPath …) or submodules ⇒ kept unread; dirty ⇒ kept; a full
+   clone with a stash or a local branch no remote ref (or the GitHub default branch) holds ⇒ kept; a full
+   clone with a registered worktree (`.git/worktrees/*/gitdir`) that resolves OUTSIDE the folder and still
+   exists, or is locked ⇒ kept (`clone-has-live-worktree-outside`: rm of the clone would orphan it —
+   no HEAD, no index, no objects);
+5. HEAD on a remote ref, in the GitHub default branch, or a merged PR (same tests as worktrees).
+
+"A local branch of the parent repo holds this worktree's HEAD" (`branch-kept-in-parent-repo`) is
+**gated** behind `HYG_SESSION_PARENT_BRANCH_OK=1`, default 0. It loosens rule 5 of the worktree model
+("unpushed ⇒ KEPT"); the worktrees category never uses it. Turning it on by default is a separate,
+explicit ruling.
+
+`tests/hygiene-dev-caches.test.sh` holds the fixtures (no-repo folder kept, clone with an outside worktree
+kept and that worktree still working, the gate off and on), and `tests/hygiene-port-combined.test.sh`
+proves the worktrees pass and `session-dirs` never disagree in the destructive direction at their defaults.
+
+## Developer caches
+
+- `gradle`: `~/.gradle/wrapper/dists/*` and `daemon/*` older than `HYG_GRADLE_AGE_DAYS`, never the newest two,
+  never a version a running process names. Re-downloadable; an offline build is the cost.
+- `ios`: `iOS DeviceSupport/*` older than `HYG_DEVICE_SUPPORT_AGE_DAYS`, never the newest (Xcode re-copies it on
+  connect); simulators only when their runtime is gone (`simctl delete`). Skipped while Xcode or Simulator runs.
+  `Xcode/Archives` is never a candidate.
+- `android`: `~/.android/cache/*` only. AVDs and SDK images are user data — reported, never removed.
+- `pkg-caches`: `~/Library/Caches/CocoaPods` with no file newer than `HYG_PKG_CACHE_AGE_DAYS`.
+
+## The run lock
+
+`run` takes `HYG_LOCK` with an atomic `mkdir`; a lock older than 6 h is a crashed run and is taken over by
+`rmdir` + `mkdir`, so its mtime restarts (otherwise every run in the next hours would "take over" too and
+run concurrently). The lock is released with `rmdir`, never `rm -rf`: `HYG_LOCK` can come from config, and a
+directory with content, a file or a symlink at that path is refused untouched.
 
 ## launchd does not give you a PATH
 

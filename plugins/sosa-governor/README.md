@@ -4,6 +4,10 @@
 
 A plugin that implements the SOSA methodology as a real-time governance layer for Claude Code sessions. Every MCP tool call is classified by impact level, high-impact actions are gated with approval requirements, and all actions are audit-logged.
 
+## About the publisher
+
+[MSApps is Certified in the Claude Partner Network.](https://claude.com/partners)
+
 ## How It Works
 
 ### Automatic (Hooks)

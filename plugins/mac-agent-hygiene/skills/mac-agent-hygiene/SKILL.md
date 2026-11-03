@@ -1,7 +1,7 @@
 ---
 name: mac-agent-hygiene
 description: This skill should be used when the user asks to "clean up the Mac", "the disk is full", "free disk space", "why is my Mac full", "stale worktrees", "remove old worktrees", "install the hygiene agent", "schedule a cleanup every few hours", "schedule a daily cleanup", "hygiene status", "what is eating my disk", "clean Gradle / Xcode / iOS simulators / Android caches", "clean up old agent session folders", or when a Mac that runs Claude Code agents is slow, swapping, or has little free space. Provides the plan → confirm → apply routine behind the mac-agent-hygiene MCP tools and the LaunchAgent that runs every 4 hours.
-version: 0.2.0
+version: 0.1.0
 ---
 
 # Mac Agent Hygiene
@@ -45,8 +45,8 @@ Without the MCP server (plain shell): `bash scripts/hygiene.sh status | plan | r
 | `plugin-clones` | `~/.claude/plugins/cache/temp_git_*` older than 24 h | younger clones (an install may still be using them) |
 | `browser-caches` | inside each `~/.cache/playwright-*` profile, ONLY: `Default/Cache`, `Default/Code Cache`, `Default/GPUCache`, `Default/Service Worker/CacheStorage` + `ScriptCache`, Dawn / Graphite / shader caches, `BrowserMetrics*` | Cookies, Local Storage, IndexedDB, Login Data, Local State, Preferences, Session Storage, Network — the profile IS a login; any profile with a `SingletonLock` or open files is skipped whole |
 | `model-caches` | the directories in `HYG_MODEL_CACHES` (default `~/.cache/whisper`, `~/.cache/codex-runtimes`), idle > `HYG_MODEL_CACHE_AGE_DAYS` (7) | when a process has them open or they were used this week |
-| `worktrees` | a linked worktree under any `HYG_WT_ROOTS` `dir:glob` pair (default `~/code:*wt-*` and `~/code/wt:*`) that is untouched > `HYG_WT_AGE_DAYS` (7), is nobody's cwd, has an empty `git status --porcelain`, and whose HEAD is on a remote-tracking ref, equals the head of a merged PR (`gh pr list --state merged`), is already in the GitHub default branch (`gh api repos/R/compare/SHA...main` is ahead/identical — stale remote refs), or is held by a local branch of the parent repo (the branch and its commits stay there after the worktree goes) | dirty, unpushed, unmerged, in-use, recently touched, or a full clone (`.git` is a directory, not a file) |
-| `session-dirs` | a plain (non-git) agent session folder directly under `HYG_SESSION_ROOT` (`~/code/wt`) with no file touched for `HYG_SESSION_AGE_HOURS` (24), nobody's cwd, and EVERY nested repo / worktree clean and pushed (the worktree test; a full clone's local branches each pass when a remote-tracking ref or the GitHub default branch holds their tip); parent repos' worktree metadata is pruned after | the whole folder, if any one nested repo is dirty, unpushed or unreadable |
+| `worktrees` | a linked worktree under `HYG_WT_ROOT` (default `~/code`) — a direct child matching `HYG_WT_GLOB` (default `*wt-*`), or up to `HYG_WT_DEPTH` (3) levels below a top-level dir in `HYG_WT_NESTED` (default `wt _worktrees`, i.e. `~/code/wt/{sup,ref,pipe}-*/...` and `~/code/_worktrees/...`) — that is untouched > `HYG_WT_AGE_DAYS` (7), is nobody's cwd, has an empty `git status --porcelain`, and whose HEAD is on a remote-tracking ref, equals the head of a merged PR (`gh pr list --state merged`), sits on the branch of a merged PR whose commits (`gh pr view --json commits`) match every local-only commit subject (rebased / force-pushed heads), or is already in the GitHub default branch (`in-github-default-branch`: `gh api repos/R/compare/SHA...main` is ahead/identical — stale remote refs) | dirty, unpushed, unmerged, in-use, recently touched, or a full clone (`.git` is a directory, not a file) |
+| `session-dirs` | a plain (non-git) agent session folder directly under `HYG_SESSION_ROOT` (`~/code/wt`) with no file touched for `HYG_SESSION_AGE_HOURS` (24), nobody's cwd, at least one nested repo, and EVERY nested repo / worktree clean and pushed (the worktree test; a full clone's local branches each pass when a remote-tracking ref or the GitHub default branch holds their tip); parent repos' worktree metadata is pruned after. Optional, off by default: `HYG_SESSION_PARENT_BRANCH_OK=1` also accepts a clean linked worktree whose HEAD a branch of its parent repo (outside the folder) holds (`branch-kept-in-parent-repo`) | the whole folder, if any one nested repo is dirty, unpushed or unreadable; a folder with no git repo (`no-nested-repo`); a folder holding a full clone whose registered worktree lives outside it (`clone-has-live-worktree-outside`) |
 | `gradle` | `~/.gradle/wrapper/dists/*` and `~/.gradle/daemon/*` versions older than `HYG_GRADLE_AGE_DAYS` (30) | the newest two of each, and any version a running Gradle process names |
 | `ios` | `~/Library/Developer/Xcode/iOS DeviceSupport/*` older than `HYG_DEVICE_SUPPORT_AGE_DAYS` (90) (Xcode re-copies it when the device connects); simulators whose runtime is gone (`xcrun simctl delete`) | the newest DeviceSupport; every simulator whose runtime is installed; everything while Xcode builds or Simulator runs; `Xcode/Archives` is never a candidate |
 | `android` | `~/.android/cache/*` older than `HYG_ANDROID_CACHE_AGE_DAYS` (7) | AVDs (`~/.android/avd`) and SDK system images / build-tools — user data, sized by `hygiene_status`, never removed |
@@ -67,13 +67,15 @@ Optional file `~/.config/mac-agent-hygiene/config.env`, sourced by the script:
 ```bash
 HYG_WT_ROOT="$HOME/code"      # where agent worktrees live
 HYG_WT_GLOB="*wt-*"           # how they are named
+HYG_WT_NESTED="wt _worktrees" # top-level dirs whose nested worktrees are agent-owned ("" = off)
+HYG_WT_DEPTH=3                # how deep under HYG_WT_ROOT to look
 HYG_WT_AGE_DAYS=7
 HYG_MODEL_CACHES="$HOME/.cache/whisper $HOME/.cache/codex-runtimes"
 HYG_MODEL_CACHE_AGE_DAYS=7    # model caches go when not MODIFIED this long (a read does not count)
 HYG_WT_MERGED_PR_CHECK=1      # 0 = no gh calls (no merged-PR or default-branch check)
 HYG_GH_SHA_CHECK_MAX=500      # gh compare calls per run; over the cap ⇒ keep
-HYG_WT_ROOTS="$HOME/code:*wt-* $HOME/code/wt:*"   # extra worktree roots, dir:glob pairs
 HYG_SESSION_ROOT="$HOME/code/wt"; HYG_SESSION_AGE_HOURS=24
+HYG_SESSION_PARENT_BRANCH_OK=0  # 1 = a session worktree held only by a parent-repo branch is reclaimable
 HYG_GRADLE_AGE_DAYS=30; HYG_DEVICE_SUPPORT_AGE_DAYS=90; HYG_ANDROID_CACHE_AGE_DAYS=7
 HYG_PKG_CACHES="$HOME/Library/Caches/CocoaPods"; HYG_PKG_CACHE_AGE_DAYS=30
 ```
