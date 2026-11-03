@@ -24,6 +24,11 @@
 #                    commit subject matches one of the PR's commits. Dirty / unpushed / in-use: KEPT.
 #                    Note: "clean" is `git status --porcelain`, so gitignored files (a local .env,
 #                    node_modules) go with the worktree. The branch ref stays — nothing is unrecoverable.
+#   plugin-versions  superseded ~/.claude/plugins/cache/<marketplace>/<plugin>/<version> dirs: NOT in
+#                    installed_plugins.json, NOT among the newest HYG_PLUGIN_VERSION_KEEP (by version AND
+#                    by mtime), no file touched for HYG_PLUGIN_VERSION_MIN_AGE_MIN, nobody's cwd, and
+#                    `lsof -t +D` empty within HYG_LSOF_TIMEOUT_S. Any doubt (unparseable list, lsof
+#                    timeout/error, undatable dir, plugin not in the list): KEPT. Re-downloadable.
 #
 # Config: ~/.config/mac-agent-hygiene/config.env (optional). Environment variables win over the
 # config file, so an MCP call can override one value for one run.
@@ -33,6 +38,7 @@ umask 077
 
 # ---------- configuration: defaults < config file < environment ----------
 VARS="HYG_LOG HYG_DERIVED_DATA HYG_PLUGIN_CACHE HYG_PLUGIN_CLONE_MIN_AGE_MIN HYG_PW_GLOB HYG_MODEL_CACHES HYG_MODEL_CACHE_AGE_DAYS HYG_WT_ROOT HYG_WT_GLOB HYG_WT_NESTED HYG_WT_DEPTH HYG_WT_AGE_DAYS HYG_WT_MERGED_PR_CHECK HYG_GIT HYG_GH"
+VARS="$VARS HYG_PLUGIN_INSTALLED HYG_PLUGIN_VERSION_KEEP HYG_PLUGIN_VERSION_MIN_AGE_MIN HYG_LSOF_TIMEOUT_S HYG_JQ HYG_LSOF HYG_PERL"   # plugin-versions (card 2frXvtE1)
 for v in $VARS; do eval "ENV_$v=\"\${$v-}\""; done
 CONF="${XDG_CONFIG_HOME:-$HOME/.config}/mac-agent-hygiene/config.env"
 # shellcheck disable=SC1090
@@ -54,6 +60,14 @@ HYG_WT_AGE_DAYS="${HYG_WT_AGE_DAYS:-7}"
 HYG_WT_MERGED_PR_CHECK="${HYG_WT_MERGED_PR_CHECK:-1}"
 HYG_DERIVED_DATA="${HYG_DERIVED_DATA%/}"; HYG_PLUGIN_CACHE="${HYG_PLUGIN_CACHE%/}"
 case "$HYG_WT_AGE_DAYS$HYG_MODEL_CACHE_AGE_DAYS$HYG_PLUGIN_CLONE_MIN_AGE_MIN$HYG_WT_DEPTH" in *[!0-9]*) echo "age settings must be integers" >&2; exit 2;; esac
+# plugin-versions (card 2frXvtE1)
+HYG_PLUGIN_INSTALLED="${HYG_PLUGIN_INSTALLED:-$(dirname "$HYG_PLUGIN_CACHE")/installed_plugins.json}"
+HYG_PLUGIN_VERSION_KEEP="${HYG_PLUGIN_VERSION_KEEP:-2}"
+HYG_PLUGIN_VERSION_MIN_AGE_MIN="${HYG_PLUGIN_VERSION_MIN_AGE_MIN:-2880}"
+HYG_LSOF_TIMEOUT_S="${HYG_LSOF_TIMEOUT_S:-30}"
+case "$HYG_PLUGIN_VERSION_KEEP$HYG_PLUGIN_VERSION_MIN_AGE_MIN$HYG_LSOF_TIMEOUT_S" in *[!0-9]*) echo "age settings must be integers" >&2; exit 2;; esac
+[ "$HYG_PLUGIN_VERSION_KEEP" -ge 2 ] || { echo "HYG_PLUGIN_VERSION_KEEP must be >= 2" >&2; exit 2; }
+[ "$HYG_LSOF_TIMEOUT_S" -ge 1 ] || { echo "HYG_LSOF_TIMEOUT_S must be >= 1" >&2; exit 2; }
 
 GIT="${HYG_GIT:-}"
 if [ -z "$GIT" ]; then GIT=/usr/bin/git; [ -x "$HOME/.local/bin/git" ] && GIT="$HOME/.local/bin/git"; fi   # honour a user's git shim unless HYG_GIT is explicit
@@ -63,6 +77,10 @@ if [ -z "$GH" ]; then
     [ -n "$c" ] && [ -x "$c" ] && { GH="$c"; break; }
   done
 fi
+first_exec(){ local c; for c in "$@"; do [ -n "$c" ] && [ -x "$c" ] && { printf '%s' "$c"; return 0; }; done; return 0; }
+JQ="${HYG_JQ:-$(first_exec /usr/bin/jq /opt/homebrew/bin/jq /usr/local/bin/jq)}"
+LSOF="${HYG_LSOF:-$(first_exec /usr/sbin/lsof /usr/bin/lsof)}"
+PERL="${HYG_PERL:-$(first_exec /usr/bin/perl)}"
 
 # Cache subfolders that Chromium regenerates. Fixed in code on purpose — not user-editable.
 PW_CACHE_ALLOWLIST=(
@@ -197,12 +215,88 @@ check_worktree(){ local d="$1" b h repo f st rb ro rn gd cdir
   fi
   REASON=unpushed-commits; return 1; }
 
+# ---------- plugin-versions (card 2frXvtE1) — fail closed: every unknown is a KEEP with a reason ----------
+# installed_plugins.json → "$TMPD/pv-installed": <cache>/<marketplace>/<plugin> TAB installPath TAB version.
+# Parsed ONCE per run; a missing jq, unreadable file, or anything but {plugins:{"p@m":[{...}]}} keeps everything.
+PV_STATE=""; PV_INST="$TMPD/pv-installed"
+# shellcheck disable=SC2016  # jq program: $c / $k are jq variables
+pv_load_installed(){
+  if [ -z "$PV_STATE" ]; then
+    if [ -z "$JQ" ] || [ ! -x "$JQ" ]; then PV_STATE=installed-list-no-jq
+    elif [ ! -r "$HYG_PLUGIN_INSTALLED" ]; then PV_STATE=installed-list-unreadable
+    elif "$JQ" -r --arg c "$HYG_PLUGIN_CACHE" '
+        if (.plugins | type) != "object" then error("no plugins object") else . end
+        | .plugins | to_entries[] | (.key | capture("^(?<p>[^/]+)@(?<m>[^@/]+)$")) as $k
+        | .value[] | "\($c)/\($k.m)/\($k.p)\t\(.installPath // "")\t\(.version // "")"' \
+        "$HYG_PLUGIN_INSTALLED" > "$PV_INST" 2>/dev/null; then PV_STATE=ok
+    else PV_STATE=installed-list-unparseable; fi
+  fi
+  [ "$PV_STATE" = ok ] && return 0; REASON=$PV_STATE; return 1; }
+# Basenames of the newest $2 version dirs under plugin dir $1, by version order AND by mtime (union).
+# Exit non-zero (⇒ KEEP) if a sibling cannot be read or dated.
+# shellcheck disable=SC2016  # perl program
+pv_newest(){ [ -n "$PERL" ] && [ -x "$PERL" ] || return 3
+  "$PERL" -e '
+    my ($d, $n) = @ARGV; opendir(my $h, $d) or exit 3;
+    my @v = grep { !/^\./ && -d "$d/$_" && !-l "$d/$_" } readdir $h; closedir $h;
+    my %m; for (@v) { my @s = stat "$d/$_" or exit 3; $m{$_} = $s[9]; }
+    sub vc { my @x = split /(\d+)/, $_[0]; my @y = split /(\d+)/, $_[1];
+      while (@x || @y) { my $p = shift @x; my $q = shift @y;
+        return -1 unless defined $p; return 1 unless defined $q;
+        my $c = ($p =~ /^\d+$/ && $q =~ /^\d+$/) ? $p <=> $q : $p cmp $q; return $c if $c; } 0 }
+    my @byv = sort { vc($b, $a) } @v; my @bym = sort { $m{$b} <=> $m{$a} } @v;
+    my %top; $top{$_} = 1 for (grep defined, @byv[0 .. $n-1], @bym[0 .. $n-1]);
+    print "$_\n" for sort keys %top;' "$1" "$2"; }
+# 0 = no live process holds a file or cwd under $1. lsof bounded by a perl alarm. Any pid printed ⇒ in
+# use (lsof exits 1 under +D even when it finds holders, so rc alone proves nothing). A timeout (rc>128),
+# an error (stderr, or rc other than 0/1), or a missing lsof/perl is "unmeasured" ⇒ 1 ⇒ KEEP.
+pv_idle(){ local out rc
+  [ -n "$LSOF" ] && [ -x "$LSOF" ] || { REASON=lsof-unavailable; return 1; }
+  [ -n "$PERL" ] && [ -x "$PERL" ] || { REASON=perl-unavailable-cannot-bound-lsof; return 1; }
+  out=$("$PERL" -e 'alarm shift @ARGV; exec @ARGV or exit 127' "$HYG_LSOF_TIMEOUT_S" "$LSOF" -w -t +D "$1" 2>"$TMPD/pv-lsof.err"); rc=$?
+  [ $rc -gt 128 ] && { REASON=lsof-timeout; return 1; }
+  [ -n "$out" ] && { REASON=open-by-live-process; return 1; }
+  { [ $rc = 0 ] || [ $rc = 1 ]; } && [ ! -s "$TMPD/pv-lsof.err" ] && return 0
+  REASON=lsof-error; return 1; }
+check_plugin_version(){ local v="$1" pd mk r_pd r_ip r_ver known=1 inst=1 top tops n="$HYG_PLUGIN_VERSION_MIN_AGE_MIN"
+  pd=$(dirname "$v"); mk=$(dirname "$pd")
+  [ "$(dirname "$mk")" = "$HYG_PLUGIN_CACHE" ] || { REASON=outside-plugin-cache; return 1; }
+  case "$(basename "$mk")" in temp_git_*) REASON=not-a-version-dir; return 1;; esac
+  { [ -d "$v" ] && [ ! -L "$v" ] && [ ! -L "$pd" ] && [ ! -L "$mk" ]; } || { REASON=not-a-plain-directory; return 1; }
+  pv_load_installed || return 1
+  while IFS=$'\t' read -r r_pd r_ip r_ver; do
+    [ "$r_pd" = "$pd" ] || continue
+    r_ip="${r_ip%/}"
+    [ -n "$r_ip$r_ver" ] || { REASON=installed-entry-without-version; return 1; }
+    [ "$r_ip" = "$v" ] && inst=0
+    [ -n "$r_ver" ] && [ "$pd/$r_ver" = "$v" ] && inst=0
+    # the plugin is laid out as <plugin>/<version>/ only if its installed copy is a direct child of $pd
+    { [ -n "$r_ip" ] && [ "$(dirname "$r_ip")" = "$pd" ]; } || { [ -n "$r_ver" ] && [ -d "$pd/$r_ver" ]; } && known=0
+  done < "$PV_INST"
+  [ $inst = 1 ] || { REASON=installed-version; return 1; }
+  [ $known = 0 ] || { REASON=plugin-not-in-installed-list; return 1; }
+  tops=$(pv_newest "$pd" "$HYG_PLUGIN_VERSION_KEEP") || { REASON=cannot-rank-versions; return 1; }
+  [ -n "$tops" ] || { REASON=cannot-rank-versions; return 1; }
+  while IFS= read -r top; do [ "$top" = "$(basename "$v")" ] && { REASON=newest-$HYG_PLUGIN_VERSION_KEEP; return 1; }; done <<< "$tops"
+  if [ -z "$(/usr/bin/find "$v" -maxdepth 0 -mmin +"$n" 2>/dev/null)" ]; then
+    if [ -n "$(/usr/bin/find "$v" -maxdepth 0 -mmin -"$n" 2>/dev/null)" ]; then REASON=younger-than-age; else REASON=cannot-date; fi
+    return 1; fi
+  [ -z "$(/usr/bin/find "$v" -mmin -"$n" -print -quit 2>/dev/null)" ] || { REASON=touched-within-age; return 1; }
+  cwd_inside "$v" && { REASON="a-process-is-inside"; return 1; }
+  pv_idle "$v" || return 1
+  REASON=superseded-plugin-version; return 0; }
+list_plugin_versions(){ local d
+  [ -d "$HYG_PLUGIN_CACHE" ] || return 0
+  /usr/bin/find "$HYG_PLUGIN_CACHE" -mindepth 3 -maxdepth 3 -type d 2>/dev/null | /usr/bin/sort |
+  while IFS= read -r d; do case "${d#"$HYG_PLUGIN_CACHE"/}" in temp_git_*) continue;; esac; printf '%s\n' "$d"; done; }
+
 check_item(){ # category path → 0 removable (REASON=why) / 1 keep (REASON=why)
   case "$2" in "$HOME"/*) ;; *) REASON=outside-home; return 1;; esac
   has_dot_component "$2" && { REASON=dot-component-in-path; return 1; }
   case "$1" in
     derived-data) check_derived "$2";; plugin-clones) check_clone "$2";; browser-caches) check_pwcache "$2";;
-    model-caches) check_model "$2";; worktrees) check_worktree "$2";; *) REASON=unknown-category; return 1;; esac; }
+    model-caches) check_model "$2";; worktrees) check_worktree "$2";;
+    plugin-versions) check_plugin_version "$2";; *) REASON=unknown-category; return 1;; esac; }
 
 # ---------- candidates ----------
 candidates(){  # category<TAB>path
@@ -215,6 +309,7 @@ candidates(){  # category<TAB>path
   done
   for d in $HYG_MODEL_CACHES; do [ -d "$d" ] && printf 'model-caches\t%s\n' "${d%/}"; done
   list_worktrees | while IFS= read -r d; do printf 'worktrees\t%s\n' "$d"; done
+  list_plugin_versions | while IFS= read -r d; do printf 'plugin-versions\t%s\n' "$d"; done
 }
 
 plan(){ local cat p k prev="" n=0 r=0 t0=$SECONDS
@@ -254,6 +349,7 @@ status(){ local prof lock=0 inu=0 nprof=0 d stale=0 total=0
   printf 'disk_free\t%s\ndisk_used_pct\t%s\n' "$(dfree)" "$(dpct)"
   printf 'derived_data_kb\t%s\n' "$( [ -d "$HYG_DERIVED_DATA" ] && kb "$HYG_DERIVED_DATA" || echo 0)"
   printf 'plugin_clones\t%s\n' "$(list_clones | /usr/bin/wc -l | tr -d ' ')"
+  printf 'plugin_version_dirs\t%s\n' "$(list_plugin_versions | /usr/bin/wc -l | tr -d ' ')"
   while IFS= read -r prof; do [ -n "$prof" ] || continue; nprof=$((nprof+1)); [ -L "$prof/SingletonLock" ] && lock=$((lock+1)); inuse "$prof" && inu=$((inu+1)); done < <(list_profiles)
   printf 'browser_profiles\t%s\nbrowser_profiles_locked\t%s\nbrowser_profiles_in_use\t%s\n' "$nprof" "$lock" "$inu"
   while IFS= read -r d; do [ -n "$d" ] || continue; total=$((total+1)); wt_recently_touched "$d" || stale=$((stale+1)); done < <(list_worktrees)
