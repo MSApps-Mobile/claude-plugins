@@ -63,6 +63,34 @@ other than one array whose entries all carry a string `.session`. A missing regi
 idle `HYG_ARTIFACT_IDLE_HOURS`: inside a repo only when git-ignored with no tracked file; outside a repo only
 `node_modules`, `.next` or `.turbo` beside a `package.json`. A dir holding any repo is kept.
 
+### Retention: dirty and unpushed work (opt-in)
+
+With `HYG_RETENTION_DAYS` and an executable `HYG_RESCUE_CMD` set, a direct child of `HYG_SESSION_ROOT` idle that long leaves even when
+dirty or unpushed, only after an archive is verified: per repo a patch of tracked edits (deleted paths listed instead) and a bundle of
+what no remote holds, stash entries included; plus untracked and loose files up to 5 MiB. Idle also reads each repo's `.git/index`,
+`HEAD` and `logs/HEAD`. A non-terminal registry row counts as alive while its start date is within 14 days, and always when it has none.
+
+Never archived, so lost with the folder: ignored files, and loose or untracked files named (case folded) `.env*`, `.envrc`, `*.pem`,
+`*.key`, `*.p8`, `*.p12`, `*.pfx`, `*.jks`, `*.keystore`, `id_rsa*`, `id_dsa*`, `id_ecdsa*`, `id_ed25519*`, `.npmrc`, `.netrc`, `.pypirc`,
+`.git-credentials`, `credentials`, `*.tfstate*`, `*credentials*.json`, `*service-account*.json` (each listed by name). A file reached
+through a symlinked parent dir lies outside the folder: listed `outside-folder-not-archived`, never copied. The same names inside the patch of tracked edits or in a commit the bundle would carry
+(read from `rev-list --objects`, what the bundle packs)
+cannot be dropped without losing the commit, so they KEEP the folder (`rescue-denied-name-in-patch`, `rescue-denied-name-in-commits`).
+Files over 5 MiB are dropped and listed with size and sha256; symlinks are listed with their target. The rest of the archive lives as
+long as your bucket's lifecycle says.
+
+The archive is checked before it leaves: every git list is NUL-separated, so a Hebrew or quoted name is archived, and a listed path not
+on disk keeps the folder (`rescue-path-unresolved`); a copy that fails keeps it (`rescue-copy-failed`); every queued file must appear as
+`archived files/<path> <sha256>` or `dropped-over-archive-cap` in the manifest; each stash entry must get its bundle ref
+(`rescue-stash-refs-failed`); and the base64 parts must decode to `archive_sha256`. The ledger is `archived.tsv`, written once the upload
+is verified. Each repo also carries `staged.patch` (the index side of a file edited again after `git add`). Bundles are cut at
+`--not --remotes`: a remote branch deleted after a squash merge can leave a stale tracking ref that still counts as held.
+
+Kept with a named blocker: an unverified upload, commits and patches over 20 MB, repo config that can run commands, submodules,
+`core.worktree` elsewhere, a bare repo or separate git-dir, a linked worktree outside the folder. These folder-level guards, and the
+registry check, apply in one place (`retention_decides`) to both passes: a linked worktree directly in `~/code/wt` gets them too. `hygiene_status` counts these past
+twice the window as `retention_overdue`: only their owner can decide them. To stop retention, delete `HYG_RETENTION_DAYS` from the config.
+
 **What these guards do not read, and which goes with the `rm -rf`:**
 
 - ignored files in a clone, such as a local `.env`; keep anything you need outside `~/code/wt`;

@@ -32,6 +32,9 @@
 #                    for HYG_SESSION_AGE_HOURS, nobody's cwd, the session not alive in HYG_SESSIONS_JSON,
 #                    and the folder's own clone plus EVERY git repo or worktree nested inside is clean and
 #                    pushed (same test as worktrees). One dirty or unpushed repo keeps the whole folder.
+#                    Retention (HYG_RETENTION_DAYS, off by default): a direct child of HYG_SESSION_ROOT idle that long is
+#                    removed even when dirty or unpushed, ONLY after HYG_RESCUE_CMD has verified an archive of its
+#                    commits, patches and small untracked files. See rescue_build; ignored files are NOT archived.
 #   build-artifacts  node_modules, .next, dist, build, .turbo, coverage dirs inside any ~/code/wt/<session>
 #                    folder (down to HYG_ARTIFACT_DEPTH) when the session folder is idle HYG_ARTIFACT_IDLE_HOURS,
 #                    nobody's cwd is inside it, the session is not alive in HYG_SESSIONS_JSON, the dir holds
@@ -53,7 +56,7 @@ set -u
 umask 077
 
 # ---------- configuration: defaults < config file < environment ----------
-VARS="HYG_LOG HYG_DERIVED_DATA HYG_PLUGIN_CACHE HYG_PLUGIN_CLONE_MIN_AGE_MIN HYG_PW_GLOB HYG_MODEL_CACHES HYG_MODEL_CACHE_AGE_DAYS HYG_WT_ROOT HYG_WT_GLOB HYG_WT_ROOTS HYG_WT_AGE_DAYS HYG_WT_MERGED_PR_CHECK HYG_GH_SHA_CHECK_MAX HYG_GIT HYG_GH HYG_SESSION_ROOT HYG_SESSION_AGE_HOURS HYG_GRADLE_HOME HYG_GRADLE_AGE_DAYS HYG_DEVICE_SUPPORT HYG_DEVICE_SUPPORT_AGE_DAYS HYG_SIM_DEVICES HYG_ANDROID_HOME HYG_ANDROID_CACHE_AGE_DAYS HYG_ANDROID_SDK HYG_PKG_CACHES HYG_PKG_CACHE_AGE_DAYS HYG_LOCK HYG_SESSIONS_JSON HYG_ARTIFACT_IDLE_HOURS HYG_ARTIFACT_DEPTH HYG_JQ HYG_PLAN_BUDGET_MIN HYG_REPORT_AGE_DAYS HYG_STATE_DIR"
+VARS="HYG_LOG HYG_DERIVED_DATA HYG_PLUGIN_CACHE HYG_PLUGIN_CLONE_MIN_AGE_MIN HYG_PW_GLOB HYG_MODEL_CACHES HYG_MODEL_CACHE_AGE_DAYS HYG_WT_ROOT HYG_WT_GLOB HYG_WT_ROOTS HYG_WT_AGE_DAYS HYG_WT_MERGED_PR_CHECK HYG_GH_SHA_CHECK_MAX HYG_GIT HYG_GH HYG_SESSION_ROOT HYG_SESSION_AGE_HOURS HYG_GRADLE_HOME HYG_GRADLE_AGE_DAYS HYG_DEVICE_SUPPORT HYG_DEVICE_SUPPORT_AGE_DAYS HYG_SIM_DEVICES HYG_ANDROID_HOME HYG_ANDROID_CACHE_AGE_DAYS HYG_ANDROID_SDK HYG_PKG_CACHES HYG_PKG_CACHE_AGE_DAYS HYG_LOCK HYG_SESSIONS_JSON HYG_ARTIFACT_IDLE_HOURS HYG_ARTIFACT_DEPTH HYG_JQ HYG_PLAN_BUDGET_MIN HYG_REPORT_AGE_DAYS HYG_STATE_DIR HYG_RETENTION_DAYS HYG_RETENTION_MAX_PER_RUN HYG_RESCUE_CMD"
 for v in $VARS; do eval "ENV_$v=\"\${$v-}\""; done
 CONF="${XDG_CONFIG_HOME:-$HOME/.config}/mac-agent-hygiene/config.env"
 # shellcheck disable=SC1090
@@ -81,6 +84,21 @@ HYG_ARTIFACT_DEPTH="${HYG_ARTIFACT_DEPTH:-6}"
 HYG_PLAN_BUDGET_MIN="${HYG_PLAN_BUDGET_MIN:-12}"   # worktrees + build-artifacts + session-dirs wall clock; what is left waits for the next run. 0 = no limit
 HYG_REPORT_AGE_DAYS="${HYG_REPORT_AGE_DAYS:-7}"
 HYG_STATE_DIR="${HYG_STATE_DIR:-$HOME/.local/state/mac-agent-hygiene}"
+HYG_RETENTION_DAYS="${HYG_RETENTION_DAYS:-}"          # unset = no retention: dirty or unpushed work is simply kept
+HYG_RETENTION_MAX_PER_RUN="${HYG_RETENTION_MAX_PER_RUN:-10}"
+HYG_RESCUE_CMD="${HYG_RESCUE_CMD:-}"                  # <dir> <object-prefix>; exit 0 = every file in <dir> stored and verified. Unset = keep
+RESCUE_MAX_BYTES=$((20*1024*1024)); RESCUE_FILE_MAX_BYTES=$((5*1024*1024)); RESCUE_PART_BYTES=3145728; RESCUE_MAX_PARTS=9
+# Never leaves this Mac, by name (S1, review 5748468367). A loose or untracked file with one of these names is
+# dropped and listed; one inside the patch or in an unpushed commit keeps the WHOLE folder (rescue-denied-name-*).
+# Matched without regard to case (name_denied).
+RESCUE_DENY_NAMES='.env .env.* .envrc *.pem *.key *.p8 *.p12 *.pfx *.jks *.keystore id_rsa* id_dsa* id_ecdsa* id_ed25519* .npmrc .netrc .pypirc .git-credentials credentials *.tfstate *.tfstate.* *credentials*.json *service-account*.json'
+# Split once with globbing off: an unquoted `for p in $RESCUE_DENY_NAMES` expands `*.pem` against the cwd, so a
+# decoy x.pem in the cwd turned the pattern into the literal name x.pem and server.pem went out.
+set -f
+# shellcheck disable=SC2206  # word splitting is the point; globbing is off
+RESCUE_DENY=( $RESCUE_DENY_NAMES )
+set +f
+GRACE_REGISTRY_DAYS=14
 HYG_GRADLE_HOME="${HYG_GRADLE_HOME:-${GRADLE_USER_HOME:-$HOME/.gradle}}"; HYG_GRADLE_HOME="${HYG_GRADLE_HOME%/}"
 HYG_GRADLE_AGE_DAYS="${HYG_GRADLE_AGE_DAYS:-30}"
 HYG_DEVICE_SUPPORT="${HYG_DEVICE_SUPPORT:-$HOME/Library/Developer/Xcode/iOS DeviceSupport}"; HYG_DEVICE_SUPPORT="${HYG_DEVICE_SUPPORT%/}"
@@ -93,7 +111,9 @@ HYG_PKG_CACHES="${HYG_PKG_CACHES-$HOME/Library/Caches/CocoaPods}"
 HYG_PKG_CACHE_AGE_DAYS="${HYG_PKG_CACHE_AGE_DAYS:-30}"
 HYG_LOCK="${HYG_LOCK:-${TMPDIR:-/tmp}/mac-agent-hygiene.lock}"
 HYG_DERIVED_DATA="${HYG_DERIVED_DATA%/}"; HYG_PLUGIN_CACHE="${HYG_PLUGIN_CACHE%/}"
-case "$HYG_WT_AGE_DAYS$HYG_MODEL_CACHE_AGE_DAYS$HYG_PLUGIN_CLONE_MIN_AGE_MIN$HYG_SESSION_AGE_HOURS$HYG_GRADLE_AGE_DAYS$HYG_DEVICE_SUPPORT_AGE_DAYS$HYG_ANDROID_CACHE_AGE_DAYS$HYG_PKG_CACHE_AGE_DAYS$HYG_GH_SHA_CHECK_MAX$HYG_ARTIFACT_IDLE_HOURS$HYG_ARTIFACT_DEPTH$HYG_PLAN_BUDGET_MIN$HYG_REPORT_AGE_DAYS" in *[!0-9]*) echo "age settings must be integers" >&2; exit 2;; esac
+case "$HYG_WT_AGE_DAYS$HYG_MODEL_CACHE_AGE_DAYS$HYG_PLUGIN_CLONE_MIN_AGE_MIN$HYG_SESSION_AGE_HOURS$HYG_GRADLE_AGE_DAYS$HYG_DEVICE_SUPPORT_AGE_DAYS$HYG_ANDROID_CACHE_AGE_DAYS$HYG_PKG_CACHE_AGE_DAYS$HYG_GH_SHA_CHECK_MAX$HYG_ARTIFACT_IDLE_HOURS$HYG_ARTIFACT_DEPTH$HYG_PLAN_BUDGET_MIN$HYG_REPORT_AGE_DAYS$HYG_RETENTION_DAYS$HYG_RETENTION_MAX_PER_RUN" in *[!0-9]*) echo "age settings must be integers" >&2; exit 2;; esac
+# -mtime -0 matches nothing, so 0 would read every folder as idle and send dirty work after a day.
+case "$HYG_RETENTION_DAYS" in ""|[1-9]*) ;; *) echo "HYG_RETENTION_DAYS must be at least 1 (unset = off)" >&2; exit 2;; esac
 
 GIT="${HYG_GIT:-}"
 if [ -z "$GIT" ]; then GIT=/usr/bin/git; [ -x "$HOME/.local/bin/git" ] && GIT="$HOME/.local/bin/git"; fi   # honour a user's git shim unless HYG_GIT is explicit
@@ -122,6 +142,17 @@ emit(){ printf '%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "$5"; }   # category a
 inuse(){ /usr/sbin/lsof +D "$1" >/dev/null 2>&1; }
 path_key(){ printf '%s' "$1" | /usr/bin/shasum | /usr/bin/cut -c1-16; }
 # Answers that cost a tree walk are cached per run; apply drops them so its re-check reads the disk again.
+# The registry is written by routines and rows freeze when its writer stops. For retention only, a non-terminal
+# row counts as alive while its start date (first 10 characters) is within the grace window. No date ⇒ alive.
+session_row_is_recent(){ local n rows row dt cutoff; n=$(/usr/bin/basename "$1"); load_alive
+  [ "$ALIVE" = "*" ] && return 0
+  cutoff=$(/bin/date -v-${GRACE_REGISTRY_DAYS}d +%F)
+  rows=$("$JQ" -r '.[] | select(((.status // "") | IN("done","dead","stopped","failed","killed","finished")) | not) | [.session, ((.started_at // "") | tostring | .[0:10])] | @tsv' "$HYG_SESSIONS_JSON" 2>/dev/null) || return 0
+  while IFS=$'\t' read -r row dt; do [ -n "$row" ] || continue
+    case "$n" in "$row"|"$row"-*) ;; *) case "$row" in "$n"-*) ;; *) continue;; esac;; esac
+    case "$dt" in [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]) [ "$dt" \< "$cutoff" ] && continue;; esac
+    return 0
+  done <<< "$rows"; return 1; }
 drop_run_caches(){ /bin/rm -f "$TMPD"/inv-* "$TMPD"/idle-* "$TMPD"/inuse-* "$TMPD"/age-*; CWDS=""; ALIVE=""; ALIVE_LOADED=0; }
 inuse_cached(){ local f; f="$TMPD/inuse-$(path_key "$1")"
   [ -f "$f" ] || { if inuse "$1"; then echo 1; else echo 0; fi > "$f"; }; [ "$(/bin/cat "$f")" = 1 ]; }
@@ -282,11 +313,13 @@ check_worktree(){ local d="$1"
   [ -f "$d/.git" ] || { REASON=not-a-linked-worktree; return 1; }        # a full clone has a .git DIR — left alone
   wt_recently_touched "$d" && { REASON=touched-recently; return 1; }
   cwd_inside "$d" && { REASON=a-process-is-inside; return 1; }
-  git_safe "$d" "$d"; }
+  git_safe "$d" "$d" && return 0
+  case "$(/usr/bin/dirname "$d")" in "$HYG_SESSION_ROOT") retention_decides "$d" "$REASON"; return;; esac; return 1; }
 # git run on repos an agent made: repo-local config must not be able to run a command while we only
-# look (core.fsmonitor and hooks are the command-executing keys `status` would honour).
+# look (core.fsmonitor and hooks are the command-executing keys `status` would honour). autoRefreshIndex:
+# `git diff` otherwise rewrites a stat-dirty index, which is a write, and reads as a touch to retention_idle.
 GITS(){ GIT_CONFIG_NOSYSTEM=1 "$GIT" --no-optional-locks -c core.fsmonitor=false -c core.hooksPath=/dev/null \
-  -c core.untrackedCache=false -c diff.external= -c core.pager=cat "$@"; }
+  -c core.untrackedCache=false -c diff.external= -c diff.autoRefreshIndex=false -c core.pager=cat -c log.showSignature=false "$@"; }
 # Repo-local config keys that can make git run a program (filter drivers run during `status`). A repo
 # carrying any of them is KEPT unread: fail closed rather than try to neutralise every driver.
 CMD_CONFIG_RE='^(filter\.|include\.|includeif\.|core\.fsmonitor|core\.sshcommand|core\.gitproxy|core\.askpass|core\.editor|core\.pager|core\.hookspath|diff\.[^.]*\.(textconv|command)|merge\.[^.]*\.driver|credential\.|uploadpack\.|protocol\.)'
@@ -315,8 +348,9 @@ in_github_default(){ local repo="$1" sha="$2" key f n def
       > "$f" 2>/dev/null || echo 0 > "$f"
   fi
   [ "$(/bin/cat "$f")" = 1 ]; }
-git_safe(){ # repo/worktree dir, deletion boundary (the dir apply would rm) → 0 clean and on a remote ref or merged-PR head (REASON=pushed|merged-pr-head)
-  local d="$1" bound="${2:-$1}" b h repo f st br cdir rc rb wg tl iv rd
+# Can git's answers about this repo be trusted at all? Shared by git_safe and retention: a failure here
+# can never be rescued, because the archive would read the same repo through the same git.
+repo_trusted(){ local d="$1" tl rd
   repo_config_runs_commands "$d" && { REASON=repo-config-can-run-commands; return 1; }
   # status only inspects the work tree git resolves. A repo's core.worktree (or a broken .git that sends
   # discovery up to an outer repo) puts that somewhere other than $d: $d's own files are then checked
@@ -329,6 +363,24 @@ git_safe(){ # repo/worktree dir, deletion boundary (the dir apply would rm) → 
     || [ -d "$(GITS -C "$d" rev-parse --path-format=absolute --git-dir 2>/dev/null)/modules" ] \
     || GITS -C "$d" ls-files -s 2>/dev/null | /usr/bin/awk '$1=="160000"{f=1} END{exit !f}'; } \
     && { REASON=has-submodules; return 1; }   # gitlinks found by index mode 160000, not only by .gitmodules
+  return 0; }
+worktrees_inside(){ local d="$1" bound="$2" wtl wp wr rb
+    # Linked worktrees keep their HEAD, index and rebase state under $d/.git/worktrees/: the rm takes them
+    # even when the worktree folder lives elsewhere. KEEP when any registered worktree is outside the
+    # deletion boundary, or cannot be resolved (missing/prunable), or the list cannot be read (B1).
+    wtl=$(GITS -C "$d" worktree list --porcelain 2>/dev/null) || { REASON=git-worktree-list-failed; return 1; }
+    [ -n "$wtl" ] || { REASON=git-worktree-list-failed; return 1; }
+    rb=$(physical "$bound") || { REASON=boundary-unresolvable; return 1; }
+    [ -n "$rb" ] || { REASON=boundary-unresolvable; return 1; }
+    while IFS= read -r wp; do
+      case "$wp" in "worktree "*) wp="${wp#worktree }";; *) continue;; esac
+      wr=$(physical "$wp") || wr=""
+      case "$wr/" in "$rb"/*) ;; *) REASON=has-linked-worktrees; return 1;; esac
+    done <<< "$wtl"
+  return 0; }
+git_safe(){ # repo/worktree dir, deletion boundary (the dir apply would rm) → 0 clean and on a remote ref or merged-PR head (REASON=pushed|merged-pr-head)
+  local d="$1" bound="${2:-$1}" b h repo f st br cdir rc rb wg tl iv rd
+  repo_trusted "$d" || return 1
   # --untracked-files=all on the command line overrides a repo's status.showUntrackedFiles=no, which
   # would otherwise make untracked files read clean and go with the rm (PR #80 review B2).
   st=$(GITS -C "$d" -c diff.ignoreSubmodules=all status --porcelain --untracked-files=all --ignore-submodules=all 2>/dev/null) || { REASON=git-status-failed; return 1; }
@@ -343,19 +395,7 @@ git_safe(){ # repo/worktree dir, deletion boundary (the dir apply would rm) → 
   case "$repo" in *..*|.*|*/.*) repo="";; esac
   if [ -d "$d/.git" ]; then   # a full clone owns its stash, every local ref and its linked worktrees' git data
     [ -z "$(GITS -C "$d" stash list 2>/dev/null)" ] || { REASON=clone-has-stash; return 1; }
-    # Linked worktrees keep their HEAD, index and rebase state under $d/.git/worktrees/: the rm takes them
-    # even when the worktree folder lives elsewhere. KEEP when any registered worktree is outside the
-    # deletion boundary, or cannot be resolved (missing/prunable), or the list cannot be read (B1).
-    local wtl wp wr
-    wtl=$(GITS -C "$d" worktree list --porcelain 2>/dev/null) || { REASON=git-worktree-list-failed; return 1; }
-    [ -n "$wtl" ] || { REASON=git-worktree-list-failed; return 1; }
-    rb=$(physical "$bound") || { REASON=boundary-unresolvable; return 1; }
-    [ -n "$rb" ] || { REASON=boundary-unresolvable; return 1; }
-    while IFS= read -r wp; do
-      case "$wp" in "worktree "*) wp="${wp#worktree }";; *) continue;; esac
-      wr=$(physical "$wp") || wr=""
-      case "$wr/" in "$rb"/*) ;; *) REASON=has-linked-worktrees; return 1;; esac
-    done <<< "$wtl"
+    worktrees_inside "$d" "$bound" || return 1
     # Every local ref, not only branches: a commit held only by a tag (or notes, replace, bisect, ...)
     # is lost with the clone (B3). Remote-tracking refs are the yardstick, not candidates. A tag is
     # peeled to its commit; a ref that is not a commit fails --contains ⇒ KEEP.
@@ -398,23 +438,224 @@ git_safe(){ # repo/worktree dir, deletion boundary (the dir apply would rm) → 
   fi
   REASON=unpushed-commits; return 1; }
 
-check_session(){ local d="$1" r
+# The registry answer for a ~/code/wt top-level folder, shared by check_session and retention_decides (B3, review
+# 5748468367: the worktrees path reached retention without it). 0 = the registry keeps it (REASON set). FROZEN=1 when
+# a row names it but, with retention on, the row is older than the grace window: only retention may then act.
+FROZEN=0
+registry_keeps(){ FROZEN=0; session_alive "$1" || return 1
+  if retention_on && ! session_row_is_recent "$1"; then FROZEN=1; return 1; fi
+  REASON=session-alive-in-registry; BLOCKER=.; return 0; }
+check_session(){ local d="$1" r failed="" fblock="" frozen=0
   [ "$(dirname "$d")" = "$HYG_SESSION_ROOT" ] || { REASON=outside-session-root; return 1; }
   [ -L "$d" ] && { REASON=is-a-symlink; return 1; }
   [ -f "$d/.git" ] && { REASON=linked-worktree-see-worktrees-pass; return 1; }
   [ -e "$d/.git" ] && [ ! -d "$d/.git" ] && { REASON=odd-git-entry; return 1; }
-  session_alive "$d" && { REASON=session-alive-in-registry; return 1; }
+  registry_keeps "$d" && return 1; frozen=$FROZEN
   [ -n "$(/usr/bin/find "$d" \( -name .git -o -name node_modules -o -name .venv -o -name Pods \) -prune -o -type f -mmin -"$((HYG_SESSION_AGE_HOURS*60))" -print -quit 2>/dev/null)" ] && { REASON=touched-recently; return 1; }
   cwd_inside "$d" && { REASON=a-process-is-inside; return 1; }
   # A walk that failed keeps the folder under its own reason, naming the path it could not read.
   walk_failed "$d" && return 1
   # A bare repo or separate git-dir elsewhere in the folder would go with the rm unchecked: keep, unread.
   holds_bare_or_separate_git_dir "$d" && { REASON=contains-bare-or-separate-git-dir; BLOCKER=$(first_inventory "$d" '/HEAD$'); return 1; }
-  if [ -d "$d/.git" ]; then git_safe "$d" "$d" || { REASON="clone-$REASON"; BLOCKER=.; return 1; }; fi   # the folder IS a clone
+  if [ -d "$d/.git" ]; then git_safe "$d" "$d" || { failed="clone-$REASON"; fblock=.; }; fi   # the folder IS a clone
+  if [ -z "$failed" ]; then while IFS= read -r r; do [ -n "$r" ] || continue
+    git_safe "$r" "$d" || { failed="nested-$REASON"; fblock="${r#"$d"/}"; break; }
+  done < <(nested_repos "$d"); fi
+  if [ -z "$failed" ] && [ "$frozen" = 0 ]; then REASON=stale-session-all-nested-pushed; return 0; fi
+  [ "$frozen" = 1 ] && [ -z "$failed" ] && failed=session-alive-in-registry
+  retention_decides "$d" "$failed" && return 0
+  [ -n "$BLOCKER" ] || BLOCKER="$fblock"; return 1; }
+
+# ---------- retention (card iTGD34Ub, CTO ruling 6ae7919566f264486f337e8e) ----------
+retention_on(){ [ -n "$HYG_RETENTION_DAYS" ] && [ -n "$HYG_RESCUE_CMD" ] && [ -x "$HYG_RESCUE_CMD" ] && [ -n "$JQ" ]; }
+# The repo folders inside a top-level folder, itself included when it is one.
+repos_in(){ { [ -e "$1/.git" ] && printf '%s\n' "$1"; } ; nested_repos "$1"; }
+# Idle = no working file AND no repo metadata touched for the window: the walks above prune .git, so a session
+# that only commits would otherwise look idle.
+retention_idle(){ local d="$1" r gd f e=() n
+  while IFS= read -r n; do e+=( "$n" ); done < <(name_expr .git "${ARTIFACT_NAMES[@]}" .venv venv Pods DerivedData)
+  [ -z "$(/usr/bin/find "$d" \( "${e[@]}" \) -prune -o -type f -mtime -"$HYG_RETENTION_DAYS" -print -quit 2>/dev/null)" ] || return 1
   while IFS= read -r r; do [ -n "$r" ] || continue
-    git_safe "$r" "$d" || { REASON="nested-$REASON"; BLOCKER="${r#"$d"/}"; return 1; }
-  done < <(nested_repos "$d")
-  REASON=stale-session-all-nested-pushed; return 0; }
+    gd=$(GITS -C "$r" rev-parse --path-format=absolute --git-dir 2>/dev/null) || return 1
+    for f in "$gd/index" "$gd/HEAD" "$gd/logs/HEAD"; do
+      [ -e "$f" ] && [ -n "$(/usr/bin/find "$f" -maxdepth 0 -mtime -"$HYG_RETENTION_DAYS" 2>/dev/null)" ] && return 1
+    done
+  done < <(repos_in "$d"); return 0; }
+# Called when a folder failed the plain test. 0 = it may go once rescued (RESCUE_NEEDED=1, REASON says why);
+# 1 = keep, with REASON and BLOCKER naming what stops it.
+RESCUE_NEEDED=0
+# Every folder-level guard lives HERE, so each caller (check_session, check_worktree) gets all of them (B3, B4).
+retention_decides(){ local d="$1" why="$2" r
+  REASON="$why"
+  retention_on || return 1
+  case "$why" in
+    *dirty-uncommitted-work|*index-hides-changes|*has-stash|*has-unpushed-*|*unpushed-commits|session-alive-in-registry) ;;
+    *) return 1;; esac
+  [ "$(/usr/bin/dirname "$d")" = "$HYG_SESSION_ROOT" ] || { REASON=retention-blocked-outside-session-root; BLOCKER=.; return 1; }
+  [ -L "$d" ] && { REASON=retention-blocked-is-a-symlink; BLOCKER=.; return 1; }
+  if [ -L "$d/.git" ] || { [ -e "$d/.git" ] && [ ! -d "$d/.git" ] && [ ! -f "$d/.git" ]; }; then REASON=retention-blocked-odd-git-entry; BLOCKER=.git; return 1; fi
+  # B3: a live session keeps, whichever pass found it. A frozen row (older than the grace) lets retention act.
+  registry_keeps "$d" && { REASON="retention-blocked-$REASON"; return 1; }
+  # B4: a bare repo or separate git-dir is plain untracked files to the archive (objects over the file cap drop):
+  # keep, unread. A walk that failed reads the same way.
+  walk_failed "$d" && { REASON="retention-blocked-$REASON"; return 1; }
+  holds_bare_or_separate_git_dir "$d" && { REASON=retention-blocked-contains-bare-or-separate-git-dir; BLOCKER=$(first_inventory "$d" '/HEAD$'); return 1; }
+  REASON="$why"
+  retention_idle "$d" || return 1
+  while IFS= read -r r; do [ -n "$r" ] || continue
+    repo_trusted "$r" || { REASON="retention-blocked-$REASON"; BLOCKER="${r#"$d"}"; BLOCKER="${BLOCKER#/}"; return 1; }
+    if [ -d "$r/.git" ]; then worktrees_inside "$r" "$d" || { REASON="retention-blocked-$REASON"; BLOCKER="${r#"$d"}"; BLOCKER="${BLOCKER#/}"; return 1; }; fi
+  done < <(repos_in "$d")
+  RESCUE_NEEDED=1; REASON="retention-rescue-$why"; return 0; }
+
+# Case folded by the shell itself (nocasematch, no locale-dependent tool): this disk ignores case, so Server.PEM is server.pem.
+name_denied(){ local b="${1##*/}" p r=1; shopt -s nocasematch
+  for p in "${RESCUE_DENY[@]}"; do case "$b" in $p) r=0; break;; esac; done; shopt -u nocasematch; return $r; }
+under_artifact_dir(){ local n; for n in "${ARTIFACT_NAMES[@]}" .venv venv Pods DerivedData; do case "/$1/" in */"$n"/*) return 0;; esac; done; return 1; }
+# One manifest line. A failed append (a full disk) fails the rescue: a silent gap is a lost file (B2).
+man(){ printf '%s\t%s\t%s\n' "$1" "$2" "${3:-}" >> "$RESCUE_OUT/manifest.tsv" || { REASON=rescue-manifest-write-failed; return 1; }; }
+sha_of(){ /usr/bin/shasum -a 256 "$1" 2>/dev/null | /usr/bin/cut -d' ' -f1; }
+# Queue one working file for the tar. 1 = fail closed (REASON, BLOCKER set). Name-denied, symlinks, special files and
+# over-cap files are listed, never copied. A listed path that is not on disk means we misread a list: keep (B1).
+rescue_queue(){ local base="$1" rel="$2" f="$1/$2" sz
+  case "$rel" in *$'\n'*|*$'\t'*) REASON=rescue-path-unrepresentable; BLOCKER="$rel"; return 1;; esac   # the manifest is TSV
+  if [ -L "$f" ]; then man symlink-not-archived "$rel" "$(/usr/bin/readlink "$f")"; return; fi
+  [ -e "$f" ] || { REASON=rescue-path-unresolved; BLOCKER="$rel"; return 1; }
+  # A symlinked parent puts the file outside the folder: the rm never reaches it, so it is listed, not archived.
+  case "$(physical "$(/usr/bin/dirname "$f")")/" in "$(physical "$base")"/*) ;; *) man outside-folder-not-archived "$rel"; return;; esac
+  if [ -d "$f" ]; then [ -e "$f/.git" ] && return 0; REASON=rescue-path-unresolved; BLOCKER="$rel"; return 1; fi   # a nested repo is archived as a repo
+  [ -f "$f" ] || { man special-file-not-archived "$rel"; return; }
+  name_denied "$f" && { man denied-by-name "$rel"; return; }
+  under_artifact_dir "$rel" && { man dropped-artifact "$rel"; return; }
+  sz=$(/usr/bin/stat -f %z "$f" 2>/dev/null) || { REASON=rescue-stat-failed; BLOCKER="$rel"; return 1; }
+  [ "$sz" -le "$RESCUE_FILE_MAX_BYTES" ] || { man dropped-over-file-cap "$rel" "$sz $(sha_of "$f")"; return; }
+  printf '%s\t%s\n' "$sz" "$rel" >> "$RESCUE_OUT/queue.tsv" || { REASON=rescue-queue-write-failed; return 1; }; }
+# A git list into a file, its exit read (a list read through a pipe loses both the status and the loop's failures).
+git_list(){ local out="$1"; shift; GITS "$@" > "$out" 2>/dev/null || { REASON=rescue-git-list-failed; return 1; }; }
+# The temporary stash refs go whatever happens: left behind they read as has-unpushed-ref and keep the folder forever.
+drop_rescue_refs(){ local ref; GITS -C "$1" for-each-ref --format='%(refname)' refs/hygiene-rescue/ 2>/dev/null |
+  while IFS= read -r ref; do GITS -C "$1" update-ref -d "$ref" >/dev/null 2>&1; done; }
+# One repo: patches of everything except deletions (listed instead), bundle of what no remote holds. 1 = fail closed.
+# Every list is NUL-separated (B1: with core.quotePath a Hebrew or quoted name arrived as "\327..." and was skipped).
+rescue_repo(){ local d="$1" r="$2" rel="$3" n="$4" dir="$RESCUE_OUT/payload/repo-$4" pre st url f e i L="$RESCUE_OUT/list"
+  pre="${rel}${rel:+/}"; REASON=rescue-repo-read-failed
+  /bin/mkdir -p "$dir" || return 1
+  url=$(GITS -C "$r" remote get-url origin 2>/dev/null | /usr/bin/sed -E 's#^(https?://)[^/@]*@#\1#')
+  man repo "${rel:-.}" "repo-$n ${url:-no-remote} $(GITS -C "$r" rev-parse HEAD 2>/dev/null)" || return 1
+  st=$(GITS -C "$r" status --porcelain --untracked-files=no --ignore-submodules=all) || return 1
+  # S1: a denied name among the changed tracked paths would leave inside a patch: keep the folder. Read from status, which
+  # compares content: `diff --name-only` without an index refresh also names every file whose stat alone changed.
+  git_list "$L" -C "$r" status --porcelain -z --untracked-files=no --ignore-submodules=all || return 1
+  while IFS= read -r -d '' e; do f="${e:3}"; i=""
+    case "$e" in [RC]*) IFS= read -r -d '' i;; esac   # a rename or copy carries its source as the next entry
+    case "$e" in " D"*|"D "*) continue;; esac           # a deletion carries no content
+    for f in "$f" ${i:+"$i"}; do name_denied "$f" && { REASON=rescue-denied-name-in-patch; BLOCKER="$pre$f"; return 1; }; done
+  done < "$L"
+  REASON=rescue-repo-read-failed
+  GITS -C "$r" diff --no-ext-diff --no-textconv --binary --diff-filter=d HEAD > "$dir/changes.patch" || return 1
+  # diff HEAD carries only the working copy of a file edited again after `git add` (MM): keep the staged side too.
+  GITS -C "$r" diff --cached --no-ext-diff --no-textconv --binary --diff-filter=d > "$dir/staged.patch" || return 1
+  if printf '%s\n' "$st" | /usr/bin/grep -qE '^( M|M |MM|A |AM|R |RM|C |T | T)' && [ ! -s "$dir/changes.patch" ]; then return 1; fi
+  man archived "repo-$n/changes.patch" "$(sha_of "$dir/changes.patch")" && man archived "repo-$n/staged.patch" "$(sha_of "$dir/staged.patch")" || return 1
+  git_list "$L" -C "$r" diff --no-ext-diff --name-only -z --diff-filter=D HEAD || return 1
+  while IFS= read -r -d '' f; do man deleted-in-worktree "$pre$f" || return 1; done < "$L"
+  git_list "$L" -C "$r" ls-files -z -o --exclude-standard || return 1
+  while IFS= read -r -d '' f; do rescue_queue "$d" "$pre$f" || return 1; done < "$L"
+  git_list "$L" -C "$r" ls-files -z -v || return 1   # assume-unchanged (lower-case tag) and skip-worktree (S) hide edits from diff
+  while IFS= read -r -d '' e; do case "$e" in [hsmrck]" "*|"S "*) rescue_queue "$d" "$pre${e#??}" || return 1;; esac; done < "$L"
+  git_list "$L" -C "$r" ls-files -z -o -i --exclude-standard --directory || return 1
+  i=0; while [ "$i" -lt 200 ] && IFS= read -r -d '' f; do i=$((i+1)); man ignored-not-archived "$pre$f" || return 1; done < "$L"
+  drop_rescue_refs "$r"; rescue_bundle "$d" "$r" "$rel" "$n" "$dir"; i=$?; drop_rescue_refs "$r"; return "$i"; }
+rescue_bundle(){ local d="$1" r="$2" rel="$3" n="$4" dir="$5" pre cd cdk h i bcount f revs L="$RESCUE_OUT/list"
+  pre="${rel}${rel:+/}"; REASON=rescue-repo-read-failed
+  cd=$(GITS -C "$r" rev-parse --path-format=absolute --git-common-dir) || return 1
+  cdk=$(path_key "$cd"); [ -e "$RESCUE_OUT/seen-$cdk" ] && return 0; : > "$RESCUE_OUT/seen-$cdk" || return 1
+  if case "$(physical "$cd")/" in "$(physical "$d")"/*) true;; *) false;; esac; then
+    # F4: stash entries past the tip are invisible to a bundle: give each its own ref, for the bundle only
+    git_list "$L" -C "$r" stash list --format=%H || return 1
+    i=0; while IFS= read -r h; do [ -n "$h" ] || continue; GITS -C "$r" update-ref "refs/hygiene-rescue/stash-$i" "$h" >/dev/null 2>&1; i=$((i+1)); done < "$L"
+    # B5: a failed update-ref leaves that stash out of the bundle and `bundle verify` still passes: count them.
+    [ "$(GITS -C "$r" for-each-ref --format=x refs/hygiene-rescue/ 2>/dev/null | /usr/bin/wc -l | /usr/bin/tr -d ' ')" = "$i" ] \
+      || { REASON=rescue-stash-refs-failed; BLOCKER="${rel:-.}"; return 1; }
+    revs=( --all --not --remotes )
+  else   # the parent repo survives outside the folder and keeps every branch: only an otherwise unheld HEAD is at stake
+    [ -z "$(GITS -C "$r" for-each-ref --contains HEAD --format=x refs/heads refs/remotes 2>/dev/null | /usr/bin/head -1)" ] || return 0
+    revs=( HEAD --not --remotes )
+  fi
+  # S1: a denied name in any commit the bundle would carry keeps the folder. Every path each of those commits adds or
+  # changes, NUL-separated; --root, --diff-merges=separate and log.showRoot=true are pinned so no repo config narrows the
+  # scan (log.showRoot=false hid a root commit's .env). A name holding a newline cannot be checked or listed: keep.
+  git_list "$L" -c log.showRoot=true -C "$r" log --no-renames --root --diff-merges=separate --format= --name-only -z "${revs[@]}" || return 1
+  while IFS= read -r -d '' f; do f="${f#$'\n'}"; [ -n "$f" ] || continue
+    case "$f" in *$'\n'*) REASON=rescue-path-unrepresentable; BLOCKER="$pre${f%%$'\n'*}"; return 1;; esac
+    name_denied "$f" && { REASON=rescue-denied-name-in-commits; BLOCKER="$pre$f"; return 1; }; done < "$L"
+  REASON=rescue-repo-read-failed
+  bcount=$(GITS -C "$r" rev-list --count "${revs[@]}") || return 1
+  [ "$bcount" -gt 0 ] || return 0
+  GITS -C "$r" bundle create "$dir/local.bundle" "${revs[@]}" >/dev/null 2>&1 || return 1
+  GITS -C "$r" bundle verify "$dir/local.bundle" >/dev/null 2>&1 || return 1
+  man archived "repo-$n/local.bundle" "$(sha_of "$dir/local.bundle")"; }
+payload_bytes(){ /usr/bin/du -sk "$RESCUE_OUT/payload" 2>/dev/null | /usr/bin/awk '{print $1*1024}'; }
+# Build, split and hand to HYG_RESCUE_CMD. 0 only when every queued file is in the archive (or listed as dropped), the
+# parts decode to the archive's sha256, and HYG_RESCUE_CMD verified the upload. REASON (and BLOCKER) name a failure.
+rescue_build(){ local d="$1" r rel n=0 f sz total sha prefix q=0 e=() a=() R=()
+  BLOCKER=""
+  [ -n "${RESCUE_ROOT:-}" ] || { RESCUE_ROOT="$TMPD/rescue"; /bin/mkdir -p "$RESCUE_ROOT"; }
+  RESCUE_OUT="$RESCUE_ROOT/$(path_key "$d")"; /bin/rm -rf "$RESCUE_OUT"; /bin/mkdir -p "$RESCUE_OUT/payload/files" "$RESCUE_OUT/out" || { REASON=rescue-tmp-failed; return 1; }
+  { : > "$RESCUE_OUT/manifest.tsv" && : > "$RESCUE_OUT/queue.tsv" && repos_in "$d" > "$RESCUE_OUT/repos"; } 2>/dev/null || { REASON=rescue-tmp-failed; return 1; }
+  while IFS= read -r r; do [ -n "$r" ] && R+=( "$r" ); done < "$RESCUE_OUT/repos"
+  for r in ${R[@]+"${R[@]}"}; do n=$((n+1)); rel="${r#"$d"}"; rel="${rel#/}"
+    rescue_repo "$d" "$r" "$rel" "$n" || { [ -n "$BLOCKER" ] || BLOCKER="${rel:-.}"; return 1; }
+  done
+  # loose files, outside every repo; artifact dirs there are listed, not archived
+  while IFS= read -r f; do e+=( "$f" ); done < <(name_expr .git "${ARTIFACT_NAMES[@]}" .venv venv Pods DerivedData)
+  while IFS= read -r f; do a+=( "$f" ); done < <(name_expr "${ARTIFACT_NAMES[@]}" .venv venv Pods DerivedData)
+  /usr/bin/find "$d" \( "${e[@]}" \) -prune -o ! -type d -print0 > "$RESCUE_OUT/loose" 2>/dev/null \
+    && /usr/bin/find "$d" -name .git -prune -o -type d \( "${a[@]}" \) -prune -print0 > "$RESCUE_OUT/loose-art" 2>/dev/null \
+    || { REASON=rescue-walk-failed; BLOCKER=.; return 1; }
+  while IFS= read -r -d '' f; do
+    for r in ${R[@]+"${R[@]}"}; do case "$f" in "$r"/*) continue 2;; esac; done
+    rescue_queue "$d" "${f#"$d"/}" || return 1
+  done < "$RESCUE_OUT/loose"
+  while IFS= read -r -d '' f; do
+    for r in ${R[@]+"${R[@]}"}; do case "$f" in "$r"/*) continue 2;; esac; done
+    man dropped-artifact "${f#"$d"/}/" || return 1
+  done < "$RESCUE_OUT/loose-art"
+  total=$(payload_bytes); [ -n "$total" ] && [ "$total" -le "$RESCUE_MAX_BYTES" ] || { REASON=rescue-commits-and-patches-over-cap; return 1; }
+  # smallest first; what does not fit is dropped and listed, and the commits and patches are never dropped
+  /usr/bin/sort -t$'\t' -k1,1n "$RESCUE_OUT/queue.tsv" > "$RESCUE_OUT/queue.sorted" || { REASON=rescue-tmp-failed; return 1; }
+  while IFS=$'\t' read -r sz rel; do [ -n "$rel" ] || continue
+    if [ $((total + sz)) -gt "$RESCUE_MAX_BYTES" ]; then man dropped-over-archive-cap "$rel" "$sz $(sha_of "$d/$rel")" || return 1; continue; fi
+    # B2: a copy that fails (unreadable file, full disk) keeps the folder instead of losing the file.
+    { /bin/mkdir -p "$RESCUE_OUT/payload/files/$(/usr/bin/dirname "$rel")" && /bin/cp -p "$d/$rel" "$RESCUE_OUT/payload/files/$rel"; } 2>/dev/null \
+      || { REASON=rescue-copy-failed; BLOCKER="$rel"; return 1; }
+    [ "$(/usr/bin/stat -f %z "$RESCUE_OUT/payload/files/$rel" 2>/dev/null)" = "$sz" ] || { REASON=rescue-copy-size-changed; BLOCKER="$rel"; return 1; }
+    man archived "files/$rel" "$(sha_of "$RESCUE_OUT/payload/files/$rel")" || return 1
+    total=$((total + sz))
+  done < "$RESCUE_OUT/queue.sorted"
+  # B2: every queued file is archived or listed as dropped, read back from the manifest rather than trusted from the loop.
+  q=$(/usr/bin/awk -F'\t' 'FILENAME==ARGV[1]{ if($1=="archived" && substr($2,1,6)=="files/") ok[substr($2,7)]=1; if($1=="dropped-over-archive-cap") ok[$2]=1; next }
+      !($2 in ok){ m++ } END{ print m+0 }' "$RESCUE_OUT/manifest.tsv" "$RESCUE_OUT/queue.tsv") || q=x
+  [ "$q" = 0 ] || { REASON=rescue-queue-not-in-archive; return 1; }
+  /usr/bin/tar -czf "$RESCUE_OUT/archive.tgz" -C "$RESCUE_OUT/payload" . 2>/dev/null || { REASON=rescue-tar-failed; return 1; }
+  sha=$(sha_of "$RESCUE_OUT/archive.tgz"); [ -n "$sha" ] || { REASON=rescue-tar-failed; return 1; }
+  /usr/bin/base64 -i "$RESCUE_OUT/archive.tgz" -o "$RESCUE_OUT/archive.b64" || { REASON=rescue-base64-failed; return 1; }
+  ( cd "$RESCUE_OUT/out" && /usr/bin/split -b "$RESCUE_PART_BYTES" -a 4 "$RESCUE_OUT/archive.b64" part- ) || { REASON=rescue-split-failed; return 1; }
+  for f in "$RESCUE_OUT"/out/part-*; do /bin/mv "$f" "$f.b64" || { REASON=rescue-split-failed; return 1; }; done
+  [ "$(/bin/ls "$RESCUE_OUT/out" | /usr/bin/wc -l | /usr/bin/tr -d ' ')" -le "$RESCUE_MAX_PARTS" ] || { REASON=rescue-too-many-parts; return 1; }
+  # B2: the parts the uploader receives must decode to exactly the archive built above.
+  [ "$(/bin/cat "$RESCUE_OUT"/out/part-*.b64 | /usr/bin/base64 -D 2>/dev/null | /usr/bin/shasum -a 256 | /usr/bin/cut -d' ' -f1)" = "$sha" ] \
+    || { REASON=rescue-parts-do-not-match-archive; return 1; }
+  "$JQ" -Rs --arg folder "$(/usr/bin/basename "$d")" --arg sha "$sha" \
+    --arg at "$(/bin/date -u +%FT%TZ)" --arg host "$(/bin/hostname -s)" \
+    '{folder:$folder, host:$host, archived_at:$at, archive_sha256:$sha, format:"base64 of a .tgz, cat part-*.b64 in order", entries:(split("\n") | map(select(length>0) | split("\t") | {kind:.[0], path:.[1], detail:.[2]}))}' \
+    "$RESCUE_OUT/manifest.tsv" > "$RESCUE_OUT/out/manifest.json" || { REASON=rescue-manifest-failed; return 1; }
+  prefix="$(/bin/hostname -s)/$(/bin/date +%F)/$(/usr/bin/basename "$d")"
+  "$HYG_RESCUE_CMD" "$RESCUE_OUT/out" "$prefix" >>"$HYG_LOG" 2>&1 || { REASON=rescue-upload-unverified; return 1; }
+  # The archive ledger: written once the upload is verified, before the final re-check (a refused rm still has its archive).
+  /bin/mkdir -p "$HYG_STATE_DIR" && printf '%s\t%s\t%s\t%s\n' "$(/bin/date -u +%FT%TZ)" "$d" "$prefix" "$sha" >> "$HYG_STATE_DIR/archived.tsv" \
+    || { REASON=rescue-ledger-failed; return 1; }
+  /bin/rm -rf "$RESCUE_OUT"; return 0; }
 # Session folder idle: no file (outside .git and the artifact dirs themselves) newer than the window.
 # Cached per folder for the run.
 session_idle(){ local t="$1" f n e=(); f="$TMPD/idle-$(path_key "$t")"
@@ -484,7 +725,7 @@ check_pkg(){ local m; for m in $HYG_PKG_CACHES; do
   REASON=not-a-listed-package-cache; return 1; }
 
 check_item(){ # category path → 0 removable (REASON=why) / 1 keep (REASON=why, BLOCKER=the path that decided it, . = the folder)
-  BLOCKER=""; check_item_inner "$1" "$2" && return 0
+  BLOCKER=""; RESCUE_NEEDED=0; check_item_inner "$1" "$2" && return 0
   [ -n "$BLOCKER" ] || BLOCKER=.; return 1; }
 check_item_inner(){
   case "$2" in "$HOME"/*) ;; *) REASON=outside-home; return 1;; esac
@@ -541,8 +782,26 @@ report(){ local f="${1:-$HYG_STATE_DIR/last-plan.tsv}"; [ -f "$f" ] || { echo "r
     END{ for(k in c) printf "%s\t%d\t%.1f GB\n", k, c[k], kb[k]/1048576 }' "$f" | /usr/bin/sort
   /usr/bin/awk -F'\t' -v old=">${HYG_REPORT_AGE_DAYS}d" '$2=="keep" && $6==old && $1!="build-artifacts"{ printf "kept-over-window\t%s\t%s\t%s\n", $4, ($7==""?"-":$7), $5 }' "$f"; }
 
+RETENTION_DONE=0
+# The ONLY path that removes dirty or unpushed work. Everything fails to keep: a folder leaves only after its
+# archive is verified and the ledger line is written, and after idle and cwd are read once more.
+remove_rescued(){ local p="$1" r common commons=""
+  [ "$RETENTION_DONE" -lt "$HYG_RETENTION_MAX_PER_RUN" ] || { REASON=retention-cap-reached; return 1; }
+  rescue_build "$p" || return 1
+  drop_run_caches
+  retention_idle "$p" || { REASON=touched-during-rescue; return 1; }
+  CWDS=""; cwd_inside "$p" && { REASON=a-process-is-inside; return 1; }
+  while IFS= read -r r; do [ -f "$r/.git" ] || continue
+    common=$("$GIT" -C "$r" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) && commons="$commons$common"$'\n'
+  done < <(repos_in "$p")
+  /bin/rm -rf -- "$p" || return 1
+  RETENTION_DONE=$((RETENTION_DONE+1)); log "retention: rescued and removed $p"
+  printf '%s' "$commons" | /usr/bin/sort -u | while IFS= read -r common; do
+    [ -n "$common" ] && [ -d "$common" ] && "$GIT" --git-dir="$common" worktree prune >/dev/null 2>&1; done
+  return 0; }
 remove_item(){ local cat="$1" p="$2" common r commons=""
-  if [ "$cat" = worktrees ]; then
+  if [ "$RESCUE_NEEDED" = 1 ]; then remove_rescued "$p"; return
+  elif [ "$cat" = worktrees ]; then
     common=$("$GIT" -C "$p" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
     "$GIT" -C "$p" worktree remove "$p" >>"$HYG_LOG" 2>&1 || return 1
     [ -n "$common" ] && "$GIT" --git-dir="$common" worktree prune >/dev/null 2>&1
@@ -565,7 +824,7 @@ apply(){ local file="$1" cat p k freed=0 n=0 refused=0
     [ -n "$p" ] || continue
     if check_item "$cat" "$p"; then k=$(kb "$p"); [ -n "$k" ] || k=0
       if remove_item "$cat" "$p"; then emit "$cat" removed "$k" "$REASON" "$p"; log "removed [$cat] $((k/1024))MB $REASON $p"; freed=$((freed+k)); n=$((n+1))
-      else emit "$cat" refused "$k" remove-failed "$p"; refused=$((refused+1)); fi
+      else emit "$cat" refused "$k" "${REASON:-remove-failed}" "$p"; log "refused [$cat] $REASON $p"; refused=$((refused+1)); fi
     else emit "$cat" refused 0 "$REASON" "$p"; refused=$((refused+1)); fi
   done < "$file"
   log "apply done: $n removed, ~$((freed/1024))MB freed, $refused refused"
@@ -583,6 +842,13 @@ status(){ local prof lock=0 inu=0 nprof=0 d stale=0 total=0
   total=0; stale=0
   while IFS= read -r d; do [ -n "$d" ] || continue; total=$((total+1)); done < <(list_sessions)
   printf 'session_dirs\t%s\n' "$total"
+  printf 'retention\t%s\n' "$(retention_on && echo "on ${HYG_RETENTION_DAYS}d" || echo off)"
+  # Kept past twice the window: only an owner decision moves these.
+  if retention_on && [ -f "$HYG_STATE_DIR/last-plan.tsv" ]; then stale=0
+    while IFS= read -r d; do [ -d "$d" ] || continue
+      [ -n "$(/usr/bin/find "$d" \( -name .git -o -name node_modules \) -prune -o -type f -mtime -$((HYG_RETENTION_DAYS*2)) -print -quit 2>/dev/null)" ] || stale=$((stale+1))
+    done < <(/usr/bin/awk -F'\t' -v old=">${HYG_REPORT_AGE_DAYS}d" '$1=="session-dirs" && $2=="keep" && $6==old{print $5}' "$HYG_STATE_DIR/last-plan.tsv")
+    printf 'retention_overdue\t%s\n' "$stale"; fi
   printf 'gradle_kb\t%s\n' "$( [ -d "$HYG_GRADLE_HOME" ] && kb "$HYG_GRADLE_HOME" || echo 0)"
   printf 'ios_device_support_kb\t%s\nios_simulators_kb\t%s\n' "$( [ -d "$HYG_DEVICE_SUPPORT" ] && kb "$HYG_DEVICE_SUPPORT" || echo 0)" "$( [ -d "$HYG_SIM_DEVICES" ] && kb "$HYG_SIM_DEVICES" || echo 0)"
   printf 'android_avd_kb\t%s\nandroid_sdk_kb\t%s\n' "$( [ -d "$HYG_ANDROID_HOME/avd" ] && kb "$HYG_ANDROID_HOME/avd" || echo 0)" "$( [ -d "$HYG_ANDROID_SDK" ] && kb "$HYG_ANDROID_SDK" || echo 0)"

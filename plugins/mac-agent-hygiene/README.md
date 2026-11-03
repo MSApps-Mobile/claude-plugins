@@ -132,6 +132,13 @@ mac-agent-hygiene/
 **Act:** `hygiene_apply` (plan_id + confirm) re-checks each item and removes only those that still qualify.
 **Verify:** per-item outcome (removed / refused + reason), MB freed and `df` after; every run appends to `~/Library/Logs/mac-agent-hygiene.log`.
 
+## Retention (opt-in)
+
+By default, dirty or unpushed work is kept forever. With `HYG_RETENTION_DAYS=7` and `HYG_RESCUE_CMD` in the config, a `~/code/wt` folder idle
+that long is archived through your command, verified, then removed; see [the safety model](skills/mac-agent-hygiene/references/safety-model.md).
+Ignored files and loose or untracked name-denied secrets are not archived and are lost with the folder; a denied name inside
+the tracked edits or an unpushed commit keeps the folder instead. `HYG_RETENTION_DAYS` must be at least 1.
+
 ## SOSA
 
 - **Supervised** — every removal is planned first with a reason; apply needs the plan id and an
@@ -139,8 +146,9 @@ mac-agent-hygiene/
   session folders and full clones under `~/code/wt` whose repos are all clean and pushed (24 h; ignored
   files such as a local `.env` go with them), and git-ignored build output in idle sessions.
 - **Orchestrated** — status → plan → re-check → apply → log, in that order, always.
-- **Secured** — local filesystem only; the one network call is an optional read-only `gh` query;
-  never sudo, never login state, never dirty or unpushed work, paths outside `$HOME` refused.
+- **Secured** — local filesystem only; the one network call is an optional read-only `gh` query, plus your
+  rescue command when you opt in to retention; never sudo, never login state, never dirty or unpushed work
+  without a verified archive, paths outside `$HOME` refused.
 - **Agents** — R=mac-hygiene · T=bash, launchd, git, gh(read) · M=30-minute plan cache + append-only
   log · P=status-plan-confirm-apply.
 
