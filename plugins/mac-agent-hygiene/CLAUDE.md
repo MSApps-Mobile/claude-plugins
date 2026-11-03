@@ -34,7 +34,8 @@
   (no repo: node_modules/.next/.turbo beside package.json only). An unreadable registry ⇒ every session alive.
 - Gradle: never the newest two versions or one a running process names. iOS: never the newest DeviceSupport,
   never a simulator whose runtime is installed, never `Xcode/Archives`. Android AVDs / SDK images: report only.
-- `run` holds a mkdir lock so a 4-hourly run never overlaps a slow one (stale after 6 h).
+- `run` holds a mkdir lock so a scheduled run never overlaps a slow one (stale after 6 h). A plan that cannot be saved
+  to `$HYG_STATE_DIR` stops the run with a log line; it never applies the previous run's plan.
 - System binaries by absolute path; explicit PATH in the plist; `mktemp` with a `${TMPDIR:-/tmp}` template.
 - Paths compared as fixed strings (never a grep pattern); `.`/`..` components refused at the apply gate; every
   category checks `dirname`/`basename`, not a glob across `/`. Environment > config file > defaults.
@@ -43,7 +44,18 @@
 
 - `plan` decides first and sizes after: `du` runs on remove rows and on keeps over `HYG_REPORT_AGE_DAYS` only.
 - `repo_inventory` is the ONE unpruned walk per folder per run, cached in `$TMPD`. `apply` calls `drop_run_caches` first,
-  so its re-check always reads the disk. Never read a cached answer after that point.
+  so its re-check always reads the disk. Never read a cached answer after that point. `drop_run_caches` also resets the
+  cwd list and the registry read, so apply re-reads both.
+- `repo_inventory` fails closed: a `find` that exits non-zero, a cache that cannot be written (full disk, read-only `$TMPD`)
+  or read back whole prints the marker `<folder>/unreadable/HEAD`, which every consumer reads as a bare repo (keep).
+  An empty or partial inventory would read "no repo" and let a nested clone go with the `rm -rf`. `walk_failed` turns the
+  marker into `repo-walk-failed` (blocker = the first path `find` could not read) or `repo-inventory-cache-failed` (blocker `.`).
+- AC 1: every keep row names its blocker, relative to the folder: the nested repo, the first `HEAD` of a bare or separate
+  git-dir, the first `.git` inside an artifact dir, the unreadable path; `.` for a folder-level keep (alive, in use, the
+  folder's own clone, worktree reasons). `report` never prints `-` for a plan written by this version.
+- Schedule (CTO ruling, review 5748467355): install hourly on a Mac with a busy `~/code/wt`
+  (`install-launchd.sh install --every-hours 1`). At 40-100 session folders per budgeted run, 4-hourly cannot keep up with
+  100-200 new folders a day. The lock prevents overlap. Revisit 4-hourly once a measured full pass fits in 4 runs.
 - `HYG_PLAN_BUDGET_MIN` caps the three slow passes (a third, two thirds, all of it). Over budget ⇒ `keep/scan-budget-exceeded`,
   never remove. `fair_order` puts the longest-unscanned folder first, so a cut run resumes where it stopped.
 

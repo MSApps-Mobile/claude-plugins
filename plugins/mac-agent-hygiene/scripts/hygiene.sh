@@ -4,7 +4,9 @@
 #   hygiene.sh status            key<TAB>value lines (read-only)
 #   hygiene.sh plan              category<TAB>action<TAB>kb<TAB>reason<TAB>path<TAB>age<TAB>blocker  (read-only dry run)
 #                                age = idle bucket of the top-level folder (<1d, 1-7d, >7d; - outside ~/code/wt);
-#                                blocker = the repo inside it that decided a keep (. is the folder itself);
+#                                blocker = the path that decided a keep, relative to the folder: the nested repo, the
+#                                first HEAD of a bare or separate git-dir, the path a failed walk could not read
+#                                (repo-walk-failed); . = the folder itself (alive, in use, its own clone, touched);
 #                                kb is 0 on a keep younger than the report window: sizing it costs a full walk
 #   hygiene.sh report [planfile] keep and remove rows grouped by age and reason, then every folder over the
 #                                window that is kept, with its exact blocker (default: the last scheduled plan)
@@ -120,7 +122,7 @@ emit(){ printf '%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "$5"; }   # category a
 inuse(){ /usr/sbin/lsof +D "$1" >/dev/null 2>&1; }
 path_key(){ printf '%s' "$1" | /usr/bin/shasum | /usr/bin/cut -c1-16; }
 # Answers that cost a tree walk are cached per run; apply drops them so its re-check reads the disk again.
-drop_run_caches(){ /bin/rm -f "$TMPD"/inv-* "$TMPD"/idle-* "$TMPD"/inuse-* "$TMPD"/age-*; }
+drop_run_caches(){ /bin/rm -f "$TMPD"/inv-* "$TMPD"/idle-* "$TMPD"/inuse-* "$TMPD"/age-*; CWDS=""; ALIVE=""; ALIVE_LOADED=0; }
 inuse_cached(){ local f; f="$TMPD/inuse-$(path_key "$1")"
   [ -f "$f" ] || { if inuse "$1"; then echo 1; else echo 0; fi > "$f"; }; [ "$(/bin/cat "$f")" = 1 ]; }
 xcode_building(){ /usr/bin/pgrep -qx xcodebuild || /usr/bin/pgrep -qx Xcode || /usr/bin/pgrep -qx XCBBuildService; }
@@ -206,13 +208,36 @@ list_artifacts(){ local t e=() dl; while IFS= read -r t; do e+=( "$t" ); done < 
 # One walk per folder per run, nothing pruned but .git itself: every .git, and every HEAD outside a .git (a bare
 # repo or separate git-dir has no .git, and its HEAD gives it away; old-style repos make it a symlink). A repo
 # the search skipped would be rm -rf'd unchecked, so a walk that fails reads as a bare repo, and keeps.
-repo_inventory(){ local f; f="$TMPD/inv-$(path_key "$1")"
-  [ -f "$f" ] || /usr/bin/find "$1" -name .git -print -prune -o \( -type f -o -type l \) -name HEAD -print > "$f" 2>/dev/null \
-    || printf '%s/unreadable/HEAD\n' "$1" >> "$f"
-  /bin/cat "$f"; }
+# The marker "<folder>/unreadable/HEAD" is that fail-closed answer. It is printed when find fails, and also when the
+# cache cannot be written or read back whole (a full disk, a read-only $TMPD): an empty cache would read "no repo".
+# find's stderr is kept beside the cache so walk_failed can name the path it could not read.
+repo_inventory(){ local f out; f="$TMPD/inv-$(path_key "$1")"
+  if [ ! -f "$f" ]; then
+    if out=$( { /usr/bin/find "$1" -name .git -print -prune -o \( -type f -o -type l \) -name HEAD -print 2>"$f.err"; } 2>/dev/null ); then
+      { { [ -z "$out" ] || printf '%s\n' "$out"; } > "$f.tmp" && [ "$(/bin/cat "$f.tmp")" = "$out" ] && /bin/mv -f "$f.tmp" "$f"; } 2>/dev/null \
+        || { /bin/rm -f "$f.tmp" 2>/dev/null; printf '%s/unreadable/HEAD\n' "$1"; return 0; }
+    else
+      printf '%s/unreadable/HEAD\n' "$1" > "$f" 2>/dev/null || { printf '%s/unreadable/HEAD\n' "$1"; return 0; }
+    fi
+  fi
+  /bin/cat "$f" 2>/dev/null || printf '%s/unreadable/HEAD\n' "$1"; }
 nested_repos(){ repo_inventory "$1" | TOP="$1/.git" /usr/bin/awk '$0!=ENVIRON["TOP"] && /\/\.git$/' | /usr/bin/sed 's#/\.git$##'; }
 holds_bare_or_separate_git_dir(){ repo_inventory "$1" | /usr/bin/grep -q '/HEAD$'; }
 holds_a_repo(){ repo_inventory "$1" | /usr/bin/grep -q '/\.git$'; }
+# The first entry of a kind, relative to the folder: the exact path a keep names as its blocker (AC 1).
+first_inventory(){ local h; h=$(repo_inventory "$1" | /usr/bin/grep -m1 "$2"); printf '%s' "${h#"$1"/}"; }
+# 0 when the inventory is the fail-closed marker rather than a real HEAD of that name. Sets REASON and BLOCKER:
+#   repo-walk-failed            find could not read part of the folder; BLOCKER = the first path it named
+#   repo-inventory-cache-failed the cache could not be written or read back; BLOCKER = . (nothing in the folder is at fault)
+walk_failed(){ local f p; f="$TMPD/inv-$(path_key "$1")"
+  repo_inventory "$1" | /usr/bin/grep -qxF "$1/unreadable/HEAD" || return 1
+  [ -e "$1/unreadable/HEAD" ] && return 1
+  if [ -f "$f" ] && /bin/cat "$f" >/dev/null 2>&1; then
+    REASON=repo-walk-failed
+    p=$(/usr/bin/sed -n '1s/^find: \(.*\): [^:]*$/\1/p' "$f.err" 2>/dev/null)
+    case "$p" in "$1"/*) BLOCKER="${p#"$1"/}";; *) BLOCKER=.;; esac
+  else REASON=repo-inventory-cache-failed; BLOCKER=.; fi
+  return 0; }
 # Newest-first listing helpers for "never the newest N" rules
 newest_first(){ /bin/ls -1td "$@" 2>/dev/null; }
 list_clones(){ [ -d "$HYG_PLUGIN_CACHE" ] && /usr/bin/find "$HYG_PLUGIN_CACHE" -maxdepth 1 -mindepth 1 -type d -name 'temp_git_*' 2>/dev/null | /usr/bin/sort; }
@@ -381,8 +406,10 @@ check_session(){ local d="$1" r
   session_alive "$d" && { REASON=session-alive-in-registry; return 1; }
   [ -n "$(/usr/bin/find "$d" \( -name .git -o -name node_modules -o -name .venv -o -name Pods \) -prune -o -type f -mmin -"$((HYG_SESSION_AGE_HOURS*60))" -print -quit 2>/dev/null)" ] && { REASON=touched-recently; return 1; }
   cwd_inside "$d" && { REASON=a-process-is-inside; return 1; }
+  # A walk that failed keeps the folder under its own reason, naming the path it could not read.
+  walk_failed "$d" && return 1
   # A bare repo or separate git-dir elsewhere in the folder would go with the rm unchecked: keep, unread.
-  holds_bare_or_separate_git_dir "$d" && { REASON=contains-bare-or-separate-git-dir; return 1; }
+  holds_bare_or_separate_git_dir "$d" && { REASON=contains-bare-or-separate-git-dir; BLOCKER=$(first_inventory "$d" '/HEAD$'); return 1; }
   if [ -d "$d/.git" ]; then git_safe "$d" "$d" || { REASON="clone-$REASON"; BLOCKER=.; return 1; }; fi   # the folder IS a clone
   while IFS= read -r r; do [ -n "$r" ] || continue
     git_safe "$r" "$d" || { REASON="nested-$REASON"; BLOCKER="${r#"$d"/}"; return 1; }
@@ -409,8 +436,9 @@ check_artifact(){ local p="$1" rel top name parent tracked tl
   session_alive "$top" && { REASON=session-alive-in-registry; return 1; }
   cwd_inside "$top" && { REASON=a-process-is-inside; return 1; }
   session_idle "$top" || { REASON=session-touched-recently; return 1; }
-  holds_a_repo "$p" && { REASON=contains-a-repo; return 1; }
-  holds_bare_or_separate_git_dir "$p" && { REASON=contains-bare-or-separate-git-dir; return 1; }   # B6: the only copy of a commit can sit here
+  walk_failed "$p" && return 1
+  holds_a_repo "$p" && { REASON=contains-a-repo; BLOCKER=$(first_inventory "$p" '/\.git$'); return 1; }
+  holds_bare_or_separate_git_dir "$p" && { REASON=contains-bare-or-separate-git-dir; BLOCKER=$(first_inventory "$p" '/HEAD$'); return 1; }   # B6: the only copy of a commit can sit here
   if GITS -C "$parent" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     repo_config_runs_commands "$parent" && { REASON=repo-config-can-run-commands; return 1; }
     # With core.worktree elsewhere, the two answers below describe that other tree, not this dir (B5).
@@ -455,8 +483,10 @@ check_pkg(){ local m; for m in $HYG_PKG_CACHES; do
     REASON=refetchable-package-cache; return 0; done
   REASON=not-a-listed-package-cache; return 1; }
 
-check_item(){ # category path → 0 removable (REASON=why) / 1 keep (REASON=why, BLOCKER=the repo that decided it)
-  BLOCKER=""
+check_item(){ # category path → 0 removable (REASON=why) / 1 keep (REASON=why, BLOCKER=the path that decided it, . = the folder)
+  BLOCKER=""; check_item_inner "$1" "$2" && return 0
+  [ -n "$BLOCKER" ] || BLOCKER=.; return 1; }
+check_item_inner(){
   case "$2" in "$HOME"/*) ;; *) REASON=outside-home; return 1;; esac
   has_dot_component "$2" && { REASON=dot-component-in-path; return 1; }
   case "$1" in
@@ -574,7 +604,9 @@ run(){ local pf="$TMPD/plan.tsv" lp="$HYG_STATE_DIR/last-plan.tsv"
   trap '/bin/rm -rf "$TMPD" "$HYG_LOCK"' EXIT
   log "=== scheduled run"
   /bin/mkdir -p "$HYG_STATE_DIR" 2>/dev/null
-  plan > "$lp.$$" && /bin/mv -f "$lp.$$" "$lp"   # kept whole: `report` reads why each folder stayed
+  # kept whole: `report` reads why each folder stayed. A plan that cannot be saved stops the run: applying the
+  # previous run's plan would make every run a silent no-op on stale rows.
+  { plan > "$lp.$$" && /bin/mv -f "$lp.$$" "$lp"; } || { /bin/rm -f "$lp.$$" 2>/dev/null; log "plan failed: cannot write $lp"; return 0; }
   report "$lp" 2>/dev/null | /usr/bin/awk -F'\t' '$1!="kept-over-window"' | while IFS= read -r l; do log "plan-report: $l"; done
   /usr/bin/awk -F'\t' '$2=="remove"{print $1"\t"$5}' "$lp" > "$pf"
   apply "$pf"; }
