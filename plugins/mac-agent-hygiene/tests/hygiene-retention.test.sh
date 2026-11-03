@@ -28,6 +28,8 @@
 #   B5  KNOWN-NEGATIVE  update-ref fails for the stash refs → kept, rescue-stash-refs-failed
 #   S1  KNOWN-NEGATIVE  a denied name in an unpushed commit, or in the patch of tracked edits → kept
 #   S1  KNOWN-NEGATIVE  a decoy x.pem in the cwd no longer turns *.pem into a literal (server.pem stays out)
+#   S1  KNOWN-NEGATIVE  Server.PEM (upper case) stays out; a .env in an orphan root commit keeps under log.showRoot=false
+#       KNOWN-NEGATIVE  a tracked file behind a symlinked parent dir (outside the folder) is listed, never copied
 #       KNOWN-NEGATIVE  HYG_RETENTION_DAYS=0 is refused; refs/hygiene-rescue/* are gone after a refused rescue
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -105,6 +107,8 @@ old "$W/s-linked-live"; old "$W/s2-linked-frozen"; old "$W/t-linked-bare"; old "
 mk u-stashfail; ( cd "$W/u-stashfail" && echo s1 >> tracked && git stash -q && echo s2 >> tracked && git stash -q ); old "$W/u-stashfail"
 mk v-envcommit; ( cd "$W/v-envcommit" && echo S3CRET > .env && git add -f .env && git commit -qm env ); old "$W/v-envcommit"
 mk v-keypatch; ( cd "$W/v-keypatch" && git checkout -q -b s1 && echo k1 > cfg.key && git add cfg.key && git commit -qm key && git push -q origin s1 && echo S3CRET >> cfg.key ) 2>/dev/null; old "$W/v-keypatch"
+mk v-rootenv; ( cd "$W/v-rootenv" && git checkout -q --orphan o && git rm -rqf --cached . && echo S3CRET > .env && git add -f .env && git commit -qm root-env && git config log.showRoot false ); old "$W/v-rootenv"
+mkdir -p "$FX/outside-sub"; mk x-symparent; ( cd "$W/x-symparent" && git checkout -q -b x1 && mkdir sub && echo in > sub/x && git add sub/x && git commit -qm sub && git push -q origin x1 && git update-index --assume-unchanged sub/x && rm -rf sub && echo OUTSIDE > "$FX/outside-sub/x" && ln -s "$FX/outside-sub" sub ) 2>/dev/null; old "$W/x-symparent"
 mk w-stashup; ( cd "$W/w-stashup" && echo s1 >> tracked && git stash -q ); old "$W/w-stashup"
 cat > "$HYG_SESSIONS_JSON" <<JSON
 [ {"session":"i-frozen","status":"running","started_at":"2026-01-02T10:00+02:00"},
@@ -141,7 +145,7 @@ HYG_RETENTION_DAYS=7 HYG_RESCUE_CMD="$FX/up-fail.sh" bash "$HYG" apply "$FX/f.ts
 /usr/bin/awk -F'\t' '$2=="remove" && $1=="session-dirs"{print $1"\t"$5}' "$P" | /usr/bin/grep -E '/(a-dirty|b-stash|c-unpushed|d-deleted|i-frozen|l-secrets|m-plain|n-bigfile|p-url)$' > "$FX/go.tsv"
 env HYG_RETENTION_DAYS=7 HYG_RESCUE_CMD="$FX/up-ok.sh" HYG_RETENTION_MAX_PER_RUN=2 bash "$HYG" apply "$FX/go.tsv" > "$FX/cap.out" 2>&1
 [ "$(/usr/bin/grep -c $'\tremoved\t' "$FX/cap.out")" = 2 ] && [ "$(/usr/bin/grep -c 'retention-cap-reached' "$FX/cap.out")" -ge 1 ] && ok "cap stops the run at 2" || bad "cap: $(cat "$FX/cap.out")"
-mkdir -p "$FX/globcwd"; : > "$FX/globcwd/x.pem"; : > "$FX/globcwd/decoy.key"; ln -s /etc/hosts "$W/l-secrets/hosts-link"; old "$W/l-secrets"
+mkdir -p "$FX/globcwd"; : > "$FX/globcwd/x.pem"; : > "$FX/globcwd/decoy.key"; ln -s /etc/hosts "$W/l-secrets/hosts-link"; echo S3CRET > "$W/l-secrets/Server.PEM"; old "$W/l-secrets"
 ( cd "$FX/globcwd" && env $RET bash "$HYG" apply "$FX/go.tsv" ) > "$FX/go.out" 2>&1
 for f in a-dirty b-stash c-unpushed d-deleted i-frozen l-secrets m-plain n-bigfile p-url; do [ ! -e "$W/$f" ] && ok "$f removed" || bad "$f still there: $(grep "$f" "$FX/go.out")"; done
 [ "$(/usr/bin/wc -l < "$LEDGER" 2>/dev/null | tr -d ' ')" = 9 ] && ok "9 ledger lines" || bad "ledger: $(cat "$LEDGER" 2>&1)"
@@ -204,6 +208,12 @@ one session-dirs v-envcommit; env $RET bash "$HYG" apply "$FX/one.tsv" > "$FX/v.
 [ -f "$W/v-envcommit/.env" ] && /usr/bin/grep -q $'refused\t.*rescue-denied-name-in-commits' "$FX/v.out" && ok "S1 .env in an unpushed commit → kept" || bad "S1 commit: $(cat "$FX/v.out")"
 one session-dirs v-keypatch; env $RET bash "$HYG" apply "$FX/one.tsv" > "$FX/v2.out" 2>&1
 [ -f "$W/v-keypatch/cfg.key" ] && /usr/bin/grep -q $'refused\t.*rescue-denied-name-in-patch' "$FX/v2.out" && ok "S1 edited tracked *.key → kept" || bad "S1 patch: $(cat "$FX/v2.out")"
+one session-dirs v-rootenv; env $RET bash "$HYG" apply "$FX/one.tsv" > "$FX/v3.out" 2>&1
+[ -f "$W/v-rootenv/.env" ] && /usr/bin/grep -q $'refused\t.*rescue-denied-name-in-commits' "$FX/v3.out" && ok "S1 .env in a root commit under log.showRoot=false → kept" || bad "S1 root: $(cat "$FX/v3.out")"
+one session-dirs x-symparent; env $RET bash "$HYG" apply "$FX/one.tsv" > "$FX/x.out" 2>&1
+pfx=$(restore x-symparent 2>/dev/null)
+[ ! -e "$W/x-symparent" ] && [ -f "$FX/outside-sub/x" ] && ! /usr/bin/grep -rqs OUTSIDE "$FX/r/x-symparent" && /usr/bin/jq -e '.entries[]|select(.kind=="outside-folder-not-archived" and .path=="sub/x")' "$pfx/manifest.json" >/dev/null \
+  && ok "file behind a symlinked parent is listed, not copied" || bad "symparent: $(cat "$FX/x.out"; cat "$pfx/manifest.json" 2>/dev/null; find "$FX/r/x-symparent" -type f 2>/dev/null)"
 # rescue refs do not outlive a refused rescue
 one session-dirs w-stashup; HYG_RETENTION_DAYS=7 HYG_RESCUE_CMD="$FX/up-fail.sh" bash "$HYG" apply "$FX/one.tsv" > "$FX/w.out" 2>&1
 [ -d "$W/w-stashup/.git" ] && [ -z "$(git -C "$W/w-stashup" for-each-ref refs/hygiene-rescue/)" ] && ok "refused rescue leaves no refs/hygiene-rescue" || bad "refs left: $(git -C "$W/w-stashup" for-each-ref refs/hygiene-rescue/) $(cat "$FX/w.out")"

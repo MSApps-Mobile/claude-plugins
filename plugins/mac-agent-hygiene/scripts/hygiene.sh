@@ -90,7 +90,8 @@ HYG_RESCUE_CMD="${HYG_RESCUE_CMD:-}"                  # <dir> <object-prefix>; e
 RESCUE_MAX_BYTES=$((20*1024*1024)); RESCUE_FILE_MAX_BYTES=$((5*1024*1024)); RESCUE_PART_BYTES=3145728; RESCUE_MAX_PARTS=9
 # Never leaves this Mac, by name (S1, review 5748468367). A loose or untracked file with one of these names is
 # dropped and listed; one inside the patch or in an unpushed commit keeps the WHOLE folder (rescue-denied-name-*).
-RESCUE_DENY_NAMES='.env .env.* *.pem *.key *.p12 *.pfx *.jks *.keystore id_rsa* id_dsa* id_ecdsa* id_ed25519* .npmrc .netrc .pypirc *.tfstate *.tfstate.* *credentials*.json *service-account*.json'
+# Lower case: name_denied folds the name first (this Mac's disk ignores case, so Server.PEM is server.pem).
+RESCUE_DENY_NAMES='.env .env.* .envrc *.pem *.key *.p8 *.p12 *.pfx *.jks *.keystore id_rsa* id_dsa* id_ecdsa* id_ed25519* .npmrc .netrc .pypirc .git-credentials credentials *.tfstate *.tfstate.* *credentials*.json *service-account*.json'
 # Split once with globbing off: an unquoted `for p in $RESCUE_DENY_NAMES` expands `*.pem` against the cwd, so a
 # decoy x.pem in the cwd turned the pattern into the literal name x.pem and server.pem went out.
 set -f
@@ -318,7 +319,7 @@ check_worktree(){ local d="$1"
 # look (core.fsmonitor and hooks are the command-executing keys `status` would honour). autoRefreshIndex:
 # `git diff` otherwise rewrites a stat-dirty index, which is a write, and reads as a touch to retention_idle.
 GITS(){ GIT_CONFIG_NOSYSTEM=1 "$GIT" --no-optional-locks -c core.fsmonitor=false -c core.hooksPath=/dev/null \
-  -c core.untrackedCache=false -c diff.external= -c diff.autoRefreshIndex=false -c core.pager=cat "$@"; }
+  -c core.untrackedCache=false -c diff.external= -c diff.autoRefreshIndex=false -c core.pager=cat -c log.showSignature=false "$@"; }
 # Repo-local config keys that can make git run a program (filter drivers run during `status`). A repo
 # carrying any of them is KEPT unread: fail closed rather than try to neutralise every driver.
 CMD_CONFIG_RE='^(filter\.|include\.|includeif\.|core\.fsmonitor|core\.sshcommand|core\.gitproxy|core\.askpass|core\.editor|core\.pager|core\.hookspath|diff\.[^.]*\.(textconv|command)|merge\.[^.]*\.driver|credential\.|uploadpack\.|protocol\.)'
@@ -507,7 +508,7 @@ retention_decides(){ local d="$1" why="$2" r
   done < <(repos_in "$d")
   RESCUE_NEEDED=1; REASON="retention-rescue-$why"; return 0; }
 
-name_denied(){ local b p; b=$(/usr/bin/basename "$1"); for p in "${RESCUE_DENY[@]}"; do case "$b" in $p) return 0;; esac; done; return 1; }
+name_denied(){ local b p; b=$(/usr/bin/basename "$1" | /usr/bin/tr '[:upper:]' '[:lower:]'); for p in "${RESCUE_DENY[@]}"; do case "$b" in $p) return 0;; esac; done; return 1; }
 under_artifact_dir(){ local n; for n in "${ARTIFACT_NAMES[@]}" .venv venv Pods DerivedData; do case "/$1/" in */"$n"/*) return 0;; esac; done; return 1; }
 # One manifest line. A failed append (a full disk) fails the rescue: a silent gap is a lost file (B2).
 man(){ printf '%s\t%s\t%s\n' "$1" "$2" "${3:-}" >> "$RESCUE_OUT/manifest.tsv" || { REASON=rescue-manifest-write-failed; return 1; }; }
@@ -518,6 +519,8 @@ rescue_queue(){ local base="$1" rel="$2" f="$1/$2" sz
   case "$rel" in *$'\n'*|*$'\t'*) REASON=rescue-path-unrepresentable; BLOCKER="$rel"; return 1;; esac   # the manifest is TSV
   if [ -L "$f" ]; then man symlink-not-archived "$rel" "$(/usr/bin/readlink "$f")"; return; fi
   [ -e "$f" ] || { REASON=rescue-path-unresolved; BLOCKER="$rel"; return 1; }
+  # A symlinked parent puts the file outside the folder: the rm never reaches it, so it is listed, not archived.
+  case "$(physical "$(/usr/bin/dirname "$f")")/" in "$(physical "$base")"/*) ;; *) man outside-folder-not-archived "$rel"; return;; esac
   if [ -d "$f" ]; then [ -e "$f/.git" ] && return 0; REASON=rescue-path-unresolved; BLOCKER="$rel"; return 1; fi   # a nested repo is archived as a repo
   [ -f "$f" ] || { man special-file-not-archived "$rel"; return; }
   name_denied "$f" && { man denied-by-name "$rel"; return; }
@@ -577,9 +580,10 @@ rescue_bundle(){ local d="$1" r="$2" rel="$3" n="$4" dir="$5" pre cd cdk h i bco
     [ -z "$(GITS -C "$r" for-each-ref --contains HEAD --format=x refs/heads refs/remotes 2>/dev/null | /usr/bin/head -1)" ] || return 0
     revs=( HEAD --not --remotes )
   fi
-  # S1: a denied name in any commit the bundle would carry keeps the folder.
-  git_list "$L" -C "$r" log --no-renames -m --format= --name-only -z "${revs[@]}" || return 1
-  while IFS= read -r -d '' f; do f="${f#$'\n'}"; [ -n "$f" ] || continue
+  # S1: a denied name among the objects the bundle would carry keeps the folder. rev-list --objects is what the bundle
+  # packs, and no repo config can narrow it (a `log` scan skips a root commit's files under log.showRoot=false).
+  git_list "$L" -C "$r" rev-list --objects "${revs[@]}" || return 1
+  while IFS= read -r e; do case "$e" in *" "*) f="${e#* }";; *[!0-9a-f]*) f="$e";; *) continue;; esac; [ -n "$f" ] || continue   # a bare non-hex line is the tail of a name holding a newline
     name_denied "$f" && { REASON=rescue-denied-name-in-commits; BLOCKER="$pre$f"; return 1; }; done < "$L"
   REASON=rescue-repo-read-failed
   bcount=$(GITS -C "$r" rev-list --count "${revs[@]}") || return 1
