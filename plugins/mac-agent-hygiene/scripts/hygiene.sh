@@ -52,7 +52,7 @@ set -u
 umask 077
 
 # ---------- configuration: defaults < config file < environment ----------
-VARS="HYG_LOG HYG_DERIVED_DATA HYG_PLUGIN_CACHE HYG_PLUGIN_CLONE_MIN_AGE_MIN HYG_PW_GLOB HYG_MODEL_CACHES HYG_MODEL_CACHE_AGE_DAYS HYG_WT_ROOT HYG_WT_GLOB HYG_WT_NESTED HYG_WT_DEPTH HYG_WT_AGE_DAYS HYG_WT_MERGED_PR_CHECK HYG_GIT HYG_GH HYG_GH_SHA_CHECK_MAX HYG_SESSION_ROOT HYG_SESSION_AGE_HOURS HYG_SESSION_PARENT_BRANCH_OK HYG_GRADLE_HOME HYG_GRADLE_AGE_DAYS HYG_DEVICE_SUPPORT HYG_DEVICE_SUPPORT_AGE_DAYS HYG_SIM_DEVICES HYG_ANDROID_HOME HYG_ANDROID_CACHE_AGE_DAYS HYG_ANDROID_SDK HYG_PKG_CACHES HYG_PKG_CACHE_AGE_DAYS HYG_LOCK HYG_SESSIONS_JSON HYG_ARTIFACT_IDLE_HOURS HYG_ARTIFACT_DEPTH HYG_JQ"
+VARS="HYG_LOG HYG_DERIVED_DATA HYG_PLUGIN_CACHE HYG_PLUGIN_CLONE_MIN_AGE_MIN HYG_PW_GLOB HYG_MODEL_CACHES HYG_MODEL_CACHE_AGE_DAYS HYG_WT_ROOT HYG_WT_GLOB HYG_WT_NESTED HYG_WT_DEPTH HYG_WT_AGE_DAYS HYG_WT_MERGED_PR_CHECK HYG_GIT HYG_GH HYG_GH_SHA_CHECK_MAX HYG_SESSION_ROOT HYG_SESSION_AGE_HOURS HYG_SESSION_PARENT_BRANCH_OK HYG_GRADLE_HOME HYG_GRADLE_AGE_DAYS HYG_DEVICE_SUPPORT HYG_DEVICE_SUPPORT_AGE_DAYS HYG_SIM_DEVICES HYG_ANDROID_HOME HYG_ANDROID_CACHE_AGE_DAYS HYG_ANDROID_SDK HYG_PKG_CACHES HYG_PKG_CACHE_AGE_DAYS HYG_LOCK HYG_SESSIONS_JSON HYG_ARTIFACT_IDLE_HOURS HYG_ARTIFACT_DEPTH HYG_JQ HYG_LSOF"
 for v in $VARS; do eval "ENV_$v=\"\${$v-}\""; done
 CONF="${XDG_CONFIG_HOME:-$HOME/.config}/mac-agent-hygiene/config.env"
 # shellcheck disable=SC1090
@@ -103,6 +103,9 @@ if [ -z "$GH" ]; then
   done
 fi
 
+first_exec(){ local c; for c in "$@"; do [ -n "$c" ] && [ -x "$c" ] && { printf '%s' "$c"; return 0; }; done; return 0; }
+LSOF="${HYG_LSOF:-$(first_exec /usr/sbin/lsof /usr/bin/lsof)}"   # macOS: /usr/sbin; Linux CI: /usr/bin. Never a bare PATH lookup.
+
 # Cache subfolders that Chromium regenerates. Fixed in code on purpose — not user-editable.
 PW_CACHE_ALLOWLIST=(
   "Default/Cache" "Default/Code Cache" "Default/GPUCache"
@@ -118,15 +121,20 @@ dpct(){ /bin/df -h "$DATA_VOL" | /usr/bin/tail -1 | /usr/bin/awk '{print $5}'; }
 log(){ echo "$(/bin/date '+%F %T') $*" >> "$HYG_LOG"; }
 kb(){ /usr/bin/du -sk "$1" 2>/dev/null | /usr/bin/cut -f1; }
 emit(){ printf '%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "$5"; }   # category action kb reason path
-inuse(){ /usr/sbin/lsof +D "$1" >/dev/null 2>&1; }
+inuse(){ [ -x "$LSOF" ] || return 0; "$LSOF" +D "$1" >/dev/null 2>&1; }   # no lsof ⇒ cannot tell ⇒ in use
 xcode_building(){ /usr/bin/pgrep -qx xcodebuild || /usr/bin/pgrep -qx Xcode || /usr/bin/pgrep -qx XCBBuildService; }
 simulator_running(){ /usr/bin/pgrep -qx Simulator || /usr/bin/pgrep -qf 'CoreSimulator/.*launchd_sim'; }
 older_than_days(){ [ -n "$(/usr/bin/find "$1" -maxdepth 0 -mtime +"$2" 2>/dev/null)" ]; }
 physical(){ cd -P -- "$1" 2>/dev/null && pwd -P; }   # the real path, symlinks resolved; fails on a path that does not resolve
 has_dot_component(){ case "/$1/" in */./*|*/../*) return 0;; esac; return 1; }
-# Every process's cwd, read ONCE per run; compared as fixed strings (never as a pattern).
-CWDS=""; load_cwds(){ [ -n "$CWDS" ] || CWDS=$(/usr/sbin/lsof -d cwd -Fn 2>/dev/null | /usr/bin/sed -n 's/^n//p'); }
-cwd_inside(){ local c; load_cwds
+# Every process's cwd, read ONCE per run; compared as fixed strings (never as a pattern). lsof missing, or
+# printing no cwd at all (it always sees at least this process), means we are blind: every folder then
+# counts as having a process inside ⇒ KEEP, never "nobody is inside".
+CWDS=""; CWDS_LOADED=0; CWDS_BLIND=0
+load_cwds(){ [ "$CWDS_LOADED" = 1 ] && return 0; CWDS_LOADED=1
+  if [ -x "$LSOF" ]; then CWDS=$("$LSOF" -d cwd -Fn 2>/dev/null | /usr/bin/sed -n 's/^n//p'); fi
+  [ -n "$CWDS" ] || CWDS_BLIND=1; }
+cwd_inside(){ local c; load_cwds; [ "$CWDS_BLIND" = 1 ] && return 0
   while IFS= read -r c; do [ -n "$c" ] || continue; [ "$c" = "$1" ] && return 0; case "$c" in "$1"/*) return 0;; esac; done <<< "$CWDS"; return 1; }
 JQ="${HYG_JQ:-}"; if [ -z "$JQ" ]; then for c in /usr/bin/jq /opt/homebrew/bin/jq /usr/local/bin/jq; do [ -x "$c" ] && { JQ="$c"; break; }; done; fi
 # Sessions the routines registry does not call finished. Read ONCE per run. No registry ⇒ none alive
@@ -228,14 +236,21 @@ check_model(){ local m; for m in $HYG_MODEL_CACHES; do
 # look (core.fsmonitor and hooks are the command-executing keys `status` would honour).
 GITS(){ GIT_CONFIG_NOSYSTEM=1 "$GIT" --no-optional-locks -c core.fsmonitor=false -c core.hooksPath=/dev/null \
   -c core.untrackedCache=false -c diff.external= -c core.pager=cat "$@"; }
-# Repo-local config keys that can make git run a program (filter drivers run during `status`). A repo
-# carrying any of them is KEPT unread: fail closed rather than try to neutralise every driver.
-CMD_CONFIG_RE='^(filter\.|include\.|includeif\.|core\.fsmonitor|core\.sshcommand|core\.gitproxy|core\.askpass|core\.editor|core\.pager|core\.hookspath|diff\.[^.]*\.(textconv|command)|merge\.[^.]*\.driver|credential\.|uploadpack\.|protocol\.)'
-repo_config_runs_commands(){ local gd f
+# Repo-local config is input an agent (or a cloned repo) wrote, and git reads it on EVERY call here. Keys that
+# make a look-only call run a program are many: filter/diff/merge drivers, include/includeIf, core.sshCommand,
+# remote.<n>.uploadpack with a promisor remote (lazy fetch spawns it), log.showSignature + gpg.program, ... A
+# deny-list of them cannot be finished (card w1t7IqUt: both of the last two ran a canary during `plan` at
+# 923f715 while the deny-list passed). So this is an ALLOW-list: a repo whose config holds ANY key outside
+# CFG_ALLOW_RE, or whose config cannot be listed, is KEPT unread. -c overrides in GITS stay as a second layer.
+CFG_ALLOW_RE='^(core\.(repositoryformatversion|filemode|bare|logallrefupdates|ignorecase|precomposeunicode|symlinks|worktree)|extensions\.worktreeconfig|remote\..+\.(url|pushurl|fetch|tagopt|prune|gh-resolved)|branch\..+\.(remote|merge|rebase|description|vscode-merge-base|github-pr-owner-number)|user\.(name|email)|init\.defaultbranch|pull\.(rebase|ff)|push\.(default|autosetupremote)|fetch\.prune)$'
+repo_config_unvetted(){ local gd wd f out
   gd=$(GITS -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 0
-  for f in "$gd/config" "$(GITS -C "$1" rev-parse --path-format=absolute --git-dir 2>/dev/null)/config.worktree"; do
+  wd=$(GITS -C "$1" rev-parse --path-format=absolute --git-dir 2>/dev/null) || return 0
+  [ -f "$gd/config" ] || return 0
+  for f in "$gd/config" "$wd/config.worktree"; do
     [ -f "$f" ] || continue
-    "$GIT" config --file "$f" --name-only --list 2>/dev/null | /usr/bin/grep -qiE "$CMD_CONFIG_RE" && return 0
+    out=$("$GIT" config --file "$f" --name-only --list 2>/dev/null) || return 0
+    printf '%s\n' "$out" | /usr/bin/grep -viE "$CFG_ALLOW_RE" | /usr/bin/grep -q . && return 0
   done; return 1; }
 # A clone's remote-tracking refs go stale (nobody fetches a finished session), so a local `main` a pull
 # moved past origin/main looks unpushed. Ask GitHub instead: the SHA is safe when the repo's default
@@ -306,7 +321,7 @@ clone_has_live_worktree_outside(){ local gd rbound w g wt rw
 # KEPT", so the worktrees category always passes 0.
 git_safe(){
   local d="$1" bound="${2:-$1}" allow_pb="${3:-0}" b h repo prrepo f st br cdir rc rbound wg pb po pn tl iv rd rb
-  repo_config_runs_commands "$d" && { REASON=repo-config-can-run-commands; return 1; }
+  repo_config_unvetted "$d" && { REASON=repo-config-not-allowlisted; return 1; }
   # status only inspects the work tree git resolves. A repo's core.worktree (or a broken .git that sends
   # discovery up to an outer repo) puts that somewhere other than $d: $d's own files are then checked
   # nowhere and go with the rm (PR #80 review B5). KEEP unless it physically IS $d.
@@ -391,9 +406,13 @@ git_safe(){
       REASON=branch-kept-in-parent-repo; return 0; fi
   fi
   REASON=unpushed-commits; return 1; }
-check_worktree(){ local d="$1" gd cdir
+check_worktree(){ local d="$1" gd cdir rel
   wt_in_scope "$d" || { REASON=outside-worktree-scope; return 1; }
   [ -f "$d/.git" ] || { REASON=not-a-linked-worktree; return 1; }        # a full clone has a .git DIR — left alone
+  # B13: the same registry rule as every other pass. A worktree is a session's folder (or sits inside one):
+  # name the worktree itself and the top-level session folder it lives under.
+  session_alive "$d" && { REASON=session-alive-in-registry; return 1; }
+  case "$d" in "$HYG_SESSION_ROOT"/*/*) rel="${d#"$HYG_SESSION_ROOT"/}"; session_alive "$HYG_SESSION_ROOT/${rel%%/*}" && { REASON=session-alive-in-registry; return 1; };; esac
   gd=$(GITS -C "$d" rev-parse --path-format=absolute --git-dir 2>/dev/null)
   cdir=$(GITS -C "$d" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
   [ -n "$gd" ] && [ "$gd" != "$cdir" ] || { REASON=not-a-linked-worktree; return 1; }   # submodule / separate git-dir
@@ -401,18 +420,29 @@ check_worktree(){ local d="$1" gd cdir
   cwd_inside "$d" && { REASON=a-process-is-inside; return 1; }
   git_safe "$d" "$d" 0; }
 
+# THE idle walk (B16; same form as wt_recently_touched above). 0 ⇒ a regular file outside the directories named
+# in "$3..." changed in the last $2 minutes, or find itself failed (unreadable ⇒ unmeasured ⇒ treat as touched).
+# The two callers prune different sets ON PURPOSE:
+#   check_session  deletes the WHOLE folder, so only .git and dependency trees (node_modules .venv Pods) are
+#                  skipped: a fresh file in dist/ build/ .next/ coverage/ .turbo/ is recent work and counts.
+#   session_idle   only strips the artifact dirs, so it also skips every ARTIFACT_NAMES dir: what is being
+#                  removed is not evidence that a human is still working in the folder.
+touched_within_min(){ local d="$1" mins="$2" n e=() out rc; shift 2
+  while IFS= read -r n; do e+=( "$n" ); done < <(name_expr "$@")
+  out=$(/usr/bin/find "$d" \( "${e[@]}" \) -prune -o -type f -mmin -"$mins" -print -quit 2>/dev/null); rc=$?
+  [ -n "$out" ] || [ "$rc" != 0 ]; }
 check_session(){ local d="$1" r n=0
   [ "$(dirname "$d")" = "$HYG_SESSION_ROOT" ] || { REASON=outside-session-root; return 1; }
   [ -L "$d" ] && { REASON=is-a-symlink; return 1; }
   [ -f "$d/.git" ] && { REASON=linked-worktree-see-worktrees-pass; return 1; }
   [ -e "$d/.git" ] && [ ! -d "$d/.git" ] && { REASON=odd-git-entry; return 1; }
   session_alive "$d" && { REASON=session-alive-in-registry; return 1; }
-  [ -n "$(/usr/bin/find "$d" \( -name .git -o -name node_modules -o -name .venv -o -name Pods \) -prune -o -type f -mmin -"$((HYG_SESSION_AGE_HOURS*60))" -print -quit 2>/dev/null)" ] && { REASON=touched-recently; return 1; }
+  touched_within_min "$d" "$((HYG_SESSION_AGE_HOURS*60))" .git node_modules .venv Pods && { REASON=touched-recently; return 1; }
   cwd_inside "$d" && { REASON=a-process-is-inside; return 1; }
   # A bare repo or separate git-dir elsewhere in the folder would go with the rm unchecked: keep, unread.
   holds_bare_or_separate_git_dir "$d" && { REASON=contains-bare-or-separate-git-dir; return 1; }
   if [ -d "$d/.git" ]; then n=1; git_safe "$d" "$d" 0 || { REASON="clone-$REASON"; return 1; }; fi   # the folder IS a clone (a repo git_safe vouched for)
-  while IFS= read -r r; do [ -n "$r" ] || continue
+  while IFS= read -r r; do [ -n "$r" ] || continue; n=$((n+1))
     git_safe "$r" "$d" "$HYG_SESSION_PARENT_BRANCH_OK" || { REASON="nested-$REASON"; return 1; }
   done < <(nested_repos "$d")
   # The category reclaims checkouts: with no repo there is nothing git_safe vouched for (research notes,
@@ -421,13 +451,12 @@ check_session(){ local d="$1" r n=0
   REASON=stale-session-all-nested-pushed; return 0; }
 # Session folder idle: no file (outside .git and the artifact dirs themselves) newer than the window.
 # Cached per folder for the run.
-session_idle(){ local t="$1" f k n e=(); k=$(printf '%s' "$t" | /usr/bin/shasum | /usr/bin/cut -c1-16); f="$TMPD/idle-$k"
+session_idle(){ local t="$1" f k; k=$(printf '%s' "$t" | /usr/bin/shasum | /usr/bin/cut -c1-16); f="$TMPD/idle-$k"
   if [ ! -f "$f" ]; then
-    while IFS= read -r n; do e+=( "$n" ); done < <(name_expr .git "${ARTIFACT_NAMES[@]}" .venv Pods)
-    if [ -n "$(/usr/bin/find "$t" \( "${e[@]}" \) -prune -o -type f -mmin -"$((HYG_ARTIFACT_IDLE_HOURS*60))" -print -quit 2>/dev/null)" ]
+    if touched_within_min "$t" "$((HYG_ARTIFACT_IDLE_HOURS*60))" .git "${ARTIFACT_NAMES[@]}" .venv Pods
     then echo 0 > "$f"; else echo 1 > "$f"; fi
   fi; [ "$(/bin/cat "$f")" = 1 ]; }
-check_artifact(){ local p="$1" rel top name parent tracked tl
+check_artifact(){ local p="$1" rel top name parent tracked tl l
   case "$p" in "$HYG_SESSION_ROOT"/*/*) ;; *) REASON=outside-session-root; return 1;; esac
   has_dot_component "$p" && { REASON=dot-path; return 1; }
   rel="${p#"$HYG_SESSION_ROOT"/}"; top="$HYG_SESSION_ROOT/${rel%%/*}"; name=$(/usr/bin/basename "$p"); parent=$(/usr/bin/dirname "$p")
@@ -443,7 +472,7 @@ check_artifact(){ local p="$1" rel top name parent tracked tl
   [ -n "$(/usr/bin/find "$p" -name .git -print -quit 2>/dev/null)" ] && { REASON=contains-a-repo; return 1; }
   holds_bare_or_separate_git_dir "$p" && { REASON=contains-bare-or-separate-git-dir; return 1; }   # B6: the only copy of a commit can sit here
   if GITS -C "$parent" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    repo_config_runs_commands "$parent" && { REASON=repo-config-can-run-commands; return 1; }
+    repo_config_unvetted "$parent" && { REASON=repo-config-not-allowlisted; return 1; }
     # With core.worktree elsewhere, the two answers below describe that other tree, not this dir (B5).
     tl=$(GITS -C "$parent" rev-parse --show-toplevel 2>/dev/null) && [ -n "$tl" ] || { REASON=worktree-not-this-folder; return 1; }
     tl=$(physical "$tl") && [ -n "$tl" ] || { REASON=worktree-not-this-folder; return 1; }
@@ -453,6 +482,15 @@ check_artifact(){ local p="$1" rel top name parent tracked tl
     GITS -C "$parent" check-ignore -q -- "$name/" 2>/dev/null || { REASON=not-gitignored; return 1; }
     REASON=gitignored-build-output; return 0
   fi
+  # B12: git failing is not "there is no repo". Any .git entry (dir, file, even a dangling symlink) from the
+  # artifact's folder up to the session folder is a repo git could not vouch for (unknown extensions.*, a
+  # linked worktree whose parent is gone, a corrupt .git): a tracked file here may hold uncommitted work. KEEP.
+  l="$parent"
+  while :; do
+    { [ -e "$l/.git" ] || [ -L "$l/.git" ]; } && { REASON=git-cannot-read-repo; return 1; }
+    [ "$l" = "$top" ] || [ "$l" = / ] && break
+    l=$(/usr/bin/dirname "$l")
+  done
   case "$name" in node_modules|.next|.turbo) [ -f "$parent/package.json" ] && { REASON=node-artifact-beside-package-json; return 0; };; esac
   REASON=not-provably-regenerable; return 1; }
 check_gradle(){ local p="$1" parent n
@@ -486,9 +524,19 @@ check_pkg(){ local m; for m in $HYG_PKG_CACHES; do
     REASON=refetchable-package-cache; return 0; done
   REASON=not-a-listed-package-cache; return 1; }
 
+# L2: the path must be physical under its category's root: no symlink as the leaf or as any component, or
+# `git worktree remove` / `rm -rf` act on whatever the link points at. Resolved in check_item (plan AND apply) and
+# AGAIN in remove_item right before the removal. A path that does not exist passes (the category check says gone).
+scope_root(){ case "$1" in worktrees) printf '%s' "$HYG_WT_ROOT";; session-dirs|build-artifacts) printf '%s' "$HYG_SESSION_ROOT";; esac; }
+real_under_scope(){ local root rr rp; root=$(scope_root "$1"); [ -n "$root" ] || return 0
+  [ -e "$2" ] || [ -L "$2" ] || return 0
+  case "$2" in "$root"/*) ;; *) return 1;; esac
+  rr=$(physical "$root") && rp=$(physical "$2") || return 1
+  [ "$rp" = "$rr/${2#"$root"/}" ]; }
 check_item(){ # category path → 0 removable (REASON=why) / 1 keep (REASON=why)
   case "$2" in "$HOME"/*) ;; *) REASON=outside-home; return 1;; esac
   has_dot_component "$2" && { REASON=dot-component-in-path; return 1; }
+  real_under_scope "$1" "$2" || { REASON=path-has-symlink-component; return 1; }
   case "$1" in
     derived-data) check_derived "$2";; plugin-clones) check_clone "$2";; browser-caches) check_pwcache "$2";;
     model-caches) check_model "$2";; worktrees) check_worktree "$2";; session-dirs) check_session "$2";; build-artifacts) check_artifact "$2";;
@@ -529,18 +577,20 @@ plan(){ local cat p k prev="" n=0 r=0 t0=$SECONDS
 }
 
 remove_item(){ local cat="$1" p="$2" common r commons=""
+  # Last look before the removal (L2). Every git call below goes through GITS: apply runs git on repos an agent made.
+  real_under_scope "$cat" "$p" || { log "refused [$cat] path no longer physical under its root: $p"; return 1; }
   if [ "$cat" = worktrees ]; then
-    common=$("$GIT" -C "$p" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
-    "$GIT" -C "$p" worktree remove "$p" >>"$HYG_LOG" 2>&1 || return 1
-    [ -n "$common" ] && "$GIT" --git-dir="$common" worktree prune >/dev/null 2>&1
+    common=$(GITS -C "$p" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
+    GITS -C "$p" worktree remove "$p" >>"$HYG_LOG" 2>&1 || return 1
+    [ -n "$common" ] && GITS --git-dir="$common" worktree prune >/dev/null 2>&1
   elif [ "$cat" = session-dirs ]; then
     # nested linked worktrees: remember their parent repos so their metadata is pruned after the rm
     while IFS= read -r r; do [ -f "$r/.git" ] || continue
-      common=$("$GIT" -C "$r" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) && commons="$commons$common"$'\n'
+      common=$(GITS -C "$r" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) && commons="$commons$common"$'\n'
     done < <(nested_repos "$p")
     /bin/rm -rf -- "$p" || return 1
     printf '%s' "$commons" | /usr/bin/sort -u | while IFS= read -r common; do
-      [ -n "$common" ] && [ -d "$common" ] && "$GIT" --git-dir="$common" worktree prune >/dev/null 2>&1; done
+      [ -n "$common" ] && [ -d "$common" ] && GITS --git-dir="$common" worktree prune >/dev/null 2>&1; done
   elif [ "$cat" = ios ] && [ "$(dirname "$p")" = "$HYG_SIM_DEVICES" ]; then
     /usr/bin/xcrun simctl delete "$(basename "$p")" >>"$HYG_LOG" 2>&1 || return 1
   else /bin/rm -rf -- "$p" || return 1; fi; return 0; }

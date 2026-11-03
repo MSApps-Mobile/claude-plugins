@@ -29,7 +29,7 @@ export HOME="$FX/home" XDG_CONFIG_HOME="$FX/home/.config"
 mkdir -p "$HOME"
 W="$HOME/code/wt"
 export HYG_LOG="$FX/hygiene.log" HYG_DERIVED_DATA="$HOME/dd-none" HYG_PLUGIN_CACHE="$HOME/pc-none"
-export HYG_PW_GLOB="$HOME/pw-none-*" HYG_MODEL_CACHES="$HOME/mc-none" HYG_WT_ROOT="$HOME/wt-none" HYG_WT_ROOTS="$W:*"
+export HYG_PW_GLOB="$HOME/pw-none-*" HYG_MODEL_CACHES="$HOME/mc-none" HYG_WT_ROOT="$HOME/code"
 export HYG_WT_MERGED_PR_CHECK=0 HYG_GH=/usr/bin/false HYG_GIT=/usr/bin/git HYG_LOCK="$FX/lock"
 export HYG_SESSION_ROOT="$W" HYG_GRADLE_HOME="$HOME/gradle-none" HYG_DEVICE_SUPPORT="$HOME/ds-none"
 export HYG_SIM_DEVICES="$HOME/sims-none" HYG_ANDROID_HOME="$HOME/android-none" HYG_PKG_CACHES=""
@@ -63,8 +63,11 @@ printf 'sub-wt/\n' >> "$W/wt-inside-owner/.git/info/exclude"
 old "$W/wt-inside-owner"
 # B2: untracked file hidden by repo config
 mkclone untracked-hidden
-git -C "$W/untracked-hidden" config status.showUntrackedFiles no
+git -C "$W/untracked-hidden" config status.showUntrackedFiles no   # repo-local: now kept earlier, by the config allow-list
 echo precious > "$W/untracked-hidden/notes.txt"; old "$W/untracked-hidden"
+mkclone untracked-hidden-global   # the same setting in the USER's global config, which no allow-list vets: only --untracked-files=all catches it
+echo precious > "$W/untracked-hidden-global/notes.txt"; old "$W/untracked-hidden-global"
+git config --global status.showUntrackedFiles no
 # B3: commit reachable only from a local tag (lightweight / annotated)
 mkclone tag-light; TL_SHA=$(detached_commit "$W/tag-light"); git -C "$W/tag-light" tag keep-me "$TL_SHA"; old "$W/tag-light"
 mkclone tag-annot; TA_SHA=$(detached_commit "$W/tag-annot"); git -C "$W/tag-annot" tag -a -m keep keep-me "$TA_SHA"; old "$W/tag-annot"
@@ -90,13 +93,15 @@ done
 bash "$HYG" plan > "$FX/plan.tsv" 2>"$FX/plan.err" || bad "plan exited non-zero: $(cat "$FX/plan.err")"
 P="$FX/plan.tsv"
 
-case "$(row "$P" session-dirs "$W/wt-owner")" in keep/clone-has-linked-worktrees) ok "B1 clone with an outside linked worktree → keep (clone-has-linked-worktrees)";;
+case "$(row "$P" session-dirs "$W/wt-owner")" in keep/clone-clone-has-live-worktree-outside) ok "B1 clone with an outside linked worktree → keep (clone-has-live-worktree-outside)";;
   *) bad "B1 wt-owner: $(row "$P" session-dirs "$W/wt-owner")";; esac
 case "$(row "$P" worktrees "$W/wt-outside")" in keep/*) ok "B1 the outside linked worktree with an unpushed commit → keep";;
   *) bad "B1 wt-outside: $(row "$P" worktrees "$W/wt-outside")";; esac
 case "$(row "$P" session-dirs "$W/wt-inside-owner")" in remove/*) ok "control: clone whose linked worktree is inside its own folder → remove";;
   *) bad "wt-inside-owner: $(row "$P" session-dirs "$W/wt-inside-owner")";; esac
-case "$(row "$P" session-dirs "$W/untracked-hidden")" in keep/clone-dirty-uncommitted-work) ok "B2 untracked file under status.showUntrackedFiles=no → keep (dirty)";;
+case "$(row "$P" session-dirs "$W/untracked-hidden-global")" in keep/clone-dirty-uncommitted-work) ok "B2 untracked file under a global status.showUntrackedFiles=no → keep (dirty)";;
+  *) bad "B2 untracked-hidden-global: $(row "$P" session-dirs "$W/untracked-hidden-global")";; esac
+case "$(row "$P" session-dirs "$W/untracked-hidden")" in keep/clone-repo-config-not-allowlisted) ok "B2 repo-local status.showUntrackedFiles=no → keep (config not allow-listed)";;
   *) bad "B2 untracked-hidden: $(row "$P" session-dirs "$W/untracked-hidden")";; esac
 case "$(row "$P" session-dirs "$W/tag-light")" in keep/clone-has-unpushed-tag) ok "B3 commit held only by a lightweight local tag → keep";;
   *) bad "B3 tag-light: $(row "$P" session-dirs "$W/tag-light")";; esac
@@ -118,14 +123,14 @@ case "$(row "$P" session-dirs "$W/wt-self-link")" in remove/*) ok "control: core
   *) bad "wt-self-link: $(row "$P" session-dirs "$W/wt-self-link")";; esac
 
 # apply re-checks every row: feed it the dangerous folders as if a stale plan had said remove
-printf 'session-dirs\t%s\n' "$W/wt-owner" "$W/untracked-hidden" "$W/tag-light" "$W/tag-annot" \
+printf 'session-dirs\t%s\n' "$W/wt-owner" "$W/untracked-hidden" "$W/untracked-hidden-global" "$W/tag-light" "$W/tag-annot" \
   "$W/hide-assume" "$W/hide-skip" "$W/hide-nested" "$W/wt-elsewhere" > "$FX/apply.tsv"
 printf 'worktrees\t%s\n' "$W/hide-wt" >> "$FX/apply.tsv"
 bash "$HYG" apply "$FX/apply.tsv" > "$FX/apply.out" 2>&1
 [ -d "$W/wt-owner/.git" ] && [ "$(git -C "$W/wt-outside" rev-parse HEAD 2>/dev/null)" = "$OUT_SHA" ] \
   && git -C "$W/wt-outside" cat-file -e "$OUT_SHA^{commit}" 2>/dev/null \
   && ok "B1 apply refused the owner; the linked worktree's unpushed commit survives" || bad "B1 after apply: $(cat "$FX/apply.out")"
-[ -f "$W/untracked-hidden/notes.txt" ] && ok "B2 apply refused; the untracked file survives" || bad "B2 notes.txt gone"
+[ -f "$W/untracked-hidden/notes.txt" ] && [ -f "$W/untracked-hidden-global/notes.txt" ] && ok "B2 apply refused; the untracked files survive" || bad "B2 notes.txt gone"
 git -C "$W/tag-light" cat-file -e "$TL_SHA^{commit}" 2>/dev/null && git -C "$W/tag-annot" cat-file -e "$TA_SHA^{commit}" 2>/dev/null \
   && ok "B3 apply refused; the tag-only commits survive" || bad "B3 tag-only commit gone"
 for c in hide-assume hide-skip hide-nested/repo hide-wt; do

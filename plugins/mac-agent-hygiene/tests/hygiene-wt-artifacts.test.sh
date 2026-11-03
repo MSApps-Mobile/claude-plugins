@@ -30,7 +30,7 @@ export HOME="$FX/home" XDG_CONFIG_HOME="$FX/home/.config"
 mkdir -p "$HOME"
 W="$HOME/code/wt"
 export HYG_LOG="$FX/hygiene.log" HYG_DERIVED_DATA="$HOME/dd-none" HYG_PLUGIN_CACHE="$HOME/pc-none"
-export HYG_PW_GLOB="$HOME/pw-none-*" HYG_MODEL_CACHES="$HOME/mc-none" HYG_WT_ROOT="$HOME/wt-none" HYG_WT_ROOTS="$W:*"
+export HYG_PW_GLOB="$HOME/pw-none-*" HYG_MODEL_CACHES="$HOME/mc-none" HYG_WT_ROOT="$HOME/code"
 export HYG_WT_MERGED_PR_CHECK=0 HYG_GH=/usr/bin/false HYG_GIT=/usr/bin/git HYG_LOCK="$FX/lock"
 export HYG_SESSION_ROOT="$W" HYG_GRADLE_HOME="$HOME/gradle-none" HYG_DEVICE_SUPPORT="$HOME/ds-none"
 export HYG_SIM_DEVICES="$HOME/sims-none" HYG_ANDROID_HOME="$HOME/android-none" HYG_PKG_CACHES=""
@@ -75,7 +75,10 @@ ln -s refs/heads/main "$W/clone-symhead/build/sym.git/HEAD"; old "$W/clone-symhe
 mkclone clone-elsewhere; mkdir -p "$FX/art-elsewhere"; cp "$W/clone-elsewhere/.gitignore" "$W/clone-elsewhere/package.json" "$FX/art-elsewhere/"
 git -C "$W/clone-elsewhere" config core.worktree "$FX/art-elsewhere"; mkart "$W/clone-elsewhere/build"; echo precious > "$W/clone-elsewhere/build/notes.txt"; old "$W/clone-elsewhere"
 # plain session folders
-mkdir -p "$W/plain-node/app"; echo '{}' > "$W/plain-node/app/package.json"; mkart "$W/plain-node/app/node_modules" "$W/plain-node/app/dist"; old "$W/plain-node"
+mkdir -p "$W/plain-node/app"; echo '{}' > "$W/plain-node/app/package.json"; mkart "$W/plain-node/app/node_modules" "$W/plain-node/app/dist"
+git clone -q "$FX/origin.git" "$W/plain-node/repo" 2>/dev/null   # a session folder with no git repo at all is kept (no-nested-repo); give it a clean pushed one
+(cd "$W/plain-node/repo" && echo r > r && git add r && git commit -qm plain-node && git push -q origin HEAD:refs/heads/plain-node 2>/dev/null)
+old "$W/plain-node"
 # a linked worktree at top level: the worktrees pass owns it, not session-dirs. Its parent clone is a
 # separate session folder, which session-dirs must KEEP: the rm would take the worktree's git data.
 mkclone clone-wtowner; git -C "$W/clone-wtowner" worktree add -q -b wt-branch "$W/top-linked" 2>/dev/null
@@ -85,6 +88,10 @@ cat > "$HYG_SESSIONS_JSON" <<JSON
 JSON
 (cd "$W/clone-cwd" && exec sleep 300) & SLEEPER=$!; disown "$SLEEPER" 2>/dev/null
 sleep 1
+# lsof must be able to see the fixture process, or "a-process-is-inside" below proves nothing: FAIL, never skip
+LSOF=""; for c in /usr/sbin/lsof /usr/bin/lsof; do [ -x "$c" ] && { LSOF="$c"; break; }; done
+if [ -n "$LSOF" ] && "$LSOF" -d cwd -Fn 2>/dev/null | /usr/bin/sed -n 's/^n//p' | /usr/bin/grep -qxF "$W/clone-cwd"; then ok "lsof ($LSOF) sees the cwd fixture process"
+else bad "lsof cannot see the cwd fixture process (lsof=[$LSOF])"; fi
 
 bash "$HYG" plan > "$FX/plan.tsv" 2>"$FX/plan.err" || bad "plan exited non-zero: $(cat "$FX/plan.err")"
 P="$FX/plan.tsv"
@@ -96,7 +103,7 @@ missing=0; for d in "$W"/*/; do d="${d%/}"
 [ "$missing" = 0 ] && ok "every top-level folder evaluated exactly once" || bad "$missing folders not evaluated exactly once"
 [ "$(/usr/bin/awk -F'\t' -v p="$W/top-linked" '$1=="worktrees" && $5==p' "$P" | wc -l | tr -d ' ')" = 1 ] && ! /usr/bin/awk -F'\t' -v p="$W/top-linked" '$1=="session-dirs" && $5==p{f=1} END{exit !f}' "$P" \
   && ok "top-level linked worktree → worktrees pass only" || bad "top-linked: $(grep top-linked "$P")"
-grep -q "clone-has-linked-worktrees	$W/clone-wtowner$" "$P" && ok "clone owning a linked worktree outside its folder → keep" \
+grep -q "clone-has-live-worktree-outside	$W/clone-wtowner$" "$P" && ok "clone owning a linked worktree outside its folder → keep" \
   || bad "clone-wtowner: $(grep 'clone-wtowner$' "$P")"
 
 # --- session-dirs on clones
@@ -126,16 +133,16 @@ case "$(art "$W/plain-node/app/dist")" in keep/not-provably-regenerable) ok "pla
 # --- unreadable registry ⇒ everything alive ⇒ nothing removable
 echo '{not json' > "$FX/bad.json"
 HYG_SESSIONS_JSON="$FX/bad.json" bash "$HYG" plan > "$FX/plan-bad.tsv" 2>/dev/null
-/usr/bin/awk -F'\t' '($1=="session-dirs"||$1=="build-artifacts") && $2=="remove"{f=1} END{exit f}' "$FX/plan-bad.tsv" \
-  && ok "unreadable registry → no session or artifact removed" || bad "bad registry still removes: $(awk -F'\t' '$2=="remove"' "$FX/plan-bad.tsv")"
+/usr/bin/awk -F'\t' '($1=="session-dirs"||$1=="build-artifacts"||$1=="worktrees") && $2=="remove"{f=1} END{exit f}' "$FX/plan-bad.tsv" \
+  && ok "unreadable registry → no session, worktree or artifact removed" || bad "bad registry still removes: $(awk -F'\t' '$2=="remove"' "$FX/plan-bad.tsv")"
 
 # --- B7: every registry shape that is not one array of objects with a string .session keeps everything
 i=0
 for shape in '' '{}' '{"reg1":{"status":"running"}}' '[{"id":"reg1","status":"running"}]' '{"sessions":[{"session":"reg1","status":"running"}]}' '[{"session":1,"status":"done"}]' '[] []' '["reg1"]'; do
   i=$((i+1)); printf '%s' "$shape" > "$FX/shape$i.json"
   HYG_SESSIONS_JSON="$FX/shape$i.json" bash "$HYG" plan > "$FX/plan-shape$i.tsv" 2>/dev/null
-  /usr/bin/awk -F'\t' '($1=="session-dirs"||$1=="build-artifacts") && $2=="remove"{f=1} END{exit f}' "$FX/plan-shape$i.tsv" \
-    && ok "B7 registry shape [$shape] → no session or artifact removed" || bad "B7 registry shape [$shape] still removes"
+  /usr/bin/awk -F'\t' '($1=="session-dirs"||$1=="build-artifacts"||$1=="worktrees") && $2=="remove"{f=1} END{exit f}' "$FX/plan-shape$i.tsv" \
+    && ok "B7 registry shape [$shape] → no session, worktree or artifact removed" || bad "B7 registry shape [$shape] still removes"
 done
 echo '[]' > "$FX/empty.json"
 HYG_SESSIONS_JSON="$FX/empty.json" bash "$HYG" plan > "$FX/plan-empty.tsv" 2>/dev/null

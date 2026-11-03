@@ -11,7 +11,7 @@
 #                                                                            → session-dirs: keep nested-unpushed-commits
 #   apply           removes the pushed worktree only; the held worktree, its commit and the folder survive
 #
-# Nothing here touches the real HOME. lsof is optional.
+# Nothing here touches the real HOME. lsof is required (missing ⇒ hygiene.sh keeps everything: fail closed).
 # shellcheck disable=SC2015  # ok()/bad() always return 0, so A && ok || bad is safe here
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
