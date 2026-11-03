@@ -18,9 +18,20 @@
 #   KNOWN-NEGATIVE  commits and patches over the cap → kept
 #   KNOWN-NEGATIVE  HYG_RETENTION_MAX_PER_RUN stops the rest, which stay intact
 #   KNOWN-POSITIVE  userinfo in a remote URL does not reach the manifest
+#   Review 5748468367 (each fixture removed a folder holding real work at d38ec68c; each keeps it, or archives it whole, now):
+#   B1  KNOWN-POSITIVE  untracked Hebrew and `with space"q.txt` names are in the archive and listed `archived`
+#   B1  KNOWN-NEGATIVE  a listed untracked path that is not on disk → kept, rescue-path-unresolved
+#   B2  KNOWN-NEGATIVE  an unreadable (mode 000) untracked file → kept, rescue-copy-failed, no ledger line
+#   B3  KNOWN-NEGATIVE  a linked worktree in ~/code/wt with a running registry row inside the grace → kept
+#   B3  KNOWN-POSITIVE  the same with a frozen row (older than the grace) → retention applies through the worktrees pass
+#   B4  KNOWN-NEGATIVE  a bare repo inside a linked worktree → kept, contains-bare-or-separate-git-dir
+#   B5  KNOWN-NEGATIVE  update-ref fails for the stash refs → kept, rescue-stash-refs-failed
+#   S1  KNOWN-NEGATIVE  a denied name in an unpushed commit, or in the patch of tracked edits → kept
+#   S1  KNOWN-NEGATIVE  a decoy x.pem in the cwd no longer turns *.pem into a literal (server.pem stays out)
+#       KNOWN-NEGATIVE  HYG_RETENTION_DAYS=0 is refused; refs/hygiene-rescue/* are gone after a refused rescue
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
-HYG="$HERE/../scripts/hygiene.sh"
+HYG="${HYG_UNDER_TEST:-$HERE/../scripts/hygiene.sh}"   # HYG_UNDER_TEST: run these fixtures against another revision
 [ "$(uname -s)" = Darwin ] || { echo "SKIP: hygiene.sh is macOS-only (uname=$(uname -s))"; exit 0; }
 FX="$(mktemp -d "${TMPDIR:-/tmp}/hygiene-ret.XXXXXX")" || exit 1
 FX="$(cd -P "$FX" && pwd -P)"
@@ -42,6 +53,16 @@ cat > "$FX/up-ok.sh" <<'UP'
 mkdir -p "$BUCKET/$2" && cp "$1"/* "$BUCKET/$2/"
 UP
 printf '#!/bin/bash\nexit 1\n' > "$FX/up-fail.sh"; chmod +x "$FX/up-ok.sh" "$FX/up-fail.sh"; export BUCKET
+# A git that fails on demand: FAKE_NO_UPDATEREF (B5), FAKE_GHOST appends a name not on disk to the untracked list (B1).
+cat > "$FX/git-fake.sh" <<'GF'
+#!/bin/bash
+ls=0; o=0; i=0; z=0
+for a in "$@"; do case "$a" in update-ref) [ -n "${FAKE_NO_UPDATEREF:-}" ] && exit 1;; ls-files) ls=1;; -o) o=1;; -i) i=1;; -z) z=1;; esac; done
+if [ -n "${FAKE_GHOST:-}" ] && [ $ls = 1 ] && [ $o = 1 ] && [ $i = 0 ]; then
+  /usr/bin/git "$@" || exit; if [ $z = 1 ]; then printf 'ghost-not-on-disk\0'; else printf 'ghost-not-on-disk\n'; fi; exit 0; fi
+exec /usr/bin/git "$@"
+GF
+chmod +x "$FX/git-fake.sh"
 
 PASS=0; FAILN=0
 ok(){ PASS=$((PASS+1)); echo "ok   - $1"; }
@@ -53,6 +74,8 @@ git clone -q "$FX/origin.git" "$FX/seed" 2>/dev/null; ( cd "$FX/seed" && git che
 mk(){ git clone -q "$FX/origin.git" "$W/$1" 2>/dev/null; }
 RET="HYG_RETENTION_DAYS=7 HYG_RESCUE_CMD=$FX/up-ok.sh HYG_RETENTION_MAX_PER_RUN=50"
 plan_ret(){ env $RET bash "$HYG" plan > "$1" 2>/dev/null; }
+wrow(){ /usr/bin/awk -F'\t' -v p="$W/$2" '$1=="worktrees" && $5==p{print $2"/"$4}' "$1"; }
+LEDGER="$FX/state/archived.tsv"
 restore(){ local pfx; pfx=$(/bin/ls -d "$BUCKET"/*/*/"$1" | head -1); mkdir -p "$FX/r/$1"; cat "$pfx"/part-*.b64 | /usr/bin/base64 -D | /usr/bin/tar -xzf - -C "$FX/r/$1"; printf '%s' "$pfx"; }
 
 mk a-dirty; echo edit >> "$W/a-dirty/tracked"; old "$W/a-dirty"
@@ -71,10 +94,24 @@ mkdir -p "$W/m-plain/nest"; git clone -q "$FX/origin.git" "$W/m-plain/nest/inner
 mk n-bigfile; ( cd "$W/n-bigfile" && dd if=/dev/urandom of=big.bin bs=1048576 count=6 2>/dev/null ); old "$W/n-bigfile"
 mk o-toobig; ( cd "$W/o-toobig" && dd if=/dev/urandom of=huge bs=1048576 count=24 2>/dev/null && git add huge && git commit -qm huge ); old "$W/o-toobig"
 mk p-url; git -C "$W/p-url" remote set-url origin "https://user:tok3n@example.invalid/o/r.git"; echo edit >> "$W/p-url/tracked"; old "$W/p-url"
+# review 5748468367 fixtures
+mk q-hebrew; ( cd "$W/q-hebrew" && echo edit >> tracked && echo shalom > "שלום.md" && echo quoted > 'with space"q.txt' ); old "$W/q-hebrew"
+mk q-ghost; echo edit >> "$W/q-ghost/tracked"; old "$W/q-ghost"
+mk r-locked; ( cd "$W/r-locked" && echo edit >> tracked && echo locked > locked.txt ); old "$W/r-locked"; chmod 000 "$W/r-locked/locked.txt"
+git clone -q "$FX/origin.git" "$FX/wtmain" 2>/dev/null
+for wt in s-linked-live s2-linked-frozen t-linked-bare; do git -C "$FX/wtmain" worktree add -q -b "$wt" "$W/$wt" 2>/dev/null; echo edit >> "$W/$wt/tracked"; done
+git init -q --bare "$W/t-linked-bare/stash.git"
+old "$W/s-linked-live"; old "$W/s2-linked-frozen"; old "$W/t-linked-bare"; old "$FX/wtmain"
+mk u-stashfail; ( cd "$W/u-stashfail" && echo s1 >> tracked && git stash -q && echo s2 >> tracked && git stash -q ); old "$W/u-stashfail"
+mk v-envcommit; ( cd "$W/v-envcommit" && echo S3CRET > .env && git add -f .env && git commit -qm env ); old "$W/v-envcommit"
+mk v-keypatch; ( cd "$W/v-keypatch" && git checkout -q -b s1 && echo k1 > cfg.key && git add cfg.key && git commit -qm key && git push -q origin s1 && echo S3CRET >> cfg.key ) 2>/dev/null; old "$W/v-keypatch"
+mk w-stashup; ( cd "$W/w-stashup" && echo s1 >> tracked && git stash -q ); old "$W/w-stashup"
 cat > "$HYG_SESSIONS_JSON" <<JSON
 [ {"session":"i-frozen","status":"running","started_at":"2026-01-02T10:00+02:00"},
   {"session":"j-recentrow","status":"running","started_at":"$(/bin/date +%F)T10:00+02:00"},
-  {"session":"k-nodaterow","status":"running"} ]
+  {"session":"k-nodaterow","status":"running"},
+  {"session":"s-linked-live","status":"running","started_at":"$(/bin/date +%F)T09:00+02:00"},
+  {"session":"s2-linked-frozen","status":"running","started_at":"2026-01-02T10:00+02:00"} ]
 JSON
 
 # default off
@@ -98,18 +135,21 @@ case "$(row "$P" h-wtowner)" in keep/retention-blocked-has-linked-worktrees) ok 
 printf 'session-dirs\t%s\n' "$W/e-fails" > "$FX/f.tsv"
 HYG_RETENTION_DAYS=7 HYG_RESCUE_CMD="$FX/up-fail.sh" bash "$HYG" apply "$FX/f.tsv" > "$FX/f.out" 2>&1
 [ -f "$W/e-fails/tracked" ] && /usr/bin/grep -q $'refused\t.*rescue-upload-unverified' "$FX/f.out" && ok "failed upload → refused, folder intact" || bad "fail: $(cat "$FX/f.out")"
-[ ! -s "$FX/state/rescued.tsv" ] && ok "failed upload → no ledger line" || bad "ledger written on failure"
+[ ! -s "$LEDGER" ] && ok "failed upload → no ledger line" || bad "ledger written on failure"
 
 # Apply for real, under a cap first
 /usr/bin/awk -F'\t' '$2=="remove" && $1=="session-dirs"{print $1"\t"$5}' "$P" | /usr/bin/grep -E '/(a-dirty|b-stash|c-unpushed|d-deleted|i-frozen|l-secrets|m-plain|n-bigfile|p-url)$' > "$FX/go.tsv"
 env HYG_RETENTION_DAYS=7 HYG_RESCUE_CMD="$FX/up-ok.sh" HYG_RETENTION_MAX_PER_RUN=2 bash "$HYG" apply "$FX/go.tsv" > "$FX/cap.out" 2>&1
 [ "$(/usr/bin/grep -c $'\tremoved\t' "$FX/cap.out")" = 2 ] && [ "$(/usr/bin/grep -c 'retention-cap-reached' "$FX/cap.out")" -ge 1 ] && ok "cap stops the run at 2" || bad "cap: $(cat "$FX/cap.out")"
-env $RET bash "$HYG" apply "$FX/go.tsv" > "$FX/go.out" 2>&1
+mkdir -p "$FX/globcwd"; : > "$FX/globcwd/x.pem"; : > "$FX/globcwd/decoy.key"; ln -s /etc/hosts "$W/l-secrets/hosts-link"; old "$W/l-secrets"
+( cd "$FX/globcwd" && env $RET bash "$HYG" apply "$FX/go.tsv" ) > "$FX/go.out" 2>&1
 for f in a-dirty b-stash c-unpushed d-deleted i-frozen l-secrets m-plain n-bigfile p-url; do [ ! -e "$W/$f" ] && ok "$f removed" || bad "$f still there: $(grep "$f" "$FX/go.out")"; done
-[ "$(/usr/bin/wc -l < "$FX/state/rescued.tsv" | tr -d ' ')" = 9 ] && ok "9 ledger lines" || bad "ledger: $(cat "$FX/state/rescued.tsv")"
+[ "$(/usr/bin/wc -l < "$LEDGER" 2>/dev/null | tr -d ' ')" = 9 ] && ok "9 ledger lines" || bad "ledger: $(cat "$LEDGER" 2>&1)"
 
 # Restore drills
 restore a-dirty >/dev/null; git clone -q "$FX/origin.git" "$FX/r/a-co" 2>/dev/null
+pfx=$(/bin/ls -d "$BUCKET"/*/*/a-dirty | head -1)
+/usr/bin/jq -e --arg s "$(/usr/bin/shasum -a 256 "$FX/r/a-dirty/repo-1/changes.patch" | cut -d' ' -f1)" '.entries[]|select(.kind=="archived" and .path=="repo-1/changes.patch" and .detail==$s)' "$pfx/manifest.json" >/dev/null && ok "manifest lists the patch as archived with its sha256" || bad "archived entry: $(cat "$pfx/manifest.json")"
 [ -s "$FX/r/a-dirty/repo-1/changes.patch" ] && git -C "$FX/r/a-co" apply "$FX/r/a-dirty/repo-1/changes.patch" && /usr/bin/grep -q edit "$FX/r/a-co/tracked" && ok "F3 patch restores the edit" || bad "F3 patch"
 restore b-stash >/dev/null; git init -q "$FX/r/b-co"; git -C "$FX/r/b-co" fetch -q "$FX/origin.git" main 2>/dev/null; git -C "$FX/r/b-co" fetch -q "$FX/r/b-stash/repo-1/local.bundle" 'refs/*:refs/restored/*' 2>/dev/null
 n=$(git -C "$FX/r/b-co" for-each-ref --format=x 'refs/restored/hygiene-rescue/' | wc -l | tr -d ' '); [ "$n" = 2 ] && ok "F4 both stashes in the bundle" || bad "F4 stash refs: $n"
@@ -119,6 +159,7 @@ pfx=$(restore d-deleted); [ "$(/usr/bin/wc -c < "$FX/r/d-deleted/repo-1/changes.
 pfx=$(restore l-secrets)
 if /usr/bin/grep -rlq S3CRET "$FX/r/l-secrets"; then bad "secrets reached the archive: $(/usr/bin/grep -rl S3CRET "$FX/r/l-secrets")"; else ok "name-denied and ignored files are not in the archive"; fi
 [ -f "$FX/r/l-secrets/files/note.txt" ] && ok "ordinary untracked file is archived" || bad "note.txt missing: $(find "$FX/r/l-secrets" -type f)"
+/usr/bin/jq -e '.entries[]|select(.kind=="symlink-not-archived" and .path=="hosts-link" and .detail=="/etc/hosts")' "$pfx/manifest.json" >/dev/null && ok "untracked symlink listed with its target" || bad "symlink: $(cat "$pfx/manifest.json")"
 /usr/bin/jq -e '[.entries[]|select(.kind=="denied-by-name")|.path]|contains(["server.pem"])' "$pfx/manifest.json" >/dev/null && /usr/bin/jq -e '[.entries[]|select(.kind=="ignored-not-archived")]|length>0' "$pfx/manifest.json" >/dev/null && ok "denied and ignored names are listed" || bad "manifest names: $(cat "$pfx/manifest.json")"
 pfx=$(restore m-plain); [ -f "$FX/r/m-plain/files/loose.md" ] && [ ! -e "$FX/r/m-plain/files/.env" ] && [ -s "$FX/r/m-plain/repo-1/changes.patch" ] && ok "plain folder: loose file and nested patch archived, loose .env not" || bad "m-plain: $(find "$FX/r/m-plain" -type f)"
 pfx=$(restore n-bigfile); /usr/bin/jq -e '.entries[]|select(.kind=="dropped-over-file-cap" and .path=="big.bin" and (.detail|test("[0-9a-f]{64}")))' "$pfx/manifest.json" >/dev/null && ok "over-cap file dropped, sha256 listed" || bad "bigfile: $(cat "$pfx/manifest.json")"
@@ -128,5 +169,43 @@ pfx=$(restore p-url); /usr/bin/grep -q tok3n "$pfx/manifest.json" && bad "token 
 printf 'session-dirs\t%s\n' "$W/o-toobig" > "$FX/big.tsv"
 env $RET bash "$HYG" apply "$FX/big.tsv" > "$FX/big.out" 2>&1
 [ -d "$W/o-toobig/.git" ] && /usr/bin/grep -q 'rescue-commits-and-patches-over-cap' "$FX/big.out" && ok "commits over the cap → kept" || bad "toobig: $(cat "$FX/big.out")"
+
+# ---------- review 5748468367 ----------
+HYG_RETENTION_DAYS=0 HYG_RESCUE_CMD="$FX/up-ok.sh" bash "$HYG" plan > /dev/null 2>&1; [ $? = 2 ] && ok "HYG_RETENTION_DAYS=0 refused" || bad "RETENTION_DAYS=0 accepted"
+one(){ printf '%s\t%s\n' "$1" "$W/$2" > "$FX/one.tsv"; }
+# B1
+one session-dirs q-hebrew; env $RET bash "$HYG" apply "$FX/one.tsv" > "$FX/q.out" 2>&1
+pfx=$(restore q-hebrew 2>/dev/null)
+[ ! -e "$W/q-hebrew" ] && [ "$(cat "$FX/r/q-hebrew/files/שלום.md" 2>/dev/null)" = shalom ] && [ "$(cat "$FX/r/q-hebrew/files/with space\"q.txt" 2>/dev/null)" = quoted ] \
+  && ok "B1 Hebrew and quoted untracked names are in the archive" || bad "B1 names: $(cat "$FX/q.out"; find "$FX/r/q-hebrew" -type f 2>/dev/null)"
+[ -n "$pfx" ] && /usr/bin/jq -e '[.entries[]|select(.kind=="archived")|.path]|contains(["files/שלום.md","files/with space\"q.txt"])' "$pfx/manifest.json" >/dev/null \
+  && ok "B1 both listed as archived" || bad "B1 manifest: $(cat "$pfx/manifest.json" 2>/dev/null)"
+one session-dirs q-ghost; env $RET HYG_GIT="$FX/git-fake.sh" FAKE_GHOST=1 bash "$HYG" apply "$FX/one.tsv" > "$FX/qg.out" 2>&1
+[ -f "$W/q-ghost/tracked" ] && /usr/bin/grep -q $'refused\t.*rescue-path-unresolved' "$FX/qg.out" && ok "B1 a listed path not on disk → kept" || bad "B1 ghost: $(cat "$FX/qg.out")"
+# B2
+n0=$(/usr/bin/wc -l < "$LEDGER" | tr -d ' ')
+one session-dirs r-locked; env $RET bash "$HYG" apply "$FX/one.tsv" > "$FX/r.out" 2>&1
+[ -e "$W/r-locked/locked.txt" ] && /usr/bin/grep -q $'refused\t.*rescue-copy-failed' "$FX/r.out" && ok "B2 unreadable untracked file → kept" || bad "B2: $(cat "$FX/r.out")"
+[ "$(/usr/bin/wc -l < "$LEDGER" | tr -d ' ')" = "$n0" ] && ok "B2 no ledger line" || bad "B2 ledger: $(tail -1 "$LEDGER")"
+chmod 600 "$W/r-locked/locked.txt" 2>/dev/null
+# B3, B4: the worktrees pass
+case "$(wrow "$P" s-linked-live)" in keep/*session-alive-in-registry) ok "B3 linked worktree with a live row → kept";; *) bad "B3 plan: $(wrow "$P" s-linked-live)";; esac
+case "$(wrow "$P" s2-linked-frozen)" in remove/retention-rescue-*) ok "B3 linked worktree with a frozen row → rescue";; *) bad "B3 frozen: $(wrow "$P" s2-linked-frozen)";; esac
+case "$(wrow "$P" t-linked-bare)" in keep/*contains-bare-or-separate-git-dir) ok "B4 bare repo inside a linked worktree → kept";; *) bad "B4 plan: $(wrow "$P" t-linked-bare)";; esac
+printf 'worktrees\t%s\nworktrees\t%s\nworktrees\t%s\n' "$W/s-linked-live" "$W/t-linked-bare" "$W/s2-linked-frozen" > "$FX/wt.tsv"
+env $RET bash "$HYG" apply "$FX/wt.tsv" > "$FX/wt.out" 2>&1
+[ -f "$W/s-linked-live/tracked" ] && [ -d "$W/t-linked-bare/stash.git" ] && ok "B3/B4 apply keeps both" || bad "B3/B4 apply: $(cat "$FX/wt.out")"
+[ ! -e "$W/s2-linked-frozen" ] && ! git -C "$FX/wtmain" worktree list | /usr/bin/grep -q s2-linked-frozen && ok "B3 frozen worktree rescued, removed and pruned" || bad "B3 frozen apply: $(cat "$FX/wt.out")"
+# B5
+one session-dirs u-stashfail; env $RET HYG_GIT="$FX/git-fake.sh" FAKE_NO_UPDATEREF=1 bash "$HYG" apply "$FX/one.tsv" > "$FX/u.out" 2>&1
+[ -d "$W/u-stashfail/.git" ] && /usr/bin/grep -q $'refused\t.*rescue-stash-refs-failed' "$FX/u.out" && ok "B5 failed stash update-ref → kept" || bad "B5: $(cat "$FX/u.out")"
+# S1
+one session-dirs v-envcommit; env $RET bash "$HYG" apply "$FX/one.tsv" > "$FX/v.out" 2>&1
+[ -f "$W/v-envcommit/.env" ] && /usr/bin/grep -q $'refused\t.*rescue-denied-name-in-commits' "$FX/v.out" && ok "S1 .env in an unpushed commit → kept" || bad "S1 commit: $(cat "$FX/v.out")"
+one session-dirs v-keypatch; env $RET bash "$HYG" apply "$FX/one.tsv" > "$FX/v2.out" 2>&1
+[ -f "$W/v-keypatch/cfg.key" ] && /usr/bin/grep -q $'refused\t.*rescue-denied-name-in-patch' "$FX/v2.out" && ok "S1 edited tracked *.key → kept" || bad "S1 patch: $(cat "$FX/v2.out")"
+# rescue refs do not outlive a refused rescue
+one session-dirs w-stashup; HYG_RETENTION_DAYS=7 HYG_RESCUE_CMD="$FX/up-fail.sh" bash "$HYG" apply "$FX/one.tsv" > "$FX/w.out" 2>&1
+[ -d "$W/w-stashup/.git" ] && [ -z "$(git -C "$W/w-stashup" for-each-ref refs/hygiene-rescue/)" ] && ok "refused rescue leaves no refs/hygiene-rescue" || bad "refs left: $(git -C "$W/w-stashup" for-each-ref refs/hygiene-rescue/) $(cat "$FX/w.out")"
 
 echo "# pass=$PASS fail=$FAILN"; [ "$FAILN" = 0 ]

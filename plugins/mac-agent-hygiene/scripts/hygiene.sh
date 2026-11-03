@@ -88,8 +88,15 @@ HYG_RETENTION_DAYS="${HYG_RETENTION_DAYS:-}"          # unset = no retention: di
 HYG_RETENTION_MAX_PER_RUN="${HYG_RETENTION_MAX_PER_RUN:-10}"
 HYG_RESCUE_CMD="${HYG_RESCUE_CMD:-}"                  # <dir> <object-prefix>; exit 0 = every file in <dir> stored and verified. Unset = keep
 RESCUE_MAX_BYTES=$((20*1024*1024)); RESCUE_FILE_MAX_BYTES=$((5*1024*1024)); RESCUE_PART_BYTES=3145728; RESCUE_MAX_PARTS=9
-# Never leaves this Mac, by name, wherever it sits: a repo's ignore rules do not reach loose files.
-RESCUE_DENY_NAMES='.env .env.* *.pem *.key *.p12 id_rsa* *credentials*.json *service-account*.json'
+# Never leaves this Mac, by name (S1, review 5748468367). A loose or untracked file with one of these names is
+# dropped and listed; one inside the patch or in an unpushed commit keeps the WHOLE folder (rescue-denied-name-*).
+RESCUE_DENY_NAMES='.env .env.* *.pem *.key *.p12 *.pfx *.jks *.keystore id_rsa* id_dsa* id_ecdsa* id_ed25519* .npmrc .netrc .pypirc *.tfstate *.tfstate.* *credentials*.json *service-account*.json'
+# Split once with globbing off: an unquoted `for p in $RESCUE_DENY_NAMES` expands `*.pem` against the cwd, so a
+# decoy x.pem in the cwd turned the pattern into the literal name x.pem and server.pem went out.
+set -f
+# shellcheck disable=SC2206  # word splitting is the point; globbing is off
+RESCUE_DENY=( $RESCUE_DENY_NAMES )
+set +f
 GRACE_REGISTRY_DAYS=14
 HYG_GRADLE_HOME="${HYG_GRADLE_HOME:-${GRADLE_USER_HOME:-$HOME/.gradle}}"; HYG_GRADLE_HOME="${HYG_GRADLE_HOME%/}"
 HYG_GRADLE_AGE_DAYS="${HYG_GRADLE_AGE_DAYS:-30}"
@@ -104,6 +111,8 @@ HYG_PKG_CACHE_AGE_DAYS="${HYG_PKG_CACHE_AGE_DAYS:-30}"
 HYG_LOCK="${HYG_LOCK:-${TMPDIR:-/tmp}/mac-agent-hygiene.lock}"
 HYG_DERIVED_DATA="${HYG_DERIVED_DATA%/}"; HYG_PLUGIN_CACHE="${HYG_PLUGIN_CACHE%/}"
 case "$HYG_WT_AGE_DAYS$HYG_MODEL_CACHE_AGE_DAYS$HYG_PLUGIN_CLONE_MIN_AGE_MIN$HYG_SESSION_AGE_HOURS$HYG_GRADLE_AGE_DAYS$HYG_DEVICE_SUPPORT_AGE_DAYS$HYG_ANDROID_CACHE_AGE_DAYS$HYG_PKG_CACHE_AGE_DAYS$HYG_GH_SHA_CHECK_MAX$HYG_ARTIFACT_IDLE_HOURS$HYG_ARTIFACT_DEPTH$HYG_PLAN_BUDGET_MIN$HYG_REPORT_AGE_DAYS$HYG_RETENTION_DAYS$HYG_RETENTION_MAX_PER_RUN" in *[!0-9]*) echo "age settings must be integers" >&2; exit 2;; esac
+# -mtime -0 matches nothing, so 0 would read every folder as idle and send dirty work after a day.
+case "$HYG_RETENTION_DAYS" in ""|[1-9]*) ;; *) echo "HYG_RETENTION_DAYS must be at least 1 (unset = off)" >&2; exit 2;; esac
 
 GIT="${HYG_GIT:-}"
 if [ -z "$GIT" ]; then GIT=/usr/bin/git; [ -x "$HOME/.local/bin/git" ] && GIT="$HOME/.local/bin/git"; fi   # honour a user's git shim unless HYG_GIT is explicit
@@ -428,14 +437,19 @@ git_safe(){ # repo/worktree dir, deletion boundary (the dir apply would rm) → 
   fi
   REASON=unpushed-commits; return 1; }
 
+# The registry answer for a ~/code/wt top-level folder, shared by check_session and retention_decides (B3, review
+# 5748468367: the worktrees path reached retention without it). 0 = the registry keeps it (REASON set). FROZEN=1 when
+# a row names it but, with retention on, the row is older than the grace window: only retention may then act.
+FROZEN=0
+registry_keeps(){ FROZEN=0; session_alive "$1" || return 1
+  if retention_on && ! session_row_is_recent "$1"; then FROZEN=1; return 1; fi
+  REASON=session-alive-in-registry; BLOCKER=.; return 0; }
 check_session(){ local d="$1" r failed="" fblock="" frozen=0
   [ "$(dirname "$d")" = "$HYG_SESSION_ROOT" ] || { REASON=outside-session-root; return 1; }
   [ -L "$d" ] && { REASON=is-a-symlink; return 1; }
   [ -f "$d/.git" ] && { REASON=linked-worktree-see-worktrees-pass; return 1; }
   [ -e "$d/.git" ] && [ ! -d "$d/.git" ] && { REASON=odd-git-entry; return 1; }
-  if session_alive "$d"; then
-    if retention_on && ! session_row_is_recent "$d"; then frozen=1; else REASON=session-alive-in-registry; return 1; fi
-  fi
+  registry_keeps "$d" && return 1; frozen=$FROZEN
   [ -n "$(/usr/bin/find "$d" \( -name .git -o -name node_modules -o -name .venv -o -name Pods \) -prune -o -type f -mmin -"$((HYG_SESSION_AGE_HOURS*60))" -print -quit 2>/dev/null)" ] && { REASON=touched-recently; return 1; }
   cwd_inside "$d" && { REASON=a-process-is-inside; return 1; }
   # A walk that failed keeps the folder under its own reason, naming the path it could not read.
@@ -469,12 +483,23 @@ retention_idle(){ local d="$1" r gd f e=() n
 # Called when a folder failed the plain test. 0 = it may go once rescued (RESCUE_NEEDED=1, REASON says why);
 # 1 = keep, with REASON and BLOCKER naming what stops it.
 RESCUE_NEEDED=0
+# Every folder-level guard lives HERE, so each caller (check_session, check_worktree) gets all of them (B3, B4).
 retention_decides(){ local d="$1" why="$2" r
   REASON="$why"
   retention_on || return 1
   case "$why" in
     *dirty-uncommitted-work|*index-hides-changes|*has-stash|*has-unpushed-*|*unpushed-commits|session-alive-in-registry) ;;
     *) return 1;; esac
+  [ "$(/usr/bin/dirname "$d")" = "$HYG_SESSION_ROOT" ] || { REASON=retention-blocked-outside-session-root; BLOCKER=.; return 1; }
+  [ -L "$d" ] && { REASON=retention-blocked-is-a-symlink; BLOCKER=.; return 1; }
+  if [ -L "$d/.git" ] || { [ -e "$d/.git" ] && [ ! -d "$d/.git" ] && [ ! -f "$d/.git" ]; }; then REASON=retention-blocked-odd-git-entry; BLOCKER=.git; return 1; fi
+  # B3: a live session keeps, whichever pass found it. A frozen row (older than the grace) lets retention act.
+  registry_keeps "$d" && { REASON="retention-blocked-$REASON"; return 1; }
+  # B4: a bare repo or separate git-dir is plain untracked files to the archive (objects over the file cap drop):
+  # keep, unread. A walk that failed reads the same way.
+  walk_failed "$d" && { REASON="retention-blocked-$REASON"; return 1; }
+  holds_bare_or_separate_git_dir "$d" && { REASON=retention-blocked-contains-bare-or-separate-git-dir; BLOCKER=$(first_inventory "$d" '/HEAD$'); return 1; }
+  REASON="$why"
   retention_idle "$d" || return 1
   while IFS= read -r r; do [ -n "$r" ] || continue
     repo_trusted "$r" || { REASON="retention-blocked-$REASON"; BLOCKER="${r#"$d"}"; BLOCKER="${BLOCKER#/}"; return 1; }
@@ -482,72 +507,145 @@ retention_decides(){ local d="$1" why="$2" r
   done < <(repos_in "$d")
   RESCUE_NEEDED=1; REASON="retention-rescue-$why"; return 0; }
 
-name_denied(){ local b p; b=$(/usr/bin/basename "$1"); for p in $RESCUE_DENY_NAMES; do case "$b" in $p) return 0;; esac; done; return 1; }
-under_artifact_dir(){ local n; for n in "${ARTIFACT_NAMES[@]}" .venv venv Pods; do case "/$1/" in */"$n"/*) return 0;; esac; done; return 1; }
-man(){ printf '%s\t%s\t%s\n' "$1" "$2" "${3:-}" >> "$RESCUE_OUT/manifest.tsv"; }
-# Queue a working file for the tar: name-denied and over-cap files are recorded, never copied.
-rescue_queue(){ local base="$1" rel="$2" f="$1/$2" sz; [ -f "$f" ] && [ ! -L "$f" ] || return 0
-  name_denied "$f" && { man denied-by-name "$rel"; return 0; }
-  under_artifact_dir "$rel" && { man dropped-artifact "$rel"; return 0; }
-  sz=$(/usr/bin/stat -f %z "$f" 2>/dev/null) || { man unreadable "$rel"; return 0; }
-  [ "$sz" -le "$RESCUE_FILE_MAX_BYTES" ] || { man dropped-over-file-cap "$rel" "$sz $(/usr/bin/shasum -a 256 "$f" | /usr/bin/cut -d' ' -f1)"; return 0; }
-  printf '%s\t%s\n' "$sz" "$rel" >> "$RESCUE_OUT/queue.tsv"; }
-# One repo: patch of everything except deletions (listed instead), bundle of what no remote holds. 1 = fail closed.
-rescue_repo(){ local d="$1" r="$2" rel="$3" n="$4" dir="$RESCUE_OUT/payload/repo-$4" st url cd cdk bcount i h f
+name_denied(){ local b p; b=$(/usr/bin/basename "$1"); for p in "${RESCUE_DENY[@]}"; do case "$b" in $p) return 0;; esac; done; return 1; }
+under_artifact_dir(){ local n; for n in "${ARTIFACT_NAMES[@]}" .venv venv Pods DerivedData; do case "/$1/" in */"$n"/*) return 0;; esac; done; return 1; }
+# One manifest line. A failed append (a full disk) fails the rescue: a silent gap is a lost file (B2).
+man(){ printf '%s\t%s\t%s\n' "$1" "$2" "${3:-}" >> "$RESCUE_OUT/manifest.tsv" || { REASON=rescue-manifest-write-failed; return 1; }; }
+sha_of(){ /usr/bin/shasum -a 256 "$1" 2>/dev/null | /usr/bin/cut -d' ' -f1; }
+# Queue one working file for the tar. 1 = fail closed (REASON, BLOCKER set). Name-denied, symlinks, special files and
+# over-cap files are listed, never copied. A listed path that is not on disk means we misread a list: keep (B1).
+rescue_queue(){ local base="$1" rel="$2" f="$1/$2" sz
+  case "$rel" in *$'\n'*|*$'\t'*) REASON=rescue-path-unrepresentable; BLOCKER="$rel"; return 1;; esac   # the manifest is TSV
+  if [ -L "$f" ]; then man symlink-not-archived "$rel" "$(/usr/bin/readlink "$f")"; return; fi
+  [ -e "$f" ] || { REASON=rescue-path-unresolved; BLOCKER="$rel"; return 1; }
+  if [ -d "$f" ]; then [ -e "$f/.git" ] && return 0; REASON=rescue-path-unresolved; BLOCKER="$rel"; return 1; fi   # a nested repo is archived as a repo
+  [ -f "$f" ] || { man special-file-not-archived "$rel"; return; }
+  name_denied "$f" && { man denied-by-name "$rel"; return; }
+  under_artifact_dir "$rel" && { man dropped-artifact "$rel"; return; }
+  sz=$(/usr/bin/stat -f %z "$f" 2>/dev/null) || { REASON=rescue-stat-failed; BLOCKER="$rel"; return 1; }
+  [ "$sz" -le "$RESCUE_FILE_MAX_BYTES" ] || { man dropped-over-file-cap "$rel" "$sz $(sha_of "$f")"; return; }
+  printf '%s\t%s\n' "$sz" "$rel" >> "$RESCUE_OUT/queue.tsv" || { REASON=rescue-queue-write-failed; return 1; }; }
+# A git list into a file, its exit read (a list read through a pipe loses both the status and the loop's failures).
+git_list(){ local out="$1"; shift; GITS "$@" > "$out" 2>/dev/null || { REASON=rescue-git-list-failed; return 1; }; }
+# The temporary stash refs go whatever happens: left behind they read as has-unpushed-ref and keep the folder forever.
+drop_rescue_refs(){ local ref; GITS -C "$1" for-each-ref --format='%(refname)' refs/hygiene-rescue/ 2>/dev/null |
+  while IFS= read -r ref; do GITS -C "$1" update-ref -d "$ref" >/dev/null 2>&1; done; }
+# One repo: patches of everything except deletions (listed instead), bundle of what no remote holds. 1 = fail closed.
+# Every list is NUL-separated (B1: with core.quotePath a Hebrew or quoted name arrived as "\327..." and was skipped).
+rescue_repo(){ local d="$1" r="$2" rel="$3" n="$4" dir="$RESCUE_OUT/payload/repo-$4" pre st url f e i L="$RESCUE_OUT/list"
+  pre="${rel}${rel:+/}"; REASON=rescue-repo-read-failed
   /bin/mkdir -p "$dir" || return 1
   url=$(GITS -C "$r" remote get-url origin 2>/dev/null | /usr/bin/sed -E 's#^(https?://)[^/@]*@#\1#')
-  man repo "$rel" "repo-$n ${url:-no-remote} $(GITS -C "$r" rev-parse HEAD 2>/dev/null)"
+  man repo "${rel:-.}" "repo-$n ${url:-no-remote} $(GITS -C "$r" rev-parse HEAD 2>/dev/null)" || return 1
   st=$(GITS -C "$r" status --porcelain --untracked-files=no --ignore-submodules=all) || return 1
+  # S1: a denied name among the changed tracked paths would leave inside a patch: keep the folder. Read from status, which
+  # compares content: `diff --name-only` without an index refresh also names every file whose stat alone changed.
+  git_list "$L" -C "$r" status --porcelain -z --untracked-files=no --ignore-submodules=all || return 1
+  while IFS= read -r -d '' e; do f="${e:3}"; i=""
+    case "$e" in [RC]*) IFS= read -r -d '' i;; esac   # a rename or copy carries its source as the next entry
+    case "$e" in " D"*|"D "*) continue;; esac           # a deletion carries no content
+    for f in "$f" ${i:+"$i"}; do name_denied "$f" && { REASON=rescue-denied-name-in-patch; BLOCKER="$pre$f"; return 1; }; done
+  done < "$L"
+  REASON=rescue-repo-read-failed
   GITS -C "$r" diff --no-ext-diff --no-textconv --binary --diff-filter=d HEAD > "$dir/changes.patch" || return 1
+  # diff HEAD carries only the working copy of a file edited again after `git add` (MM): keep the staged side too.
+  GITS -C "$r" diff --cached --no-ext-diff --no-textconv --binary --diff-filter=d > "$dir/staged.patch" || return 1
   if printf '%s\n' "$st" | /usr/bin/grep -qE '^( M|M |MM|A |AM|R |RM|C |T | T)' && [ ! -s "$dir/changes.patch" ]; then return 1; fi
-  GITS -C "$r" diff --no-ext-diff --name-only --diff-filter=D HEAD 2>/dev/null | while IFS= read -r f; do man deleted-in-worktree "$rel/$f"; done
-  GITS -C "$r" ls-files -o --exclude-standard 2>/dev/null | while IFS= read -r f; do rescue_queue "$d" "${rel#./}${rel:+/}$f"; done
-  GITS -C "$r" ls-files -v 2>/dev/null | LC_ALL=C /usr/bin/grep '^[a-zS] ' | /usr/bin/cut -c3- | while IFS= read -r f; do rescue_queue "$d" "${rel#./}${rel:+/}$f"; done
-  GITS -C "$r" ls-files -o -i --exclude-standard --directory 2>/dev/null | /usr/bin/head -200 | while IFS= read -r f; do man ignored-not-archived "$rel/$f"; done
+  man archived "repo-$n/changes.patch" "$(sha_of "$dir/changes.patch")" && man archived "repo-$n/staged.patch" "$(sha_of "$dir/staged.patch")" || return 1
+  git_list "$L" -C "$r" diff --no-ext-diff --name-only -z --diff-filter=D HEAD || return 1
+  while IFS= read -r -d '' f; do man deleted-in-worktree "$pre$f" || return 1; done < "$L"
+  git_list "$L" -C "$r" ls-files -z -o --exclude-standard || return 1
+  while IFS= read -r -d '' f; do rescue_queue "$d" "$pre$f" || return 1; done < "$L"
+  git_list "$L" -C "$r" ls-files -z -v || return 1   # assume-unchanged (lower-case tag) and skip-worktree (S) hide edits from diff
+  while IFS= read -r -d '' e; do case "$e" in [hsmrck]" "*|"S "*) rescue_queue "$d" "$pre${e#??}" || return 1;; esac; done < "$L"
+  git_list "$L" -C "$r" ls-files -z -o -i --exclude-standard --directory || return 1
+  i=0; while [ "$i" -lt 200 ] && IFS= read -r -d '' f; do i=$((i+1)); man ignored-not-archived "$pre$f" || return 1; done < "$L"
+  drop_rescue_refs "$r"; rescue_bundle "$d" "$r" "$rel" "$n" "$dir"; i=$?; drop_rescue_refs "$r"; return "$i"; }
+rescue_bundle(){ local d="$1" r="$2" rel="$3" n="$4" dir="$5" pre cd cdk h i bcount f revs L="$RESCUE_OUT/list"
+  pre="${rel}${rel:+/}"; REASON=rescue-repo-read-failed
   cd=$(GITS -C "$r" rev-parse --path-format=absolute --git-common-dir) || return 1
-  cdk=$(path_key "$cd"); [ -e "$RESCUE_OUT/seen-$cdk" ] && return 0; : > "$RESCUE_OUT/seen-$cdk"
+  cdk=$(path_key "$cd"); [ -e "$RESCUE_OUT/seen-$cdk" ] && return 0; : > "$RESCUE_OUT/seen-$cdk" || return 1
   if case "$(physical "$cd")/" in "$(physical "$d")"/*) true;; *) false;; esac; then
-    # stash entries past the tip are invisible to a bundle: give each its own ref, for the bundle only
-    i=0; GITS -C "$r" stash list --format=%H 2>/dev/null | while IFS= read -r h; do GITS -C "$r" update-ref "refs/hygiene-rescue/stash-$i" "$h"; i=$((i+1)); done
-    bcount=$(GITS -C "$r" rev-list --count --all --not --remotes) || return 1
-    if [ "$bcount" -gt 0 ]; then GITS -C "$r" bundle create "$dir/local.bundle" --all --not --remotes 2>/dev/null || return 1
-      GITS -C "$r" bundle verify "$dir/local.bundle" >/dev/null 2>&1 || return 1; fi
+    # F4: stash entries past the tip are invisible to a bundle: give each its own ref, for the bundle only
+    git_list "$L" -C "$r" stash list --format=%H || return 1
+    i=0; while IFS= read -r h; do [ -n "$h" ] || continue; GITS -C "$r" update-ref "refs/hygiene-rescue/stash-$i" "$h" >/dev/null 2>&1; i=$((i+1)); done < "$L"
+    # B5: a failed update-ref leaves that stash out of the bundle and `bundle verify` still passes: count them.
+    [ "$(GITS -C "$r" for-each-ref --format=x refs/hygiene-rescue/ 2>/dev/null | /usr/bin/wc -l | /usr/bin/tr -d ' ')" = "$i" ] \
+      || { REASON=rescue-stash-refs-failed; BLOCKER="${rel:-.}"; return 1; }
+    revs=( --all --not --remotes )
   else   # the parent repo survives outside the folder and keeps every branch: only an otherwise unheld HEAD is at stake
-    if [ -z "$(GITS -C "$r" for-each-ref --contains HEAD --format=x refs/heads refs/remotes 2>/dev/null | /usr/bin/head -1)" ]; then
-      GITS -C "$r" bundle create "$dir/local.bundle" HEAD --not --remotes 2>/dev/null || return 1
-      GITS -C "$r" bundle verify "$dir/local.bundle" >/dev/null 2>&1 || return 1; fi
-  fi; return 0; }
+    [ -z "$(GITS -C "$r" for-each-ref --contains HEAD --format=x refs/heads refs/remotes 2>/dev/null | /usr/bin/head -1)" ] || return 0
+    revs=( HEAD --not --remotes )
+  fi
+  # S1: a denied name in any commit the bundle would carry keeps the folder.
+  git_list "$L" -C "$r" log --no-renames -m --format= --name-only -z "${revs[@]}" || return 1
+  while IFS= read -r -d '' f; do f="${f#$'\n'}"; [ -n "$f" ] || continue
+    name_denied "$f" && { REASON=rescue-denied-name-in-commits; BLOCKER="$pre$f"; return 1; }; done < "$L"
+  REASON=rescue-repo-read-failed
+  bcount=$(GITS -C "$r" rev-list --count "${revs[@]}") || return 1
+  [ "$bcount" -gt 0 ] || return 0
+  GITS -C "$r" bundle create "$dir/local.bundle" "${revs[@]}" >/dev/null 2>&1 || return 1
+  GITS -C "$r" bundle verify "$dir/local.bundle" >/dev/null 2>&1 || return 1
+  man archived "repo-$n/local.bundle" "$(sha_of "$dir/local.bundle")"; }
 payload_bytes(){ /usr/bin/du -sk "$RESCUE_OUT/payload" 2>/dev/null | /usr/bin/awk '{print $1*1024}'; }
-# Build, split and hand to HYG_RESCUE_CMD. 0 only when it verified everything. REASON names a failure.
-rescue_build(){ local d="$1" r rel n=0 f sz base total obj prefix e=()
+# Build, split and hand to HYG_RESCUE_CMD. 0 only when every queued file is in the archive (or listed as dropped), the
+# parts decode to the archive's sha256, and HYG_RESCUE_CMD verified the upload. REASON (and BLOCKER) name a failure.
+rescue_build(){ local d="$1" r rel n=0 f sz total sha prefix q=0 e=() a=() R=()
+  BLOCKER=""
   [ -n "${RESCUE_ROOT:-}" ] || { RESCUE_ROOT="$TMPD/rescue"; /bin/mkdir -p "$RESCUE_ROOT"; }
   RESCUE_OUT="$RESCUE_ROOT/$(path_key "$d")"; /bin/rm -rf "$RESCUE_OUT"; /bin/mkdir -p "$RESCUE_OUT/payload/files" "$RESCUE_OUT/out" || { REASON=rescue-tmp-failed; return 1; }
-  : > "$RESCUE_OUT/manifest.tsv"; : > "$RESCUE_OUT/queue.tsv"
-  while IFS= read -r r; do [ -n "$r" ] || continue; n=$((n+1)); rel="${r#"$d"}"; rel="${rel#/}"
-    rescue_repo "$d" "$r" "$rel" "$n" || { REASON=rescue-repo-read-failed; BLOCKER="${rel:-.}"; return 1; }
-  done < <(repos_in "$d")
-  # loose files, outside every repo
-  while IFS= read -r n; do e+=( "$n" ); done < <(name_expr .git "${ARTIFACT_NAMES[@]}" .venv venv Pods DerivedData)
-  /usr/bin/find "$d" \( "${e[@]}" \) -prune -o -type f -print 2>/dev/null | while IFS= read -r f; do rel="${f#"$d"/}"
-    while IFS= read -r r; do [ -n "$r" ] || continue; case "$f" in "$r"/*) continue 2;; esac; done < <(repos_in "$d")
-    rescue_queue "$d" "$rel"; done
-  sz=$(payload_bytes); [ "$sz" -le "$RESCUE_MAX_BYTES" ] || { REASON=rescue-commits-and-patches-over-cap; return 1; }
-  # smallest first; what does not fit is dropped largest-first, and the commits and patches are never dropped
-  /usr/bin/sort -t$'\t' -k1,1n "$RESCUE_OUT/queue.tsv" | while IFS=$'\t' read -r sz rel; do [ -n "$rel" ] || continue
-    if [ $(( $(payload_bytes) + sz )) -gt "$RESCUE_MAX_BYTES" ]; then man dropped-over-archive-cap "$rel" "$sz $(/usr/bin/shasum -a 256 "$d/$rel" | /usr/bin/cut -d' ' -f1)"; continue; fi
-    /bin/mkdir -p "$RESCUE_OUT/payload/files/$(/usr/bin/dirname "$rel")" && /bin/cp -p "$d/$rel" "$RESCUE_OUT/payload/files/$rel"
+  { : > "$RESCUE_OUT/manifest.tsv" && : > "$RESCUE_OUT/queue.tsv" && repos_in "$d" > "$RESCUE_OUT/repos"; } 2>/dev/null || { REASON=rescue-tmp-failed; return 1; }
+  while IFS= read -r r; do [ -n "$r" ] && R+=( "$r" ); done < "$RESCUE_OUT/repos"
+  for r in ${R[@]+"${R[@]}"}; do n=$((n+1)); rel="${r#"$d"}"; rel="${rel#/}"
+    rescue_repo "$d" "$r" "$rel" "$n" || { [ -n "$BLOCKER" ] || BLOCKER="${rel:-.}"; return 1; }
   done
-  /usr/bin/tar -czf "$RESCUE_OUT/archive.tgz" -C "$RESCUE_OUT/payload" . || { REASON=rescue-tar-failed; return 1; }
+  # loose files, outside every repo; artifact dirs there are listed, not archived
+  while IFS= read -r f; do e+=( "$f" ); done < <(name_expr .git "${ARTIFACT_NAMES[@]}" .venv venv Pods DerivedData)
+  while IFS= read -r f; do a+=( "$f" ); done < <(name_expr "${ARTIFACT_NAMES[@]}" .venv venv Pods DerivedData)
+  /usr/bin/find "$d" \( "${e[@]}" \) -prune -o ! -type d -print0 > "$RESCUE_OUT/loose" 2>/dev/null \
+    && /usr/bin/find "$d" -name .git -prune -o -type d \( "${a[@]}" \) -prune -print0 > "$RESCUE_OUT/loose-art" 2>/dev/null \
+    || { REASON=rescue-walk-failed; BLOCKER=.; return 1; }
+  while IFS= read -r -d '' f; do
+    for r in ${R[@]+"${R[@]}"}; do case "$f" in "$r"/*) continue 2;; esac; done
+    rescue_queue "$d" "${f#"$d"/}" || return 1
+  done < "$RESCUE_OUT/loose"
+  while IFS= read -r -d '' f; do
+    for r in ${R[@]+"${R[@]}"}; do case "$f" in "$r"/*) continue 2;; esac; done
+    man dropped-artifact "${f#"$d"/}/" || return 1
+  done < "$RESCUE_OUT/loose-art"
+  total=$(payload_bytes); [ -n "$total" ] && [ "$total" -le "$RESCUE_MAX_BYTES" ] || { REASON=rescue-commits-and-patches-over-cap; return 1; }
+  # smallest first; what does not fit is dropped and listed, and the commits and patches are never dropped
+  /usr/bin/sort -t$'\t' -k1,1n "$RESCUE_OUT/queue.tsv" > "$RESCUE_OUT/queue.sorted" || { REASON=rescue-tmp-failed; return 1; }
+  while IFS=$'\t' read -r sz rel; do [ -n "$rel" ] || continue
+    if [ $((total + sz)) -gt "$RESCUE_MAX_BYTES" ]; then man dropped-over-archive-cap "$rel" "$sz $(sha_of "$d/$rel")" || return 1; continue; fi
+    # B2: a copy that fails (unreadable file, full disk) keeps the folder instead of losing the file.
+    { /bin/mkdir -p "$RESCUE_OUT/payload/files/$(/usr/bin/dirname "$rel")" && /bin/cp -p "$d/$rel" "$RESCUE_OUT/payload/files/$rel"; } 2>/dev/null \
+      || { REASON=rescue-copy-failed; BLOCKER="$rel"; return 1; }
+    [ "$(/usr/bin/stat -f %z "$RESCUE_OUT/payload/files/$rel" 2>/dev/null)" = "$sz" ] || { REASON=rescue-copy-size-changed; BLOCKER="$rel"; return 1; }
+    man archived "files/$rel" "$(sha_of "$RESCUE_OUT/payload/files/$rel")" || return 1
+    total=$((total + sz))
+  done < "$RESCUE_OUT/queue.sorted"
+  # B2: every queued file is archived or listed as dropped, read back from the manifest rather than trusted from the loop.
+  q=$(/usr/bin/awk -F'\t' 'FILENAME==ARGV[1]{ if($1=="archived" && substr($2,1,6)=="files/") ok[substr($2,7)]=1; if($1=="dropped-over-archive-cap") ok[$2]=1; next }
+      !($2 in ok){ m++ } END{ print m+0 }' "$RESCUE_OUT/manifest.tsv" "$RESCUE_OUT/queue.tsv") || q=x
+  [ "$q" = 0 ] || { REASON=rescue-queue-not-in-archive; return 1; }
+  /usr/bin/tar -czf "$RESCUE_OUT/archive.tgz" -C "$RESCUE_OUT/payload" . 2>/dev/null || { REASON=rescue-tar-failed; return 1; }
+  sha=$(sha_of "$RESCUE_OUT/archive.tgz"); [ -n "$sha" ] || { REASON=rescue-tar-failed; return 1; }
   /usr/bin/base64 -i "$RESCUE_OUT/archive.tgz" -o "$RESCUE_OUT/archive.b64" || { REASON=rescue-base64-failed; return 1; }
-  ( cd "$RESCUE_OUT/out" && /usr/bin/split -b "$RESCUE_PART_BYTES" -a 4 "$RESCUE_OUT/archive.b64" part- && for f in part-*; do /bin/mv "$f" "$f.b64"; done )
+  ( cd "$RESCUE_OUT/out" && /usr/bin/split -b "$RESCUE_PART_BYTES" -a 4 "$RESCUE_OUT/archive.b64" part- ) || { REASON=rescue-split-failed; return 1; }
+  for f in "$RESCUE_OUT"/out/part-*; do /bin/mv "$f" "$f.b64" || { REASON=rescue-split-failed; return 1; }; done
   [ "$(/bin/ls "$RESCUE_OUT/out" | /usr/bin/wc -l | /usr/bin/tr -d ' ')" -le "$RESCUE_MAX_PARTS" ] || { REASON=rescue-too-many-parts; return 1; }
-  "$JQ" -Rs --arg folder "$(/usr/bin/basename "$d")" --arg sha "$(/usr/bin/shasum -a 256 "$RESCUE_OUT/archive.tgz" | /usr/bin/cut -d' ' -f1)" \
+  # B2: the parts the uploader receives must decode to exactly the archive built above.
+  [ "$(/bin/cat "$RESCUE_OUT"/out/part-*.b64 | /usr/bin/base64 -D 2>/dev/null | /usr/bin/shasum -a 256 | /usr/bin/cut -d' ' -f1)" = "$sha" ] \
+    || { REASON=rescue-parts-do-not-match-archive; return 1; }
+  "$JQ" -Rs --arg folder "$(/usr/bin/basename "$d")" --arg sha "$sha" \
     --arg at "$(/bin/date -u +%FT%TZ)" --arg host "$(/bin/hostname -s)" \
     '{folder:$folder, host:$host, archived_at:$at, archive_sha256:$sha, format:"base64 of a .tgz, cat part-*.b64 in order", entries:(split("\n") | map(select(length>0) | split("\t") | {kind:.[0], path:.[1], detail:.[2]}))}' \
     "$RESCUE_OUT/manifest.tsv" > "$RESCUE_OUT/out/manifest.json" || { REASON=rescue-manifest-failed; return 1; }
   prefix="$(/bin/hostname -s)/$(/bin/date +%F)/$(/usr/bin/basename "$d")"
   "$HYG_RESCUE_CMD" "$RESCUE_OUT/out" "$prefix" >>"$HYG_LOG" 2>&1 || { REASON=rescue-upload-unverified; return 1; }
-  /bin/mkdir -p "$HYG_STATE_DIR" && printf '%s\t%s\t%s\t%s\n' "$(/bin/date -u +%FT%TZ)" "$d" "$prefix" "$(/usr/bin/shasum -a 256 "$RESCUE_OUT/archive.tgz" | /usr/bin/cut -d' ' -f1)" >> "$HYG_STATE_DIR/rescued.tsv" \
+  # The archive ledger: written once the upload is verified, before the final re-check (a refused rm still has its archive).
+  /bin/mkdir -p "$HYG_STATE_DIR" && printf '%s\t%s\t%s\t%s\n' "$(/bin/date -u +%FT%TZ)" "$d" "$prefix" "$sha" >> "$HYG_STATE_DIR/archived.tsv" \
     || { REASON=rescue-ledger-failed; return 1; }
   /bin/rm -rf "$RESCUE_OUT"; return 0; }
 # Session folder idle: no file (outside .git and the artifact dirs themselves) newer than the window.

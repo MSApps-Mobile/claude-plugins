@@ -136,7 +136,8 @@ mac-agent-hygiene/
 
 By default, dirty or unpushed work is kept forever. With `HYG_RETENTION_DAYS=7` and `HYG_RESCUE_CMD` in the config, a `~/code/wt` folder idle
 that long is archived through your command, verified, then removed; see [the safety model](skills/mac-agent-hygiene/references/safety-model.md).
-Ignored files and name-denied secrets are not archived and are lost with the folder.
+Ignored files and loose or untracked name-denied secrets are not archived and are lost with the folder; a denied name inside
+the tracked edits or an unpushed commit keeps the folder instead. `HYG_RETENTION_DAYS` must be at least 1.
 
 ## SOSA
 
