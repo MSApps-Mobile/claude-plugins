@@ -261,7 +261,7 @@ pv_idle(){ local out rc
 check_plugin_version(){ local v="$1" pd mk r_pd r_ip r_ver known=1 inst=1 top tops n="$HYG_PLUGIN_VERSION_MIN_AGE_MIN"
   pd=$(dirname "$v"); mk=$(dirname "$pd")
   [ "$(dirname "$mk")" = "$HYG_PLUGIN_CACHE" ] || { REASON=outside-plugin-cache; return 1; }
-  case "$(basename "$mk")" in temp_git_*) REASON=not-a-version-dir; return 1;; esac
+  case "$(basename "$mk")" in temp_*) REASON=not-a-version-dir; return 1;; esac   # temp_git_* / temp_subdir_* install leftovers
   { [ -d "$v" ] && [ ! -L "$v" ] && [ ! -L "$pd" ] && [ ! -L "$mk" ]; } || { REASON=not-a-plain-directory; return 1; }
   pv_load_installed || return 1
   while IFS=$'\t' read -r r_pd r_ip r_ver; do
@@ -288,7 +288,7 @@ check_plugin_version(){ local v="$1" pd mk r_pd r_ip r_ver known=1 inst=1 top to
 list_plugin_versions(){ local d
   [ -d "$HYG_PLUGIN_CACHE" ] || return 0
   /usr/bin/find "$HYG_PLUGIN_CACHE" -mindepth 3 -maxdepth 3 -type d 2>/dev/null | /usr/bin/sort |
-  while IFS= read -r d; do case "${d#"$HYG_PLUGIN_CACHE"/}" in temp_git_*) continue;; esac; printf '%s\n' "$d"; done; }
+  while IFS= read -r d; do case "${d#"$HYG_PLUGIN_CACHE"/}" in temp_*) continue;; esac; printf '%s\n' "$d"; done; }
 
 check_item(){ # category path → 0 removable (REASON=why) / 1 keep (REASON=why)
   case "$2" in "$HOME"/*) ;; *) REASON=outside-home; return 1;; esac

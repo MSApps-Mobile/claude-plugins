@@ -9,7 +9,7 @@
 #   KNOWN-NEGATIVE  an old version a live process has as its cwd is kept (needs lsof)
 #   KNOWN-NEGATIVE  an old dir with a file modified inside the age window is kept: touched-within-age
 #   KNOWN-NEGATIVE  a plugin missing from installed_plugins.json is never removed
-#   KNOWN-NEGATIVE  temp_git_* clones are not listed as plugin-versions
+#   KNOWN-NEGATIVE  temp_git_* / temp_subdir_* install leftovers are not listed as plugin-versions
 #   FAIL-CLOSED     unparseable / missing installed_plugins.json, lsof timeout, lsof error, no lsof ⇒ keep
 #   FAIL-CLOSED     apply refuses hand-written lines for installed / newest / open versions
 #
@@ -50,17 +50,18 @@ skip(){ SKIPN=$((SKIPN+1)); echo "skip - $1"; }
 #            1.1.5 old, a process's cwd · 1.2.0 installed · 1.3.0 + 1.4.0 newest by version
 #            0.9.0 lowest version but newest mtime
 # acme/ghost: not in installed_plugins.json — three old versions, all kept
-# temp_git_123/x/y: an install clone, not a plugin version
+# temp_git_123/x/y, temp_subdir_456_ab/skills/z: install leftovers, not plugin versions
 D="$CACHE/acme/demo"
 mkv(){ mkdir -p "$1/bin"; echo "#!/bin/sh" > "$1/bin/run"; echo '{"name":"x"}' > "$1/plugin.json"; }
 for v in 0.9.0 1.0.0 1.0.1 1.1.0 1.1.5 1.2.0 1.3.0 1.4.0; do mkv "$D/$v"; done
 for v in 1.0.0 1.1.0 1.2.0; do mkv "$CACHE/acme/ghost/$v"; done
 mkv "$CACHE/temp_git_123/x/y"
+mkv "$CACHE/temp_subdir_456_ab/skills/z"
 stamp(){ find "$1" -exec touch -t "$2" {} +; }
 stamp "$D/1.0.0" 202001010000; stamp "$D/1.0.1" 202001010100; stamp "$D/1.1.0" 202001020000
 stamp "$D/1.1.5" 202001020100; stamp "$D/1.2.0" 202001030000; stamp "$D/1.3.0" 202001040000
 stamp "$D/1.4.0" 202001050000; stamp "$D/0.9.0" 202101010000
-stamp "$CACHE/acme/ghost" 202001010000; stamp "$CACHE/temp_git_123" 202001010000
+stamp "$CACHE/acme/ghost" 202001010000; stamp "$CACHE/temp_git_123" 202001010000; stamp "$CACHE/temp_subdir_456_ab" 202001010000
 touch "$D/1.0.1/plugin.json"   # a file inside touched now; the dir mtime stays old
 
 cat > "$INST" <<EOF
@@ -89,8 +90,8 @@ expect "$D/1.4.0" "keep newest-2"                "newest by version"
 expect "$D/0.9.0" "keep newest-2"                "lowest version with the newest mtime"
 expect "$D/1.0.1" "keep touched-within-age"      "old dir with a file touched inside the window"
 for v in 1.0.0 1.1.0 1.2.0; do expect "$CACHE/acme/ghost/$v" "keep plugin-not-in-installed-list" "ghost/$v"; done
-[ -z "$(awk -F'\t' '$1=="plugin-versions" && index($5,"/temp_git_")' "$PLAN")" ] && ok "temp_git_* clones not listed as plugin-versions" \
-  || bad "a temp_git_* path was listed as plugin-versions"
+[ -z "$(awk -F'\t' '$1=="plugin-versions" && index($5,"/temp_")' "$PLAN")" ] && ok "temp_git_* / temp_subdir_* not listed as plugin-versions" \
+  || bad "a temp_* path was listed as plugin-versions"
 if [ -n "$LSOFBIN" ]; then
   expect "$D/1.0.0" "remove superseded-plugin-version" "old idle superseded version"
   expect "$D/1.1.0" "keep open-by-live-process"         "old version with an open file"
