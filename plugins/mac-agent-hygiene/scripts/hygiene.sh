@@ -246,17 +246,35 @@ merged_pr_commits_match(){ local d="$1" repo="$2" f="$3" b="$4" ls="$TMPD/local-
   return 1; }
 # Physical path of an existing directory, or empty.
 realdir(){ (cd -P -- "$1" 2>/dev/null && pwd -P); }
+# Worktree directory a registered admin dir ($1 = <common>/worktrees/<name>) points at. `gitdir` holds an
+# absolute path, or a path relative to the admin dir when worktree.useRelativePaths=true (git >= 2.48).
+# Prints the (possibly unresolved) directory; rc 1 when the file is missing, unreadable or empty.
+wt_path_of_admin(){ local g
+  g=$(/bin/cat "$1/gitdir" 2>/dev/null) || return 1; [ -n "$g" ] || return 1
+  case "$g" in /*) ;; *) g="$1/$g";; esac
+  /usr/bin/dirname "$g"; }
+# owner/name of $1's origin, or empty (⇒ no gh call ⇒ KEEP). strict: only an anchored github.com URL.
+# loose: any URL ending in github.com[:/]owner/name (main's fixtures use a local .../github.com/acme/demo.git).
+gh_repo_of(){ local url r
+  url=$(GITS -C "$1" remote get-url origin 2>/dev/null)
+  if [ "$2" = strict ]; then
+    r=$(printf '%s\n' "$url" | /usr/bin/sed -nE 's#^(https://|ssh://git@|git@)github\.com[:/]([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)$#\2#p' | /usr/bin/sed -E 's#\.git$##')
+  else
+    r=$(printf '%s\n' "$url" | /usr/bin/sed -E 's#.*github.com[:/]##; s#\.git$##')
+    [[ "$r" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || r=""
+  fi
+  case "$r" in *..*|.*|*/.*) r="";; esac
+  printf '%s' "$r"; }
 # A full clone owns the object store of every worktree registered in $gd/worktrees/*. rm -rf of the
 # clone orphans them (no HEAD, no index, no repo). 0 ⇒ a registered worktree resolves OUTSIDE the
 # deletion boundary $2 and still exists (or is locked, e.g. on an unmounted volume, or its gitdir file is
 # unreadable) ⇒ the clone must stay. Worktrees inside the boundary are nested repos checked on their own.
-clone_has_live_worktree_outside(){ local gd rbound w g wt rw
+clone_has_live_worktree_outside(){ local gd rbound w wt rw
   gd=$(GITS -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 0
   rbound=$(realdir "$2"); [ -n "$rbound" ] || return 0
   for w in "$gd"/worktrees/*; do [ -d "$w" ] || continue
     [ -f "$w/locked" ] && return 0
-    g=$(/bin/cat "$w/gitdir" 2>/dev/null) || return 0; [ -n "$g" ] || return 0
-    wt=$(/usr/bin/dirname "$g")
+    wt=$(wt_path_of_admin "$w") || return 0                         # unreadable gitdir ⇒ treat as live
     [ -e "$wt" ] || continue                                        # gone: `git worktree prune` material
     rw=$(realdir "$wt"); [ -n "$rw" ] || return 0
     case "$rw/" in "$rbound"/*) ;; *) return 0;; esac
@@ -276,8 +294,7 @@ git_safe(){
   st=$(GITS -C "$d" -c diff.ignoreSubmodules=all status --porcelain --ignore-submodules=all 2>/dev/null) || { REASON=git-status-failed; return 1; }
   [ -z "$st" ] || { REASON=dirty-uncommitted-work; return 1; }
   # owner/name only from an anchored github.com URL; anything else ⇒ empty ⇒ no gh compare call ⇒ KEEP
-  repo=$(GITS -C "$d" remote get-url origin 2>/dev/null | /usr/bin/sed -nE 's#^(https://|ssh://git@|git@)github\.com[:/]([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)$#\2#p' | /usr/bin/sed -E 's#\.git$##')
-  case "$repo" in *..*|.*|*/.*) repo="";; esac
+  repo=$(gh_repo_of "$d" strict)
   if [ -d "$d/.git" ]; then   # a full clone owns its stash, every local branch and its linked worktrees
     [ -z "$(GITS -C "$d" stash list 2>/dev/null)" ] || { REASON=clone-has-stash; return 1; }
     while IFS= read -r br; do [ -n "$br" ] || continue
@@ -291,9 +308,7 @@ git_safe(){
   in_github_default "$repo" "$h" && { REASON=in-github-default-branch; return 0; }
   if [ "$HYG_WT_MERGED_PR_CHECK" = 1 ] && [ -n "$GH" ]; then
     b=$(GITS -C "$d" rev-parse --abbrev-ref HEAD 2>/dev/null)
-    prrepo=$(GITS -C "$d" remote get-url origin 2>/dev/null | /usr/bin/sed -E 's#.*github.com[:/]##; s#\.git$##')
-    [[ "$prrepo" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || prrepo=""   # owner/name or nothing ⇒ no gh call
-    case "$prrepo" in *..*|.*|*/.*) prrepo="";; esac
+    prrepo=$(gh_repo_of "$d" loose)   # owner/name or nothing ⇒ no gh call
     if [ -n "$prrepo" ]; then
       f="$TMPD/$(echo "$prrepo" | tr / _)"
       [ -f "$f" ] || "$GH" pr list --repo "$prrepo" --state merged --limit 3000 --json headRefName,headRefOid,number \
@@ -312,7 +327,7 @@ git_safe(){
     wg=$(GITS -C "$d" rev-parse --path-format=absolute --git-dir 2>/dev/null)
     if [ -n "$rc" ] && [ -n "$rbound" ] && case "$rc/" in "$rbound"/*) false;; *) true;; esac \
        && case "$wg" in "$cdir"/worktrees/*) true;; *) false;; esac \
-       && [ "$(realdir "$(/usr/bin/dirname "$(/bin/cat "$wg/gitdir" 2>/dev/null)")")" = "$(realdir "$d")" ] \
+       && [ "$(realdir "$(wt_path_of_admin "$wg")")" = "$(realdir "$d")" ] \
        && [ -n "$(GITS -C "$d" for-each-ref --contains "$h" --format=x refs/heads 2>/dev/null | /usr/bin/head -1)" ]; then
       REASON=branch-kept-in-parent-repo; return 0; fi
   fi
