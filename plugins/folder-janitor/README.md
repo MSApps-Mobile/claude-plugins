@@ -1,4 +1,4 @@
-# claude-folder-janitor
+# folder-janitor
 
 **Dry-run-first cleanup of `~/.claude`.** Lists provably-safe clutter (old `.claude.json` backups, empty
 `session-env` folders, a stale changelog cache, and transcripts of projects whose folders no longer exist)
@@ -66,7 +66,7 @@ Environment variables: `JANITOR_CLAUDE_DIR`, `JANITOR_KEEP_BACKUPS` (1), `JANITO
 ## Tests
 
 ```bash
-bash plugins/claude-folder-janitor/tests/janitor.test.sh
+bash plugins/folder-janitor/tests/janitor.test.sh
 ```
 
 Builds a fake `~/.claude` with one eligible and one ineligible case per rule, plus every protected path,
@@ -78,8 +78,12 @@ that apply removes exactly those five, and that every protected and ineligible p
 ## Install
 
 ```
-/plugin install claude-folder-janitor@msapps-plugins
+/plugin install folder-janitor@msapps-plugins
 ```
+
+### Renamed from `claude-folder-janitor`
+
+This plugin was called `claude-folder-janitor` until it was renamed: Claude Code reserves names that start with `claude-`. Existing installs: run `/plugin uninstall claude-folder-janitor@msapps-plugins`, then install `folder-janitor@msapps-plugins`. The `/janitor` command is unchanged.
 
 ## License
 

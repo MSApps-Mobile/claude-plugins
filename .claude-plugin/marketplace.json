@@ -1310,8 +1310,8 @@
       ]
     },
     {
-      "name": "claude-folder-janitor",
-      "source": "./plugins/claude-folder-janitor",
+      "name": "folder-janitor",
+      "source": "./plugins/folder-janitor",
       "description": "Dry-run-first cleanup of ~/.claude — old .claude.json backups, empty session-env folders, a stale changelog cache and transcripts of projects whose folders are gone; deletes only on /janitor apply, never touches skills, plugins or settings",
       "version": "0.1.1",
       "platforms": [
@@ -1322,7 +1322,7 @@
         "name": "MSApps",
         "email": "michal@msapps.mobi"
       },
-      "homepage": "https://github.com/MSApps-Mobile/claude-plugins/tree/main/plugins/claude-folder-janitor",
+      "homepage": "https://github.com/MSApps-Mobile/claude-plugins/tree/main/plugins/folder-janitor",
       "repository": "https://github.com/MSApps-Mobile/claude-plugins",
       "license": "MIT",
       "keywords": [
