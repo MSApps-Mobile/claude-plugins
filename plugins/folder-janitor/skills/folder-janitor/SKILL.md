@@ -1,5 +1,5 @@
 ---
-name: claude-folder-janitor
+name: folder-janitor
 description: This skill should be used when the user asks to "clean up ~/.claude", "my .claude folder is huge", "delete old Claude transcripts", "remove orphaned projects", "free space in .claude", "run the janitor", or when ~/.claude/projects or ~/.claude/session-env has grown large. Lists provably-safe clutter in ~/.claude with size and reason, and deletes it only on an explicit apply.
 version: 0.1.0
 ---
