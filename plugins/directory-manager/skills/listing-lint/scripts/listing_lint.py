@@ -29,17 +29,68 @@ def _load_json(path):
         return json.load(f)
 
 
+# The checklist asks for "an exact version ... not a range or @latest": a full X.Y.Z, with an
+# optional pre-release/build tag, and nothing else ('4', '4.x', '4.19', '1.*', '>=1,==2' all fail).
+EXACT_NPM = re.compile(r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z.\-]+)?(?:\+[0-9A-Za-z.\-]+)?$")
+EXACT_PY = re.compile(r"^\d+\.\d+\.\d+(?:(?:a|b|rc)\d+)?(?:\.post\d+)?(?:\.dev\d+)?$")
+PY_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._\-]*(?:\[[A-Za-z0-9,._\-]+\])?$")
+
+
 def _pinned(pkg):
-    """npm 'name@1.2.3' / '@scope/name@1.2.3', python 'name==1.2.3' count as pinned."""
+    """npm 'name@1.2.3' / '@scope/name@1.2.3' and python 'name==1.2.3' count as pinned,
+    only with a full exact version: no range, wildcard, partial version or second specifier."""
     if "==" in pkg:
-        return True
+        name, _, ver = pkg.partition("==")
+        return bool(PY_NAME.match(name)) and EXACT_PY.match(ver) is not None
     at = pkg.rfind("@")
-    return at > 0 and re.match(r"^\d", pkg[at + 1:]) is not None
+    return at > 0 and EXACT_NPM.match(pkg[at + 1:]) is not None
 
 
-def _first_positional(args):
-    """The first argument that is not a flag ('--yes', '-p', ...)."""
-    return next((a for a in args if not a.startswith("-")), "")
+# Options that take a value in the next argument, so that value is not the package/script.
+VALUE_FLAGS = {
+    "npx": {"-p", "--package", "-c", "--call", "--cache", "--registry", "--userconfig"},
+    "bunx": {"-p", "--package"},
+    "pnpx": set(),
+    "dlx": {"-p", "--package", "-c", "--reporter"},
+    "uvx": {"--from", "--with", "-w", "--with-editable", "--with-requirements", "--python", "-p",
+            "--index", "--index-url", "--extra-index-url", "--find-links", "-f", "--directory",
+            "--project", "--cache-dir", "--config-file", "--constraints", "--overrides"},
+    "pipx": {"--spec", "--python", "--pip-args", "--index-url", "-i", "--backend"},
+    "uv": {"--with", "-w", "--with-editable", "--with-requirements", "--python", "-p", "--directory",
+           "--project", "--package", "--extra", "--group", "--only-group", "--no-group", "--env-file",
+           "--index", "--index-url", "--extra-index-url", "--find-links", "-f", "--cache-dir",
+           "--config-file", "--script", "-s"},
+}
+
+
+def _first_positional(args, value_flags=()):
+    """Index of the first argument that is neither a flag nor a flag's value, or -1."""
+    skip = False
+    for i, a in enumerate(args):
+        if skip:
+            skip = False
+            continue
+        if a.startswith("-"):
+            skip = "=" not in a and a in value_flags
+            continue
+        return i
+    return -1
+
+
+def _positional(args, value_flags=()):
+    i = _first_positional(args, value_flags)
+    return args[i] if i >= 0 else ""
+
+
+def _flag_value(args, names):
+    """Value of the first of `names` ('--package X' or '--package=X'), or None if absent."""
+    for i, a in enumerate(args):
+        for n in names:
+            if a == n:
+                return args[i + 1] if i + 1 < len(args) else ""
+            if a.startswith(n + "="):
+                return a.split("=", 1)[1]
+    return None
 
 
 def _subcommand_at(args, word):
@@ -54,41 +105,104 @@ def _check_pkg(pkg, label, server_name, issues):
 
 
 def _check_uvx(args, label, server_name, issues):
-    if "--from" in args:
-        k = args.index("--from") + 1
-        pkg = args[k] if k < len(args) else ""
-        if not _pinned(pkg):
-            issues.append(("error", f"mcp:{server_name}", f"{label} --from {pkg or '?'} is not pinned (use name==X.Y.Z)"))
+    head = args[:max(_first_positional(args, VALUE_FLAGS["uvx"]), 0) or len(args)]
+    frm = _flag_value(head, ["--from"])
+    if frm is not None:
+        if not _pinned(frm):
+            issues.append(("error", f"mcp:{server_name}", f"{label} --from {frm or '?'} is not pinned (use name==X.Y.Z)"))
         return
-    _check_pkg(_first_positional(args), label, server_name, issues)
+    _check_pkg(_positional(args, VALUE_FLAGS["uvx"]), label, server_name, issues)
+
+
+def _check_npm(cmd, args, label, server_name, issues):
+    flags = VALUE_FLAGS[cmd]
+    k = _first_positional(args, flags)
+    head = args if k < 0 else args[:k]
+    pkg = _flag_value(head, ["--package", "-p"])
+    _check_pkg(pkg if pkg is not None else _positional(args, flags), label, server_name, issues)
 
 
 def check_launcher(server_name, cfg, issues):
+    if not isinstance(cfg, dict):
+        issues.append(("error", f"mcp:{server_name}", "server entry must be an object"))
+        return
     cmd = os.path.basename(str(cfg.get("command", "")))
-    args = [str(a) for a in cfg.get("args", [])]
+    args = [str(a) for a in cfg.get("args", []) or []]
     if cmd == "uvx":
         _check_uvx(args, "uvx", server_name, issues)
     elif cmd in LAUNCHERS:
-        _check_pkg(_first_positional(args), cmd, server_name, issues)
+        _check_npm(cmd, args, cmd, server_name, issues)
     elif cmd in DLX_LAUNCHERS:
         k = _subcommand_at(args, "dlx")
         if k >= 0:
-            _check_pkg(_first_positional(args[k + 1:]), f"{cmd} dlx", server_name, issues)
+            _check_npm("dlx", args[k + 1:], f"{cmd} dlx", server_name, issues)
     elif cmd == "pipx":
         k = _subcommand_at(args, "run")
         if k >= 0:
             rest = args[k + 1:]
-            if "--spec" in rest:
-                j = rest.index("--spec") + 1
-                _check_pkg(rest[j] if j < len(rest) else "", "pipx run --spec", server_name, issues)
+            j = _first_positional(rest, VALUE_FLAGS["pipx"])
+            spec = _flag_value(rest if j < 0 else rest[:j], ["--spec"])
+            if spec is not None:
+                _check_pkg(spec, "pipx run --spec", server_name, issues)
             else:
-                _check_pkg(_first_positional(rest), "pipx run", server_name, issues)
+                _check_pkg(_positional(rest, VALUE_FLAGS["pipx"]), "pipx run", server_name, issues)
     elif cmd == "uv":
-        k = _subcommand_at(args, "tool")
-        if k >= 0 and args[k + 1:k + 2] == ["run"]:  # 'uv tool run' is uvx
+        # 'uv [global options] <subcommand> ...': the subcommand is the first positional.
+        k = _first_positional(args, VALUE_FLAGS["uv"])
+        sub = args[k] if k >= 0 else ""
+        if sub == "tool" and args[k + 1:k + 2] == ["run"]:  # 'uv tool run' is uvx
             _check_uvx(args[k + 2:], "uv tool run", server_name, issues)
-        elif _subcommand_at(args, "run") >= 0 and not ({"--locked", "--frozen"} & set(args)):
-            issues.append(("error", f"mcp:{server_name}", "'uv run' without --locked or --frozen (the directory requires a locked run)"))
+        elif sub == "run":
+            # Only options before the script count; '--frozen' after it is the script's own argument.
+            rest = args[k + 1:]
+            j = _first_positional(rest, VALUE_FLAGS["uv"])
+            opts = args[:k] + (rest if j < 0 else rest[:j])
+            if not ({"--locked", "--frozen"} & set(opts)):
+                issues.append(("error", f"mcp:{server_name}", "'uv run' without --locked or --frozen before the script (the directory requires a locked run)"))
+
+
+def _readme_words(text):
+    """Words outside fenced code blocks: the checklist says words in code blocks don't count."""
+    prose, fence = [], None
+    for line in text.splitlines():
+        m = re.match(r"^\s{0,3}(`{3,}|~{3,})", line)
+        if m:
+            mark = m.group(1)
+            if fence is None:
+                fence = mark
+            elif mark[0] == fence[0] and len(mark) >= len(fence):
+                fence = None
+            continue
+        if fence is None:
+            prose.append(line)
+    return len(re.findall(r"\w+", "\n".join(prose)))
+
+
+def _mcp_servers(pdir, manifest, issues):
+    """(source, servers) pairs from .mcp.json and from plugin.json's mcpServers (inline object,
+    or a path / list of paths to JSON files)."""
+    found = []
+    mcp_path = os.path.join(pdir, ".mcp.json")
+    if os.path.exists(mcp_path):
+        try:
+            found.append((".mcp.json", _load_json(mcp_path).get("mcpServers") or {}))
+        except (OSError, ValueError, AttributeError) as e:
+            issues.append(("error", ".mcp.json", f"cannot parse: {e}"))
+    inline = manifest.get("mcpServers")
+    refs = inline if isinstance(inline, list) else [inline]
+    for ref in refs:
+        if isinstance(ref, dict):
+            found.append(("plugin.json", ref))
+        elif isinstance(ref, str) and ref:
+            path = os.path.normpath(os.path.join(pdir, ref.replace("${CLAUDE_PLUGIN_ROOT}", ".")))
+            if os.path.abspath(path) == os.path.abspath(mcp_path):
+                continue
+            try:
+                data = _load_json(path)
+                found.append((ref, data.get("mcpServers", data) if isinstance(data, dict) else {}))
+            except (OSError, ValueError) as e:
+                issues.append(("error", "plugin.json", f"mcpServers file {ref} cannot be read: {e}"))
+    return found
 
 
 def lint_plugin(pdir):
@@ -107,8 +221,9 @@ def lint_plugin(pdir):
         for field in ("name", "description"):
             if not str(manifest.get(field, "")).strip() or str(manifest.get(field)).strip() in ("---", "TODO"):
                 issues.append(("error", "plugin.json", f"'{field}' is missing or a placeholder"))
-        if not (manifest.get("author") or {}).get("name"):
-            issues.append(("error", "plugin.json", "'author.name' is missing"))
+        author = manifest.get("author")
+        if not isinstance(author, dict) or not author.get("name"):
+            issues.append(("error", "plugin.json", "'author.name' is missing (author must be an object with a name)"))
         if not manifest.get("license") and not os.path.exists(os.path.join(pdir, "LICENSE")):
             issues.append(("error", "plugin.json", "no 'license' field and no LICENSE file (directory will not list it)"))
         if "displayName" not in manifest:
@@ -133,20 +248,19 @@ def lint_plugin(pdir):
         issues.append(("error", "README", "no README.md (required to publish; it is the listing's description)"))
     else:
         with open(readme, encoding="utf-8") as f:
-            words = len(re.findall(r"\w+", f.read()))
+            words = _readme_words(f.read())
         if words < MIN_README_WORDS:
-            issues.append(("error", "README", f"README has {words} words; the directory needs at least {MIN_README_WORDS}"))
+            issues.append(("error", "README", f"README has {words} words outside code blocks; the directory needs at least {MIN_README_WORDS}"))
 
     user_config = manifest.get("userConfig", {}) or {}
-    mcp_path = os.path.join(pdir, ".mcp.json")
-    if os.path.exists(mcp_path):
-        try:
-            mcp = _load_json(mcp_path)
-        except (OSError, ValueError) as e:
-            issues.append(("error", ".mcp.json", f"cannot parse: {e}"))
-            mcp = {}
-        for sname, cfg in (mcp.get("mcpServers") or {}).items():
+    if not isinstance(user_config, dict):
+        issues.append(("error", "plugin.json", "'userConfig' must be an object"))
+        user_config = {}
+    for _src, servers in _mcp_servers(pdir, manifest, issues):
+        for sname, cfg in (servers.items() if isinstance(servers, dict) else []):
             check_launcher(sname, cfg, issues)
+            if not isinstance(cfg, dict):
+                continue
             for var in sorted(set(VAR_RE.findall(json.dumps(cfg)))):
                 if ALLOWED_VARS.match(var):
                     if var.startswith("user_config.") and var.split(".", 1)[1] not in user_config:

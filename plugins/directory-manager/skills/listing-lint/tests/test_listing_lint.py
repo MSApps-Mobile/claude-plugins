@@ -108,6 +108,53 @@ class ListingLint(unittest.TestCase):
             self.assertEqual(self.launcher_errors(cmd, ["dlx", "@scope/srv@1.2.3"]), [], cmd)
             self.assertEqual(self.launcher_errors(cmd, ["install"]), [], cmd)
 
+    def test_inexact_versions_are_unpinned(self):
+        # CTO 5729299276 finding 5: ranges, wildcards and partial versions passed before.
+        for cmd, args in [("npx", ["tsx@4"]), ("npx", ["tsx@4.x"]), ("npx", ["tsx@4.19"]),
+                          ("npx", ["tsx@latest"]), ("npx", ["tsx@^4.19.2"]), ("pnpm", ["dlx", "srv@1"]),
+                          ("uvx", ["foo==1.*"]), ("uvx", ["foo>=1,==2"]), ("uvx", ["foo==1.0.0,<2"]),
+                          ("uvx", ["foo===1.0.0"]), ("pipx", ["run", "black==24.*"])]:
+            self.assertEqual(len(self.launcher_errors(cmd, args)), 1, (cmd, args))
+        for cmd, args in [("npx", ["tsx@4.19.2"]), ("npx", ["@scope/srv@1.2.3-beta.1"]),
+                          ("uvx", ["foo==1.0.0"]), ("uvx", ["foo[cli]==1.0.0rc1"]),
+                          ("pipx", ["run", "black==24.8.0"])]:
+            self.assertEqual(self.launcher_errors(cmd, args), [], (cmd, args))
+
+    def test_uv_run_flag_after_the_script_does_not_count(self):
+        self.assertEqual(len(self.launcher_errors("uv", ["run", "main.py", "--frozen"])), 1)
+        self.assertEqual(len(self.launcher_errors("uv", ["run", "main.py", "--locked"])), 1)
+        self.assertEqual(self.launcher_errors("uv", ["run", "--directory", "srv", "--frozen", "main.py"]), [])
+        self.assertEqual(self.launcher_errors("uv", ["--directory", "srv", "run", "--with", "x==1.0.0", "--locked", "main.py"]), [])
+
+    def test_option_values_are_not_the_package(self):
+        self.assertEqual(self.launcher_errors("uvx", ["--python", "3.12", "foo==1.0.0"]), [])
+        self.assertEqual(self.launcher_errors("npx", ["--package=foo@1.2.3", "bar"]), [])
+        self.assertEqual(self.launcher_errors("npx", ["-p", "foo@1.2.3", "bar"]), [])
+        self.assertEqual(len(self.launcher_errors("npx", ["--package=foo", "bar"])), 1)
+
+    def test_inline_mcp_servers_in_plugin_json_are_checked(self):
+        m = dict(GOOD, mcpServers={"a": {"command": "npx", "args": ["-y", "srv"]}})
+        self.assertTrue(any("unpinned npx" in e for e in errors(make(m))))
+        m = dict(GOOD, mcpServers={"a": {"command": "node", "args": [], "env": {"K": "${API_TOKEN}"}}})
+        self.assertTrue(any("userConfig" in e for e in errors(make(m))))
+        self.assertEqual(errors(make(dict(GOOD, mcpServers={"a": {"command": "npx", "args": ["srv@1.2.3"]}}))), [])
+
+    def test_mcp_servers_path_in_plugin_json_is_checked(self):
+        d = make(dict(GOOD, mcpServers="./servers.json"))
+        with open(os.path.join(d, "servers.json"), "w") as f:
+            json.dump({"mcpServers": {"a": {"command": "uvx", "args": ["srv"]}}}, f)
+        self.assertTrue(any("unpinned uvx" in e for e in errors(d)))
+
+    def test_code_block_words_do_not_count(self):
+        padded = "Two words.\n\n```bash\n" + "echo word " * 30 + "\n```\n"
+        self.assertTrue(any("40" in e for e in errors(make(GOOD, readme=padded))))
+        tilde = "Two words.\n\n~~~\n" + "word " * 60 + "\n~~~\n"
+        self.assertTrue(any("40" in e for e in errors(make(GOOD, readme=tilde))))
+        self.assertEqual(errors(make(GOOD, readme=README + "\n```\ncode\n```\n")), [])
+
+    def test_author_as_string_is_an_error_not_a_traceback(self):
+        self.assertTrue(any("author" in e for e in errors(make(dict(GOOD, author="MSApps")))))
+
     def test_env_var_needs_user_config(self):
         mcp = {"mcpServers": {"a": {"command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/i.js"], "env": {"K": "${API_TOKEN}"}}}}
         self.assertTrue(any("userConfig" in e for e in errors(make(GOOD, mcp=mcp))))
