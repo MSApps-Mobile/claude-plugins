@@ -95,7 +95,9 @@ expect "$K_DIRTY"     "keep dirty-uncommitted-work" "_worktrees dirty"
 expect "$K_UNPUSHED"  "keep unpushed-commits"       "_worktrees unpushed"
 expect "$K_RECENT"    "keep touched-recently"       "_worktrees touched recently"
 expect "$K_SESSDIRTY" "keep dirty-uncommitted-work" "AC-2 wt/<session>/<wt> dirty"
+HOLDER_SEEN=""   # the apply-side keep below rests on this same fact: no visible holder, nothing keeps K_CWD
 if [ -n "$SLEEPER" ] && /usr/sbin/lsof -d cwd -Fn 2>/dev/null | grep -qxF "n$K_CWD"; then
+  HOLDER_SEEN=1
   expect "$K_CWD" "keep a-process-is-inside" "_worktrees with a process cwd inside"
 else echo "SKIP - cwd-inside case (lsof cannot see the fixture process)"; fi
 [ -z "$(row "$CLONE" "$PLAN")" ] && ok "full clone under _worktrees is not listed" || bad "clone listed: $(row "$CLONE" "$PLAN")"
@@ -128,7 +130,9 @@ OUT="$(bash "$HYG" apply "$FX/evil.tsv" 2>&1)"
 awk -F'\t' '$2=="remove"{print $1"\t"$5}' "$PLAN" > "$FX/real.tsv"
 bash "$HYG" apply "$FX/real.tsv" > "$FX/apply.out" 2>&1
 for d in "$P_FLAT" "$P_NEST" "$P_SESS"; do [ ! -e "$d" ] && ok "removed $d" || bad "still present: $d"; done
-for d in "$K_DIRTY" "$K_UNPUSHED" "$K_RECENT" "$K_CWD" "$K_SESSDIRTY" "$DEEP" "$CLONE" "$MAIN"; do [ -d "$d" ] && ok "kept $d" || bad "removed $d"; done
+for d in "$K_DIRTY" "$K_UNPUSHED" "$K_RECENT" "$K_SESSDIRTY" "$DEEP" "$CLONE" "$MAIN"; do [ -d "$d" ] && ok "kept $d" || bad "removed $d"; done
+if [ -n "$HOLDER_SEEN" ]; then [ -d "$K_CWD" ] && ok "kept $K_CWD" || bad "removed $K_CWD"
+else echo "SKIP - cwd-inside keep on apply (lsof cannot see the fixture process)"; fi
 [ -f "$K_DIRTY/wt-dirty_work" ] && grep -q edit "$K_DIRTY/wt-dirty_work" && ok "dirty edit survives" || bad "dirty edit lost"
 "$GITBIN" -C "$MAIN" rev-parse -q --verify refs/heads/wt-flat >/dev/null && ok "branch wt-flat survives removal" || bad "branch ref wt-flat is gone"
 
