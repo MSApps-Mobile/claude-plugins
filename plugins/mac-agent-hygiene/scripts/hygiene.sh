@@ -186,12 +186,15 @@ check_model(){ local m; for m in $HYG_MODEL_CACHES; do
     REASON=re-downloadable-model-cache; return 0; done
   REASON=not-a-listed-model-cache; return 1; }
 # git run on repos an agent made: repo-local config must not be able to run a command while we only
-# look (core.fsmonitor and hooks are the command-executing keys `status` would honour).
+# look (core.fsmonitor and hooks are the command-executing keys `status` would honour; log.showSignature
+# makes `log` / `stash list` run gpg.program, gpg.ssh.program or gpg.x509.program on a signed commit).
 GITS(){ GIT_CONFIG_NOSYSTEM=1 "$GIT" --no-optional-locks -c core.fsmonitor=false -c core.hooksPath=/dev/null \
-  -c core.untrackedCache=false -c diff.external= -c core.pager=cat "$@"; }
-# Repo-local config keys that can make git run a program (filter drivers run during `status`). A repo
-# carrying any of them is KEPT unread: fail closed rather than try to neutralise every driver.
-CMD_CONFIG_RE='^(filter\.|include\.|includeif\.|core\.fsmonitor|core\.sshcommand|core\.gitproxy|core\.askpass|core\.editor|core\.pager|core\.hookspath|diff\.[^.]*\.(textconv|command)|merge\.[^.]*\.driver|credential\.|uploadpack\.|protocol\.)'
+  -c core.untrackedCache=false -c diff.external= -c core.pager=cat -c log.showSignature=false "$@"; }
+# Repo-local config keys that can make git run a program (filter drivers run during `status`; gpg.* and
+# log.showSignature run a verifier during `log`). A repo carrying any of them is KEPT unread: fail closed
+# rather than try to neutralise every driver. GITS also forces log.showSignature=false, so a key this list
+# misses (global config, a new git) still cannot verify.
+CMD_CONFIG_RE='^(filter\.|include\.|includeif\.|core\.fsmonitor|core\.sshcommand|core\.gitproxy|core\.askpass|core\.editor|core\.pager|core\.hookspath|diff\.[^.]*\.(textconv|command)|merge\.[^.]*\.driver|credential\.|uploadpack\.|protocol\.|log\.showsignature|gpg\.)'
 repo_config_runs_commands(){ local gd f
   gd=$(GITS -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 0
   for f in "$gd/config" "$(GITS -C "$1" rev-parse --path-format=absolute --git-dir 2>/dev/null)/config.worktree"; do
@@ -233,7 +236,7 @@ subjects_all_in(){ local s p pp hit
 # that no remote has must appear among the PR's commits by subject. Any doubt (no commits, gh failure,
 # one subject without a match) ⇒ 1 ⇒ KEEP.
 merged_pr_commits_match(){ local d="$1" repo="$2" f="$3" b="$4" ls="$TMPD/local-subjects" rb ro rn pf
-  GITS -C "$d" log --format=%s HEAD --not --remotes > "$ls" 2>/dev/null || return 1
+  GITS -C "$d" log --no-show-signature --format=%s HEAD --not --remotes > "$ls" 2>/dev/null || return 1
   [ -s "$ls" ] || return 1
   [ "$(/usr/bin/wc -l < "$ls")" -le 200 ] || return 1
   while read -r rb ro rn; do
