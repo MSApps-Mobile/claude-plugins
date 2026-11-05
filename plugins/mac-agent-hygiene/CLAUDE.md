@@ -25,12 +25,16 @@
 - One `git_safe dir bound allow_parent_branch` judges every repo (worktrees pass `0`): repo config that can run a
   command, submodules, dirty, a full clone's stash / unpushed branch / registered worktree outside `bound` ⇒ keep.
 - Session dirs (`~/code/wt/*` without `.git`): untouched > 24 h, at least one nested repo (none ⇒ keep,
-  `no-nested-repo`), kept whole if ANY nested repo fails `git_safe`. "Held by a parent-repo branch" counts only with
+  `no-nested-repo`), kept whole if ANY nested repo fails `git_safe` or ANY regular file lives outside the nested
+  repos (`loose-files-outside-repos`; `__pycache__` / `.DS_Store` excepted). "Held by a parent-repo branch" counts only with
   `HYG_SESSION_PARENT_BRANCH_OK=1` (default 0): it loosens "unpushed ⇒ KEPT" and needs an explicit ruling to turn on.
+- Repo config that can run a program or redirect the tree (`CMD_CONFIG_RE`: filter drivers, fsmonitor, hooksPath,
+  `log.showSignature`, `gpg.*`, `core.worktree` …) ⇒ keep unread. `GITS` pins `log.showSignature=false`.
 - Gradle: never the newest two versions or one a running process names. iOS: never the newest DeviceSupport,
   never a simulator whose runtime is installed, never `Xcode/Archives`. Android AVDs / SDK images: report only.
 - `run` holds a mkdir lock so a 4-hourly run never overlaps a slow one (stale after 6 h; a takeover re-creates it so
-  its mtime restarts). The lock is released with `rmdir`, never `rm -rf`; a non-empty or non-directory `HYG_LOCK` is refused.
+  its mtime restarts). The lock is released with `rmdir`, never `rm -rf`; a non-empty or non-directory `HYG_LOCK` is refused,
+  and so is one another user owns. Default path is per user: `${TMPDIR:-/tmp}/mac-agent-hygiene-<uid>.lock`.
 - System binaries by absolute path; explicit PATH in the plist; `mktemp` with a `${TMPDIR:-/tmp}` template.
 - Paths compared as fixed strings (never a grep pattern); `.`/`..` components refused at the apply gate; every
   category checks `dirname`/`basename`, not a glob across `/`. Environment > config file > defaults.
@@ -42,6 +46,8 @@ bash -n scripts/*.sh && node --check server/index.js
 bash tests/hygiene-worktrees.test.sh        # fixture git repos + stubbed gh; runs on Linux too
 bash tests/hygiene-wt-scan-roots.test.sh    # default scope incl. ~/code/_worktrees, keep rules, status count
 bash tests/hygiene-port-combined.test.sh    # worktrees + session-dirs at their defaults never disagree destructively
+bash tests/hygiene-git-exec-guard.test.sh   # log.showSignature + gpg.program never run during plan
+bash tests/hygiene-session-safety.test.sh   # loose files / core.worktree keep a session; per-user, owned run lock
 bash tests/hygiene-keeps-logins.test.sh     # macOS only
 bash tests/hygiene-dev-caches.test.sh       # macOS only: session-dirs, gradle, ios, android, pkg-caches, run lock
 bash scripts/hygiene.sh status

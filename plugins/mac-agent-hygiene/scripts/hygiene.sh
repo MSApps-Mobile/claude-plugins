@@ -29,8 +29,9 @@
 #                    (a folder with none is kept: no-nested-repo), and EVERY git repo or worktree nested
 #                    inside is clean and pushed (same git_safe test as worktrees). One dirty or unpushed
 #                    nested repo, or a nested full clone whose registered worktree lives outside the folder,
-#                    keeps the whole folder. "Held by a parent-repo branch" counts only when
-#                    HYG_SESSION_PARENT_BRANCH_OK=1 (default 0).
+#                    keeps the whole folder, and so does ANY regular file beside the repos (notes, prompts,
+#                    scripts, archives; __pycache__ and .DS_Store excepted). "Held by a parent-repo branch"
+#                    counts only when HYG_SESSION_PARENT_BRANCH_OK=1 (default 0).
 #   gradle           ~/.gradle/wrapper/dists/* and ~/.gradle/daemon/* versions older than
 #                    HYG_GRADLE_AGE_DAYS, never the newest two, never one a running Gradle uses
 #   ios              ~/Library/Developer/Xcode/iOS DeviceSupport/* older than HYG_DEVICE_SUPPORT_AGE_DAYS
@@ -81,7 +82,7 @@ HYG_ANDROID_CACHE_AGE_DAYS="${HYG_ANDROID_CACHE_AGE_DAYS:-7}"
 HYG_ANDROID_SDK="${HYG_ANDROID_SDK:-$HOME/Library/Android/sdk}"
 HYG_PKG_CACHES="${HYG_PKG_CACHES-$HOME/Library/Caches/CocoaPods}"
 HYG_PKG_CACHE_AGE_DAYS="${HYG_PKG_CACHE_AGE_DAYS:-30}"
-HYG_LOCK="${HYG_LOCK:-${TMPDIR:-/tmp}/mac-agent-hygiene.lock}"
+HYG_LOCK="${HYG_LOCK:-${TMPDIR:-/tmp}/mac-agent-hygiene-$(/usr/bin/id -u).lock}"   # per user: /tmp is shared when TMPDIR is unset
 HYG_DERIVED_DATA="${HYG_DERIVED_DATA%/}"; HYG_PLUGIN_CACHE="${HYG_PLUGIN_CACHE%/}"
 case "$HYG_WT_AGE_DAYS$HYG_MODEL_CACHE_AGE_DAYS$HYG_PLUGIN_CLONE_MIN_AGE_MIN$HYG_WT_DEPTH$HYG_SESSION_AGE_HOURS$HYG_GRADLE_AGE_DAYS$HYG_DEVICE_SUPPORT_AGE_DAYS$HYG_ANDROID_CACHE_AGE_DAYS$HYG_PKG_CACHE_AGE_DAYS$HYG_GH_SHA_CHECK_MAX" in *[!0-9]*) echo "age settings must be integers" >&2; exit 2;; esac
 case "$HYG_SESSION_PARENT_BRANCH_OK" in 0|1) ;; *) echo "HYG_SESSION_PARENT_BRANCH_OK must be 0 or 1" >&2; exit 2;; esac
@@ -146,6 +147,10 @@ list_sessions(){ [ -d "$HYG_SESSION_ROOT" ] && /usr/bin/find "$HYG_SESSION_ROOT"
 # Every .git at any depth, nothing pruned: a repo the search skipped would be rm -rf'd unchecked, so the
 # search fails closed (slower on a big node_modules, which only runs on folders already idle 24 h).
 nested_repos(){ /usr/bin/find "$1" -mindepth 2 -name .git -print 2>/dev/null | /usr/bin/sed 's#/\.git$##'; }
+# First regular file in $1 that lives OUTSIDE every nested repo (a directory holding a .git file or dir is
+# pruned whole), or nothing. __pycache__ and .DS_Store regenerate and do not count.
+loose_file_in(){ /usr/bin/find "$1" -mindepth 1 \( -type d \( -name __pycache__ -o -exec /bin/test -e '{}/.git' \; \) -prune \) \
+  -o \( -type f ! -name .DS_Store -print -quit \); }
 # Newest-first listing helpers for "never the newest N" rules
 newest_first(){ /bin/ls -1td "$@" 2>/dev/null; }
 list_clones(){ [ -d "$HYG_PLUGIN_CACHE" ] && /usr/bin/find "$HYG_PLUGIN_CACHE" -maxdepth 1 -mindepth 1 -type d -name 'temp_git_*' 2>/dev/null | /usr/bin/sort; }
@@ -193,8 +198,9 @@ GITS(){ GIT_CONFIG_NOSYSTEM=1 "$GIT" --no-optional-locks -c core.fsmonitor=false
 # Repo-local config keys that can make git run a program (filter drivers run during `status`; gpg.* and
 # log.showSignature run a verifier during `log`). A repo carrying any of them is KEPT unread: fail closed
 # rather than try to neutralise every driver. GITS also forces log.showSignature=false, so a key this list
-# misses (global config, a new git) still cannot verify.
-CMD_CONFIG_RE='^(filter\.|include\.|includeif\.|core\.fsmonitor|core\.sshcommand|core\.gitproxy|core\.askpass|core\.editor|core\.pager|core\.hookspath|diff\.[^.]*\.(textconv|command)|merge\.[^.]*\.driver|credential\.|uploadpack\.|protocol\.|log\.showsignature|gpg\.)'
+# misses (global config, a new git) still cannot verify. core.worktree is here for another reason: it
+# points `status` at a different tree than the folder rm -rf removes, so "clean" would judge the wrong files.
+CMD_CONFIG_RE='^(core\.worktree|filter\.|include\.|includeif\.|core\.fsmonitor|core\.sshcommand|core\.gitproxy|core\.askpass|core\.editor|core\.pager|core\.hookspath|diff\.[^.]*\.(textconv|command)|merge\.[^.]*\.driver|credential\.|uploadpack\.|protocol\.|log\.showsignature|gpg\.)'
 repo_config_runs_commands(){ local gd f
   gd=$(GITS -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 0
   for f in "$gd/config" "$(GITS -C "$1" rev-parse --path-format=absolute --git-dir 2>/dev/null)/config.worktree"; do
@@ -345,7 +351,7 @@ check_worktree(){ local d="$1" gd cdir
   cwd_inside "$d" && { REASON=a-process-is-inside; return 1; }
   git_safe "$d" "$d" 0; }
 
-check_session(){ local d="$1" r n=0
+check_session(){ local d="$1" r n=0 loose
   [ "$(dirname "$d")" = "$HYG_SESSION_ROOT" ] || { REASON=outside-session-root; return 1; }
   [ -e "$d/.git" ] && { REASON=is-a-git-repo; return 1; }
   [ -n "$(/usr/bin/find "$d" \( -name .git -o -name node_modules -o -name .venv -o -name Pods \) -prune -o -type f -mmin -"$((HYG_SESSION_AGE_HOURS*60))" -print -quit 2>/dev/null)" ] && { REASON=touched-recently; return 1; }
@@ -360,6 +366,10 @@ check_session(){ local d="$1" r n=0
   # The category reclaims checkouts: with no repo there is nothing git_safe vouched for (research notes,
   # review outputs), so the folder stays.
   [ "$n" -gt 0 ] || { REASON=no-nested-repo; return 1; }
+  # rm -rf takes the whole folder, but git_safe vouched only for the repos. A file beside them (a prompt,
+  # notes, a script, an archive, JSON output) has no other copy: keep. A scan that errors keeps too.
+  loose=$(loose_file_in "$d" 2>/dev/null) || { REASON=loose-file-scan-failed; return 1; }
+  [ -z "$loose" ] || { REASON=loose-files-outside-repos; return 1; }
   REASON=stale-session-all-nested-pushed; return 0; }
 check_gradle(){ local p="$1" parent n
   parent="$(dirname "$p")"
@@ -494,6 +504,10 @@ run(){ local pf="$TMPD/plan.tsv"
     if [ -L "$HYG_LOCK" ] || [ ! -d "$HYG_LOCK" ] || [ -n "$(/bin/ls -A "$HYG_LOCK" 2>/dev/null)" ]; then
       log "=== scheduled run refused: $HYG_LOCK exists and is not an empty lock directory"
       echo "run: HYG_LOCK $HYG_LOCK exists and is not an empty lock directory; refusing" >&2; return 2
+    fi
+    if [ ! -O "$HYG_LOCK" ]; then   # another user's lock (a shared /tmp): never take it over
+      log "=== scheduled run refused: $HYG_LOCK is not owned by this user"
+      echo "run: HYG_LOCK $HYG_LOCK is not owned by this user; refusing" >&2; return 2
     fi
     if [ -n "$(/usr/bin/find "$HYG_LOCK" -maxdepth 0 -mmin +360 2>/dev/null)" ]; then
       /bin/rmdir "$HYG_LOCK" 2>/dev/null && /bin/mkdir "$HYG_LOCK" 2>/dev/null \

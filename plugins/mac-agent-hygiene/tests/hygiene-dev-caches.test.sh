@@ -51,7 +51,7 @@ action_of(){ /usr/bin/awk -F'\t' -v p="$1" '$5==p{print $2}' "$FX/plan.tsv"; }
 # --- session dirs: one repo cloned from a bare origin, committed and pushed
 git init -q --bare "$FX/origin.git"
 mksession(){ local s="$HOME/code/wt/$1"; mkdir -p "$s"; git clone -q "$FX/origin.git" "$s/repo" 2>/dev/null
-  (cd "$s/repo" && echo x > f && git add f && git commit -qm c && git push -q origin HEAD:refs/heads/"$1" 2>/dev/null); echo notes > "$s/PROMPT.md"; }
+  (cd "$s/repo" && echo x > f && git add f && git commit -qm c && git push -q origin HEAD:refs/heads/"$1" 2>/dev/null); }   # no loose files: they keep a folder (hygiene-session-safety.test.sh)
 mksession stale-clean; old "$HOME/code/wt/stale-clean"
 mksession stale-dirty; echo wip > "$HOME/code/wt/stale-dirty/repo/wip.txt"; old "$HOME/code/wt/stale-dirty"
 mksession fresh                                   # files touched now
