@@ -1,0 +1,7 @@
+{
+  "name": "claude-x",
+  "version": "0.0.1",
+  "description": "Fixture plugin for the claude plugin validate negative control",
+  "author": { "name": "Fixture" },
+  "license": "MIT"
+}
