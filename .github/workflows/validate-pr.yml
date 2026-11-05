@@ -388,3 +388,31 @@ jobs:
       # (block, heredoc, inline, folded) must red on every run.
       - name: Workflow run bodies — prove the guard can FAIL
         run: python3 scripts/check-workflow-run-expressions.test.py
+
+  # ── Job 4: claude plugin validate (repo-wide) ───────────────────
+  # Card tc0MIvhS: nothing here ran `claude plugin validate`, so
+  # claude-folder-janitor (a reserved "claude-" prefix) reached main weeks
+  # after the rule existed. The CLI exits non-zero on an ERROR and exits 0 on
+  # warnings, so the gate fails on errors only; the warnings are printed, not
+  # fixed here. The version is pinned: a floating CLI would turn a new rule
+  # into a red on an unrelated PR.
+  claude-validate:
+    name: claude plugin validate
+    runs-on: ubuntu-latest
+    env:
+      CLAUDE_CODE_VERSION: "2.1.318"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the pinned Claude Code CLI
+        run: |
+          npm install --global "@anthropic-ai/claude-code@$CLAUDE_CODE_VERSION"
+          claude --version
+
+      - name: claude plugin validate . (errors fail, warnings are reported)
+        run: claude plugin validate .
+
+      # Negative control: a fixture plugin named claude-x must red, and a
+      # clean fixture must pass, on every run.
+      - name: claude plugin validate — prove the guard can FAIL
+        run: bash scripts/claude-plugin-validate.test.sh
