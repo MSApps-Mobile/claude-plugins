@@ -37,6 +37,7 @@ CODE="$HOME/code"
 export HYG_LOG="$FX/hygiene.log" HYG_DERIVED_DATA="$HOME/dd-none" HYG_PLUGIN_CACHE="$HOME/pc-none"
 export HYG_PW_GLOB="$HOME/pw-none-*" HYG_MODEL_CACHES="$HOME/mc-none" HYG_WT_ROOT="$CODE"
 export HYG_WT_AGE_DAYS=1 HYG_WT_MERGED_PR_CHECK=1 HYG_GIT="$GITBIN" HYG_GH="$FX/bin/gh"
+export HYG_SESSION_ROOT="$HOME/sess-none"   # session-dirs off: this suite judges the worktrees category only
 
 PASS=0; FAILN=0
 ok(){ PASS=$((PASS+1)); echo "ok   - $1"; }

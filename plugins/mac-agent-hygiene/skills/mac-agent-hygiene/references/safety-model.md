@@ -68,6 +68,66 @@ read once per run and compared with `=` / a quoted `case` prefix. The apply gate
 path with a `.` or `..` component before any category check runs, and each category checks
 `dirname`/`basename` equality rather than a glob that `*` could stretch across `/`.
 
+## Session folders are judged by every repo inside them
+
+`~/code/wt/<session>/` folders are created by pipeline and research sessions; once idle they hold
+clones and worktrees nobody returns to. The `session-dirs` category removes the WHOLE folder with
+`rm -rf`, so it needs evidence for everything in it:
+
+1. no regular file (outside `.git`, `node_modules`, `.venv`, `Pods`) touched for `HYG_SESSION_AGE_HOURS`, and
+   nobody's cwd inside;
+2. no `HEAD` file outside a `.git` path (a bare repo or separate git-dir would go unchecked);
+3. at least ONE nested repo. A folder with no git repo is research notes or review output, not a
+   checkout: it is kept (`no-nested-repo`). Measured 2026-11-03: the earlier rule removed 150 such
+   folders in one run on the reference Mac;
+4. every nested repo passes `git_safe` with the folder as the deletion boundary: repo config that can run a
+   command (filter drivers, fsmonitor, hooksPath …) or submodules ⇒ kept unread; dirty ⇒ kept; a full
+   clone with a stash or a local branch no remote ref (or the GitHub default branch) holds ⇒ kept; a full
+   clone with a registered worktree (`.git/worktrees/*/gitdir`) that resolves OUTSIDE the folder and still
+   exists, or is locked ⇒ kept (`clone-has-live-worktree-outside`: rm of the clone would orphan it —
+   no HEAD, no index, no objects);
+5. HEAD on a remote ref, in the GitHub default branch, or a merged PR (same tests as worktrees);
+6. no regular file outside the nested repos (`loose-files-outside-repos`). `git_safe` vouches for the repos
+   only, but `rm -rf` takes the folder: a prompt, notes, a script, a `.tgz` or JSON output beside a clean
+   pushed clone has no other copy. `__pycache__` and `.DS_Store` regenerate and do not count.
+
+Repo config is read before git runs (rule 4, `CMD_CONFIG_RE`). Besides filter drivers and fsmonitor it
+keeps unread any repo setting `log.showSignature` or `gpg.*` (`gpg.program`, `gpg.ssh.program`,
+`gpg.x509.program`): `git log` and `git stash list` would run that verifier on a signed commit, as the user.
+`GITS` also forces `-c log.showSignature=false` and the subject match passes `--no-show-signature`, so the
+same keys in global config cannot run either. `core.worktree` is on the list too: it makes `status` judge a
+different tree than the folder `rm -rf` removes. `tests/hygiene-git-exec-guard.test.sh` and
+`tests/hygiene-session-safety.test.sh` hold the fixtures (a verifier that writes a marker; loose files;
+a `core.worktree` redirect).
+
+"A local branch of the parent repo holds this worktree's HEAD" (`branch-kept-in-parent-repo`) is
+**gated** behind `HYG_SESSION_PARENT_BRANCH_OK=1`, default 0. It loosens rule 5 of the worktree model
+("unpushed ⇒ KEPT"); the worktrees category never uses it. Turning it on by default is a separate,
+explicit ruling.
+
+`tests/hygiene-dev-caches.test.sh` holds the fixtures (no-repo folder kept, clone with an outside worktree
+kept and that worktree still working, the gate off and on), and `tests/hygiene-port-combined.test.sh`
+proves the worktrees pass and `session-dirs` never disagree in the destructive direction at their defaults.
+
+## Developer caches
+
+- `gradle`: `~/.gradle/wrapper/dists/*` and `daemon/*` older than `HYG_GRADLE_AGE_DAYS`, never the newest two,
+  never a version a running process names. Re-downloadable; an offline build is the cost.
+- `ios`: `iOS DeviceSupport/*` older than `HYG_DEVICE_SUPPORT_AGE_DAYS`, never the newest (Xcode re-copies it on
+  connect); simulators only when their runtime is gone (`simctl delete`). Skipped while Xcode or Simulator runs.
+  `Xcode/Archives` is never a candidate.
+- `android`: `~/.android/cache/*` only. AVDs and SDK images are user data — reported, never removed.
+- `pkg-caches`: `~/Library/Caches/CocoaPods` with no file newer than `HYG_PKG_CACHE_AGE_DAYS`.
+
+## The run lock
+
+`run` takes `HYG_LOCK` with an atomic `mkdir`; a lock older than 6 h is a crashed run and is taken over by
+`rmdir` + `mkdir`, so its mtime restarts (otherwise every run in the next hours would "take over" too and
+run concurrently). The lock is released with `rmdir`, never `rm -rf`: `HYG_LOCK` can come from config, and a
+directory with content, a file or a symlink at that path is refused untouched. The default path is per user,
+`${TMPDIR:-/tmp}/mac-agent-hygiene-<uid>.lock`, and a lock directory this user does not own (`[ -O ]`) is
+refused, never taken over: with `TMPDIR` unset, `/tmp` is shared.
+
 ## launchd does not give you a PATH
 
 A script that works in Terminal fails under launchd because launchd's job PATH lacks Homebrew and
