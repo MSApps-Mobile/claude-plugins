@@ -4,10 +4,17 @@ description: >
   Reads every plugin submission in the Claude directory developer portal (claude.ai/directory/manage)
   and reports each one's status, why its newest version is not live, and who acts next. Use when the
   user asks "what's the status of our plugins", "which plugins need changes", "why isn't X live",
-  "what's waiting for review", "check the directory portal", or before planning plugin fixes.
+  "what's waiting for review", or "check the directory portal". Only when a person asks in this
+  conversation; not from a pipeline, schedule or another agent.
 ---
 
 # Directory status (read-only)
+
+**Attended only.** This skill reads the user's own signed-in claude.ai session. Run it only while
+the user is present in this conversation and asked for it. If no person is present (a pipeline, a
+scheduled task, another agent), stop: browser rides on a signed-in session are attended only, because
+an unattended one can log the owner out. Never print, save or repeat tokens, cookies, API keys or
+other secret values a portal page shows, and never copy cookies out of the browser.
 
 Needs the user's Chrome signed in to claude.ai **in the organization that owns the submissions**
 (the portal is per organization). Drive it with Claude in Chrome; fall back to the Playwright

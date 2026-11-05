@@ -6,7 +6,8 @@ Input: a JSON file, a list of {"id", "name", "status", "overview": <Overview tab
 
 Usage: parse_usage.py INPUT.json OUT_DIR
 Writes OUT_DIR/plugins.json (one row per submission) and OUT_DIR/install_sources.json
-(one row per plugin x install path). Exit 0 ok · 2 bad input.
+(one row per plugin x install path). Exit 0 ok · 2 bad input · 3 a Published plugin parsed to
+no numbers (the portal's page text has changed; the totals would be wrong).
 """
 import json
 import os
@@ -78,9 +79,11 @@ def main(argv):
         print(__doc__.strip(), file=sys.stderr)
         return 2
     try:
-        items = json.load(open(argv[0], encoding="utf-8"))
-        assert isinstance(items, list) and all(isinstance(x, dict) and "name" in x for x in items)
-    except (OSError, ValueError, AssertionError) as e:
+        with open(argv[0], encoding="utf-8") as f:
+            items = json.load(f)
+        if not isinstance(items, list) or not all(isinstance(x, dict) and "name" in x for x in items):
+            raise ValueError("expected a JSON list of objects with a 'name'")
+    except (OSError, ValueError) as e:
         print(f"bad input: {e}", file=sys.stderr)
         return 2
     rows, sources = [], []
@@ -94,6 +97,12 @@ def main(argv):
     json.dump(sources, open(os.path.join(argv[1], "install_sources.json"), "w"), indent=1)
     print(f"{len(rows)} plugins, {len(sources)} install-path rows, "
           f"{sum(r['installs_all_time'] or 0 for r in rows):,} installs all time")
+    empty = [r["plugin"] for r in rows if str(r.get("status") or "").lower().startswith("published")
+             and r["installs_all_time"] is None and r["installers"] is None and r["uses_30d"] is None]
+    if empty:
+        print(f"no numbers parsed for Published plugin(s): {', '.join(empty)}; the portal text "
+              "format may have changed, so these totals are not reliable", file=sys.stderr)
+        return 3
     return 0
 
 
