@@ -59,7 +59,7 @@ VALUE_FLAGS = {
     "uv": {"--with", "-w", "--with-editable", "--with-requirements", "--python", "-p", "--directory",
            "--project", "--package", "--extra", "--group", "--only-group", "--no-group", "--env-file",
            "--index", "--index-url", "--extra-index-url", "--find-links", "-f", "--cache-dir",
-           "--config-file", "--script", "-s"},
+           "--config-file"},
 }
 
 
@@ -105,7 +105,8 @@ def _check_pkg(pkg, label, server_name, issues):
 
 
 def _check_uvx(args, label, server_name, issues):
-    head = args[:max(_first_positional(args, VALUE_FLAGS["uvx"]), 0) or len(args)]
+    k = _first_positional(args, VALUE_FLAGS["uvx"])
+    head = args if k < 0 else args[:k]
     frm = _flag_value(head, ["--from"])
     if frm is not None:
         if not _pinned(frm):

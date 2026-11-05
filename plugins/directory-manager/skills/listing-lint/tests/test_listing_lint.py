@@ -126,6 +126,13 @@ class ListingLint(unittest.TestCase):
         self.assertEqual(self.launcher_errors("uv", ["run", "--directory", "srv", "--frozen", "main.py"]), [])
         self.assertEqual(self.launcher_errors("uv", ["--directory", "srv", "run", "--with", "x==1.0.0", "--locked", "main.py"]), [])
 
+    def test_uv_run_script_flag_takes_no_value(self):
+        self.assertEqual(len(self.launcher_errors("uv", ["run", "--script", "main.py", "--frozen"])), 1)
+        self.assertEqual(self.launcher_errors("uv", ["run", "--script", "--frozen", "main.py"]), [])
+
+    def test_uvx_from_after_the_package_is_not_its_pin(self):
+        self.assertEqual(len(self.launcher_errors("uvx", ["ruff", "--from", "x==1.0.0"])), 1)
+
     def test_option_values_are_not_the_package(self):
         self.assertEqual(self.launcher_errors("uvx", ["--python", "3.12", "foo==1.0.0"]), [])
         self.assertEqual(self.launcher_errors("npx", ["--package=foo@1.2.3", "bar"]), [])

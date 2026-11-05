@@ -21,23 +21,26 @@ shows. Never copy cookies out of the browser.
 
 ## What a click does
 
-The portal's **Auto-publish** row on each plugin's Overview tab decides what selecting **Publish**
-does (claude.com/docs/plugins/submit, *Publish a passing version*):
+The **Auto-publish** row on each plugin's **Overview** tab says which publish setting applies, and
+that decides what selecting **Publish** does (claude.com/docs/plugins/submit, *Publish a passing
+version*, read 2026-11-05):
 
-- **Anthropic publishes** (or a review is required): the click records a publish request and an
-  Anthropic reviewer decides.
-- **You publish the first version** (or any setting where you publish): the click makes the version
-  **live in the directory at once**.
+| Auto-publish row | Version | The click |
+|---|---|---|
+| An Anthropic reviewer publishes each version | any | goes to a reviewer |
+| The reviewer publishes only the first version | first | goes to a reviewer |
+| You publish the first version | first | **goes live at once** |
+| anything else, or a later version under the last two settings | | unclear: leave it out and show the user the row |
 
-So the user must know, per plugin, which of the two the click does before saying yes.
+The docs say "the settings include" these three, so a row not in this table is unclear, not a default.
 
 ## Steps
 
 1. Take the plugins reported as "Needs a publish request" by `directory-status` in this same
    conversation, or run `directory-status` now (the user is present).
-2. For each, open its Overview tab and read the **Auto-publish** row. Record the outcome:
-   "goes to a reviewer" or "goes live now". If the row is missing or unclear, record "unknown" and
-   leave that plugin out.
+2. For each, open its Overview tab, read the **Auto-publish** row, and record the outcome from the
+   table: "goes to a reviewer", "goes live" or "unclear". Leave out every unclear plugin and list it
+   for the user with the row's text.
 3. Show the list as a table (plugin, version, outcome) and ask the user for a yes. Name every plugin
    whose click goes live. A yes covers that list only; a new plugin needs a new yes.
 4. For each approved plugin, one at a time: open its page and click the publish button (role button;
@@ -48,7 +51,8 @@ So the user must know, per plugin, which of the two the click does before saying
    - reviewer: the status line says the publish request is waiting for an Anthropic reviewer, and the
      publish button is gone;
    - live: the version now shows **Published** as the live version, and the publish button is gone.
-   Anything else, or an outcome different from the one recorded in step 2, is a failure.
+   Anything else is a failure. An outcome different from the one recorded in step 2 is also a failure:
+   stop clicking and tell the user.
 6. Report each plugin as requested (waiting for a reviewer), published (live), already requested, or
    failed, with the page's own status text.
 

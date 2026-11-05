@@ -17,7 +17,7 @@ install numbers. Built by MSApps for its own 30+ directory plugins, and usable b
 - `listing-lint` and the stats parser need Python 3.9+ and nothing else.
 - The portal skills drive `https://claude.ai/directory/manage` in Chrome, signed in to claude.ai in
   the organization that owns the submissions. They need a browser tool connected to Claude:
-  [Claude in Chrome](https://claude.com/chrome), or the Playwright MCP browser extension bridge
+  [Claude in Chrome](https://claude.com/claude-in-chrome), or the Playwright MCP browser extension bridge
   (https://github.com/microsoft/playwright-mcp). See [CONNECTORS.md](CONNECTORS.md).
 - The plugin stores no credentials, reads no environment variables and never copies browser cookies.
 

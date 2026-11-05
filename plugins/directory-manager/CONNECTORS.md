@@ -9,7 +9,7 @@
 
 - **A browser tool connected to Claude**, with Chrome signed in to claude.ai in the organization that
   owns the submissions:
-  - [Claude in Chrome](https://claude.com/chrome) (preferred), or
+  - [Claude in Chrome](https://claude.com/claude-in-chrome) (preferred), or
   - the Playwright MCP browser extension bridge (https://github.com/microsoft/playwright-mcp).
 - Host driven: `https://claude.ai/directory/manage` only.
 - Credentials: none stored. The skills use the browser's own session and never copy its cookies.

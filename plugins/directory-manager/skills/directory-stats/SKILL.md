@@ -28,7 +28,9 @@ Same browser requirements as `directory-status` (signed in, right organization, 
      organizations, uninstalls, retention, load error rate, and the "Where installs came from" table
 3. Save them, on the user's machine only, as a JSON list of `{id, name, status, overview, usage}` (add the non-live submissions
    with empty texts so the table shows all of them) in a local file such as `captured.json`. This
-   capture file holds private portal usage data: keep it local and tell the user where it is. Then run:
+   capture file holds private portal usage data: keep it local and tell the user where it is. Capture
+   only these two tabs. If the text shows a token, key or other secret value, remove it before saving
+   and tell the user. Then run:
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/skills/directory-stats/scripts/parse_usage.py" captured.json out/
