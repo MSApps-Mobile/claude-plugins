@@ -35,8 +35,28 @@ umask 077
 VARS="HYG_LOG HYG_DERIVED_DATA HYG_PLUGIN_CACHE HYG_PLUGIN_CLONE_MIN_AGE_MIN HYG_PW_GLOB HYG_MODEL_CACHES HYG_MODEL_CACHE_AGE_DAYS HYG_WT_ROOT HYG_WT_GLOB HYG_WT_NESTED HYG_WT_DEPTH HYG_WT_AGE_DAYS HYG_WT_MERGED_PR_CHECK HYG_GIT HYG_GH"
 for v in $VARS; do eval "ENV_$v=\"\${$v-}\""; done
 CONF="${XDG_CONFIG_HOME:-$HOME/.config}/mac-agent-hygiene/config.env"
-# shellcheck disable=SC1090
-[ -f "$CONF" ] && . "$CONF"
+# Card: Giora outside review 2026-11-05 (finding 3, /opsagents-mac-expert). This LaunchAgent runs every hour
+# and holds `rm -rf`; it used to `. "$CONF"`, i.e. RUN the config file as shell, so anything that could
+# write ~/.config/mac-agent-hygiene/config.env (any agent session as this user) got hourly code
+# execution inside the cleaner. Now the file is DATA: KEY=VALUE lines, KEY must be one of $VARS, the
+# value is literal (one pair of surrounding quotes stripped; a leading ~/, $HOME/ or ${HOME}/ expands
+# to $HOME). A line with command substitution, any other $ expansion, or a ; | & < > is refused and
+# named on stderr; nothing in the file is ever executed.
+load_conf(){ local line k v
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    case "$line" in ''|'#'*) continue;; esac
+    line="${line#export }"
+    k="${line%%=*}"; v="${line#*=}"
+    if [ "$k" = "$line" ]; then echo "hygiene: config line ignored (not KEY=VALUE): ${line:0:60}" >&2; continue; fi
+    case " $VARS " in *" $k "*) ;; *) echo "hygiene: config key ignored (not one of the HYG_ settings): $k" >&2; continue;; esac
+    case "$v" in \"*\") v="${v#\"}"; v="${v%\"}";; \'*\') v="${v#\'}"; v="${v%\'}";; esac
+    case "$v" in '~/'*) v="$HOME/${v#\~/}";; '$HOME/'*) v="$HOME/${v#\$HOME/}";; '${HOME}/'*) v="$HOME/${v#\$\{HOME\}/}";; esac
+    case "$v" in *'$'*|*'`'*|*';'*|*'|'*|*'&'*|*'<'*|*'>'*)
+      echo "hygiene: config value refused for $k (expansion or shell metacharacter; the file is data, never run)" >&2; continue;; esac
+    printf -v "$k" '%s' "$v"
+  done < "$1"; }
+[ -f "$CONF" ] && load_conf "$CONF"
 for v in $VARS; do eval "e=\"\${ENV_$v}\""; [ -n "$e" ] && eval "$v=\"\$e\""; done
 
 HYG_LOG="${HYG_LOG:-$HOME/Library/Logs/mac-agent-hygiene.log}"
