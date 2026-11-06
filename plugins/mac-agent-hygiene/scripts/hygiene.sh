@@ -100,9 +100,15 @@ emit(){ printf '%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "$5"; }   # category a
 inuse(){ /usr/sbin/lsof +D "$1" >/dev/null 2>&1; }
 xcode_building(){ /usr/bin/pgrep -qx xcodebuild || /usr/bin/pgrep -qx Xcode || /usr/bin/pgrep -qx XCBBuildService; }
 has_dot_component(){ case "/$1/" in */./*|*/../*) return 0;; esac; return 1; }
-# Every process's cwd, read ONCE per run; compared as fixed strings (never as a pattern).
-CWDS=""; load_cwds(){ [ -n "$CWDS" ] || [ -z "$LSOF" ] || CWDS=$("$LSOF" -d cwd -Fn 2>/dev/null | /usr/bin/sed -n 's/^n//p'); }
-cwd_inside(){ local c; load_cwds
+# Every process's cwd, read ONCE per run; compared as fixed strings (never as a pattern). lsof missing or not
+# executable, any non-zero exit (a partial list is not a full one), or no cwd at all (it always sees at least
+# this process) means we are blind: every folder then counts as having a process inside, so it is KEPT.
+CWDS=""; CWDS_LOADED=0; CWDS_BLIND=0
+load_cwds(){ local raw rc; [ "$CWDS_LOADED" = 1 ] && return 0; CWDS_LOADED=1
+  if [ -n "$LSOF" ] && [ -x "$LSOF" ]; then raw=$("$LSOF" -d cwd -Fn 2>/dev/null); rc=$?
+    [ "$rc" = 0 ] && CWDS=$(printf '%s\n' "$raw" | /usr/bin/sed -n 's/^n//p'); fi
+  [ -n "$CWDS" ] || CWDS_BLIND=1; }
+cwd_inside(){ local c; load_cwds; [ "$CWDS_BLIND" = 1 ] && return 0
   while IFS= read -r c; do [ -n "$c" ] || continue; [ "$c" = "$1" ] && return 0; case "$c" in "$1"/*) return 0;; esac; done <<< "$CWDS"; return 1; }
 TMPD=$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/mac-agent-hygiene.XXXXXX") || { echo "mktemp failed" >&2; exit 2; }
 trap '/bin/rm -rf "$TMPD"' EXIT
