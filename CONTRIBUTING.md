@@ -96,8 +96,30 @@ the matching `marketplace.json` entry, and tags the release. So:
   (a PR that set 1.0.4 would ship 1.0.5).
 - CI enforces it: the `No manual version bump` job in `validate-pr.yml`
   (`scripts/check-no-manual-bump.py`) fails a PR whose version differs from its merge base
-  with main. A brand-new plugin keeps the version it is created with.
-- Need a minor or major release? Ask a maintainer; do not put it in the PR.
+  with main. A brand-new plugin keeps the version it is created with, and the release
+  workflow's first run on it ships one patch above that (created at 0.1.0, first release
+  0.1.1, as `mac-agent-hygiene` did).
+- A `marketplace.json` entry changed to equal the PR's unchanged `plugin.json` version is
+  allowed: that is the `python3 scripts/marketplace-versions.py --sync-all` drift repair.
+
+### Minor or major release
+
+`release.yml` has no bump-type input and always patch-bumps on top of whatever
+`plugin.json` holds, so a minor or major release ships one patch above the version you set
+(`rtl-chat-fixer` was set to 0.2.0 by hand in 551f622 and released as 0.2.1 in cb178d4). The
+exact, auditable procedure:
+
+1. In the PR run `scripts/bump-version.sh <plugin> minor` (or `major`), which sets
+   `plugin.json` and the `marketplace.json` entry together.
+2. Put a trailer line in one of the PR's commit messages: `Release-Bump: <plugin> <new version>`
+   (for example `Release-Bump: alpha 1.1.0`).
+3. CI accepts the change only when the trailer names that plugin and exactly that version
+   and the change is a minor or major step; a patch bump, a downgrade or a mismatched
+   trailer still fails. `scripts/check-no-manual-bump.test.py` pins each case.
+4. On merge the release workflow patch-bumps, so the plugin ships as x.(y+1).1 (or
+   (x+1).0.1).
+
+Reverting a release or any other version change still goes through a maintainer.
 
 ## Good First Issues
 
