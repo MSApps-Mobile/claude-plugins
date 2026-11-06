@@ -28,8 +28,10 @@ This plugin turns the fix into a routine any Mac can install:
 - **`hygiene_schedule`** — install / inspect / remove the LaunchAgent (`com.msapps.mac-agent-hygiene`,
   every 4 hours and at login by default; `every_hours`, or `hour`/`minute` for once a day).
 
-Since 0.2.0 it also covers stale agent session folders under `~/code/wt` (only when every nested repo is
-clean and pushed), old Gradle wrapper/daemon versions, old iOS DeviceSupport, simulators whose runtime is
+Since 0.2.0 it also covers stale agent session folders and full clones under `~/code/wt` (only when the clone
+and every nested repo are clean and pushed; ignored files go with them, see
+[the safety model](skills/mac-agent-hygiene/references/safety-model.md)), git-ignored build output in idle
+sessions, old Gradle wrapper/daemon versions, old iOS DeviceSupport, simulators whose runtime is
 gone, `~/.android/cache` and the CocoaPods cache. Android AVDs, SDK images and live simulators are sized by
 `hygiene_status` and never removed.
 
@@ -128,7 +130,7 @@ mac-agent-hygiene/
 
 ## Execution Model
 
-**Impact Level:** Medium (deletes regenerable caches and clean, pushed worktrees under `$HOME`)
+**Impact Level:** Medium (deletes regenerable caches, build output, and clean, pushed worktrees, session folders and full clones under `$HOME`)
 **Plan:** `hygiene_plan` lists every candidate with remove/keep, size and reason — a dry run, nothing deleted.
 **Act:** `hygiene_apply` (plan_id + confirm) re-checks each item and removes only those that still qualify.
 **Verify:** per-item outcome (removed / refused + reason), MB freed and `df` after; every run appends to `~/Library/Logs/mac-agent-hygiene.log`.
@@ -136,8 +138,9 @@ mac-agent-hygiene/
 ## SOSA
 
 - **Supervised** — every removal is planned first with a reason; apply needs the plan id and an
-  explicit confirm; the scheduled run only touches regenerable caches and clean, pushed, week-old
-  worktrees.
+  explicit confirm; the scheduled run touches regenerable caches, clean and pushed idle worktrees, idle
+  session folders and full clones under `~/code/wt` whose repos are all clean and pushed (24 h; ignored
+  files such as a local `.env` go with them), and git-ignored build output in idle sessions.
 - **Orchestrated** — status → plan → re-check → apply → log, in that order, always.
 - **Secured** — local filesystem only; the one network call is an optional read-only `gh` query;
   never sudo, never login state, never dirty or unpushed work, paths outside `$HOME` refused.

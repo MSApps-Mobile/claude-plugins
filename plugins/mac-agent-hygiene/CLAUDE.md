@@ -22,14 +22,30 @@
   commit subject. `gh` failure ⇒ keep. Never `--force`. macOS `/bin/bash` is 3.2: no `declare -A`;
   per-repo gh results are cache files in `$TMPD`.
 - DerivedData skipped while Xcode builds. Never sudo. Paths outside `$HOME` refused at apply.
-- One `git_safe dir bound allow_parent_branch` judges every repo (worktrees pass `0`): repo config that can run a
-  command, submodules, dirty, a full clone's stash / unpushed branch / registered worktree outside `bound` ⇒ keep.
-- Session dirs (`~/code/wt/*` without `.git`): untouched > 24 h, at least one nested repo (none ⇒ keep,
-  `no-nested-repo`), kept whole if ANY nested repo fails `git_safe` or ANY regular file lives outside the nested
-  repos (`loose-files-outside-repos`; `__pycache__` / `.DS_Store` excepted). "Held by a parent-repo branch" counts only with
-  `HYG_SESSION_PARENT_BRANCH_OK=1` (default 0): it loosens "unpushed ⇒ KEPT" and needs an explicit ruling to turn on.
-- Repo config that can run a program or redirect the tree (`CMD_CONFIG_RE`: filter drivers, fsmonitor, hooksPath,
-  `log.showSignature`, `gpg.*`, `core.worktree` …) ⇒ keep unread. `GITS` pins `log.showSignature=false`.
+- One `git_safe dir bound allow_parent_branch` judges every repo (worktrees pass `0`): repo config with ANY key outside
+  the `CFG_ALLOW_RE` allow-list (never a deny-list: uploadpack+partial clone and showSignature+gpg.program ran a program
+  during `plan`), submodules, dirty, a full clone's stash / unpushed branch / registered worktree outside `bound` ⇒ keep.
+- Session dirs (every `~/code/wt/*` except a linked worktree; a top-level full clone is one too): kept whole if the clone
+  or ANY nested repo fails the worktree test, there is no repo at all (`no-nested-repo`), the session is alive in `HYG_SESSIONS_JSON`, or anything was touched < 24 h.
+  A plain folder is also kept whole if ANY regular file lives outside its nested repos (`loose-files-outside-repos`; `__pycache__` / `.DS_Store` excepted).
+  A full clone additionally fails (KEEP) when any of its registered linked worktrees resolves outside the folder (their
+  git data lives in the clone's `.git`), when any local ref outside `refs/remotes` (branch, tag, notes, ...) points at a
+  commit no remote ref contains, or when `worktree list`/`for-each-ref` fails. `status` runs with
+  `--untracked-files=all`, so a repo's `status.showUntrackedFiles=no` cannot hide untracked files.
+  Any repo (clone, nested, linked worktree) also fails when the index flags a file assume-unchanged or skip-worktree
+  (`ls-files -v` lowercase or `S`: status cannot see edits to it, and a sparse checkout counts), or when its physical
+  `rev-parse --show-toplevel` is not the repo folder itself (`core.worktree` elsewhere: the folder's own files are checked nowhere).
+  "Held by a parent-repo branch" counts only with `HYG_SESSION_PARENT_BRANCH_OK=1` (default 0): it loosens "unpushed ⇒ KEPT" and needs an explicit ruling to turn on.
+- Worktrees honour the registry like every pass (`session-alive-in-registry`, on the worktree and its top-level session
+  folder). A path is removed only if `real_under_scope` says it is physical under its root (no symlink leaf or component),
+  checked in plan, in apply, and again right before the removal. lsof comes from `$LSOF` (`HYG_LSOF`, else
+  `/usr/sbin/lsof` or `/usr/bin/lsof`); none, or no cwd printed ⇒ blind ⇒ every folder counts as occupied.
+- Build artifacts (`node_modules .next dist build .turbo coverage` inside `~/code/wt/<session>`): only when the session
+  is idle 24 h, nobody's cwd, not alive in the registry, the dir holds no `.git`, bare repo or separate git-dir (any `HEAD`
+  file or symlink), it lies inside the work tree git resolves (not a `core.worktree` elsewhere), and git IGNORES it with no tracked file
+  (no repo: node_modules/.next/.turbo beside package.json only; a `.git` entry at ANY level up to the session folder that
+  git cannot read keeps it: `git-cannot-read-repo`). An unreadable registry ⇒ every session alive.
+- `GITS` pins `log.showSignature=false` as a second layer behind the allow-list.
 - Gradle: never the newest two versions or one a running process names. iOS: never the newest DeviceSupport,
   never a simulator whose runtime is installed, never `Xcode/Archives`. Android AVDs / SDK images: report only.
 - `run` holds a mkdir lock so a 4-hourly run never overlaps a slow one (stale after 6 h; a takeover re-creates it so
@@ -46,10 +62,9 @@ bash -n scripts/*.sh && node --check server/index.js
 bash tests/hygiene-worktrees.test.sh        # fixture git repos + stubbed gh; runs on Linux too
 bash tests/hygiene-wt-scan-roots.test.sh    # default scope incl. ~/code/_worktrees, keep rules, status count
 bash tests/hygiene-port-combined.test.sh    # worktrees + session-dirs at their defaults never disagree destructively
+bash tests/hygiene-keeps-logins.test.sh && bash tests/hygiene-dev-caches.test.sh && bash tests/hygiene-wt-artifacts.test.sh && bash tests/hygiene-git-safe-keep.test.sh && bash tests/hygiene-wt-safety.test.sh   # macOS fixtures, throwaway HOME
 bash tests/hygiene-git-exec-guard.test.sh   # log.showSignature + gpg.program never run during plan
 bash tests/hygiene-session-safety.test.sh   # loose files / core.worktree keep a session; per-user, owned run lock
-bash tests/hygiene-keeps-logins.test.sh     # macOS only
-bash tests/hygiene-dev-caches.test.sh       # macOS only: session-dirs, gradle, ios, android, pkg-caches, run lock
 bash scripts/hygiene.sh status
 bash scripts/hygiene.sh plan | awk -F'\t' '{print $1, $2, $4}' | sort | uniq -c
 printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}}' \

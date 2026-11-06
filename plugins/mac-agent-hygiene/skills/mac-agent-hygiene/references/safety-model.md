@@ -33,7 +33,8 @@ can be the only copy of real work, and no board signal says which. Removal there
 2. no process has its cwd inside (`lsof -d cwd`) — a live session may be parked there;
 3. `.git` is a FILE (a linked worktree) and `git rev-parse --git-dir` differs from `--git-common-dir`
    (a submodule also has a `.git` file). A `.git` directory means a full clone, which is left alone —
-   the enumerator prunes it and never lists it. The common idiom `[ -d .git ]` is false for a worktree
+   the enumerator prunes it and never lists it; the `session-dirs` pass below owns top-level clones under
+   `HYG_SESSION_ROOT`. The common idiom `[ -d .git ]` is false for a worktree
    and is exactly the wrong test here;
 4. `git status --porcelain` is empty — no modified, staged or untracked files;
 5. HEAD is contained in a remote-tracking ref (`git branch -r --contains HEAD`), OR equals the head
@@ -60,6 +61,29 @@ second line of defence) followed by `git worktree prune` in the main repository.
 The first real run on the reference machine removed 420 worktrees / 133 GB and kept 80 — every kept
 one was dirty, unpushed, in use, or a full clone.
 
+## Session folders and full clones under `~/code/wt`
+
+`session-dirs` evaluates every folder directly under `HYG_SESSION_ROOT` except a linked worktree, so a
+**full clone parked there can be deleted**, after only `HYG_SESSION_AGE_HOURS` (24) idle. It is removed when
+nobody's cwd is inside it, the routines registry does not call it alive, and it and every repo nested in it
+pass `git_safe`: status empty including untracked files, no flagged index entries, no stash, every local ref
+on a remote or in GitHub's default branch, no linked worktree outside the folder, no repo config outside the allow-list, no submodules, no `core.worktree` pointing elsewhere, no bare repo or separate git-dir.
+
+A registry that cannot be read means every session is alive: no `jq`, bad JSON, a 0-byte file, or any shape
+other than one array whose entries all carry a string `.session`. A missing registry means none is alive.
+
+`build-artifacts` removes `node_modules`, `.next`, `dist`, `build`, `.turbo`, `coverage` from a session folder
+idle `HYG_ARTIFACT_IDLE_HOURS`: inside a repo only when git-ignored with no tracked file; outside a repo only
+`node_modules`, `.next` or `.turbo` beside a `package.json`. A dir holding any repo is kept.
+
+**What these guards do not read, and which goes with the `rm -rf`:**
+
+- ignored files in a clone, such as a local `.env`; keep anything you need outside `~/code/wt`;
+- loose files in a plain session folder, outside any repo;
+- commits only the reflog holds;
+- commits held only by a stale remote-tracking ref: `branch -r --contains` reads local refs and never asks the remote;
+- objects another clone borrows through alternates (`git clone --shared`): the borrower must re-fetch them.
+
 ## Paths are compared as strings, never as patterns
 
 A worktree named `wt-[x` once slipped past a cwd check that used the path as a `grep` pattern (the `[`
@@ -80,8 +104,8 @@ clones and worktrees nobody returns to. The `session-dirs` category removes the 
 3. at least ONE nested repo. A folder with no git repo is research notes or review output, not a
    checkout: it is kept (`no-nested-repo`). Measured 2026-11-03: the earlier rule removed 150 such
    folders in one run on the reference Mac;
-4. every nested repo passes `git_safe` with the folder as the deletion boundary: repo config that can run a
-   command (filter drivers, fsmonitor, hooksPath …) or submodules ⇒ kept unread; dirty ⇒ kept; a full
+4. every nested repo passes `git_safe` with the folder as the deletion boundary: repo config outside the
+   allow-list (see below) or submodules ⇒ kept unread; dirty ⇒ kept; a full
    clone with a stash or a local branch no remote ref (or the GitHub default branch) holds ⇒ kept; a full
    clone with a registered worktree (`.git/worktrees/*/gitdir`) that resolves OUTSIDE the folder and still
    exists, or is locked ⇒ kept (`clone-has-live-worktree-outside`: rm of the clone would orphan it —
@@ -91,9 +115,10 @@ clones and worktrees nobody returns to. The `session-dirs` category removes the 
    only, but `rm -rf` takes the folder: a prompt, notes, a script, a `.tgz` or JSON output beside a clean
    pushed clone has no other copy. `__pycache__` and `.DS_Store` regenerate and do not count.
 
-Repo config is read before git runs (rule 4, `CMD_CONFIG_RE`). Besides filter drivers and fsmonitor it
-keeps unread any repo setting `log.showSignature` or `gpg.*` (`gpg.program`, `gpg.ssh.program`,
-`gpg.x509.program`): `git log` and `git stash list` would run that verifier on a signed commit, as the user.
+Repo config is read before git runs (rule 4, the `CFG_ALLOW_RE` allow-list). Any key outside it keeps the
+repo unread, which covers filter drivers, fsmonitor, `log.showSignature` and `gpg.*` (`gpg.program`,
+`gpg.ssh.program`, `gpg.x509.program`): `git log` and `git stash list` would run that verifier on a signed
+commit, as the user.
 `GITS` also forces `-c log.showSignature=false` and the subject match passes `--no-show-signature`, so the
 same keys in global config cannot run either. `core.worktree` is on the list too: it makes `status` judge a
 different tree than the folder `rm -rf` removes. `tests/hygiene-git-exec-guard.test.sh` and
@@ -108,6 +133,57 @@ explicit ruling.
 `tests/hygiene-dev-caches.test.sh` holds the fixtures (no-repo folder kept, clone with an outside worktree
 kept and that worktree still working, the gate off and on), and `tests/hygiene-port-combined.test.sh`
 proves the worktrees pass and `session-dirs` never disagree in the destructive direction at their defaults.
+
+## Repo config is an allow-list, not a deny-list (card w1t7IqUt)
+
+Every repo here was made or cloned by an agent, and git reads its `.git/config` on every call `plan` and
+`apply` make. At 923f715 two routes ran a program during a read-only `plan`, in a throwaway HOME with a canary
+script, while the old deny-list of command-running keys passed the repo:
+
+- `remote.origin.uploadpack` + `extensions.partialclone` + `remote.origin.promisor` with a locally missing
+  object: git lazy-fetches and spawns the uploadpack program (`git status` hit it);
+- `log.showSignature` + `gpg.program` with a local-only commit that carries a `gpgsig` header: the
+  merged-PR subject check runs `git log` and git spawns the gpg program.
+
+`repo_config_unvetted` therefore lists the keys of `$GIT_COMMON_DIR/config` and `$GIT_DIR/config.worktree` and
+KEEPS the repo, unread, unless every key matches `CFG_ALLOW_RE` (core.* basics, remote url/fetch, branch
+tracking, user.*, a few non-executing pull/push/fetch settings). A config git cannot list is kept too. Anything
+else, including `include`/`includeIf`, `filter.*`, `gpg.*`, `credential.*`, any `extensions.*` other than
+`worktreeConfig`, a hooks path, is kept. The cost is fewer removals for repos with exotic config; that is the
+right direction. `GITS` still overrides `core.fsmonitor`, hooks, pager and external diff as a second layer, and
+`apply` removes through `GITS` as well. `tests/hygiene-wt-safety.test.sh` holds one canary fixture per route
+(plan and apply) and a control showing a gh-style config is not blocked.
+
+Not covered: the window between `apply`'s check and its removal. A config written in that window is read by
+the `git worktree remove` that follows (it runs `status` on the worktree under `GITS` overrides). Nothing in
+bash closes it without a lock on the repo; the exposure is the same user's own processes writing the same
+folder, and the folder was idle for 24 h / 7 d a moment earlier.
+
+## A path is removed only if it is physical under its root (card w1t7IqUt)
+
+`worktrees` is rooted at `HYG_WT_ROOT`; `session-dirs` and `build-artifacts` at `HYG_SESSION_ROOT`. The path in
+a plan line is text; a symlink put where it points (the leaf, or any component) would make `git worktree remove`
+or `rm -rf` act on the link's target. Reproduced at the merged head: a symlink `wt/x -> /elsewhere/worktree`,
+old and pointing at a clean pushed worktree, passed `check_worktree` (find does not follow it, `-C` does) and
+was removed with its target. `real_under_scope` now requires `physical(path) == physical(root)/<relative path>`
+in `check_item` (plan and apply) and again in `remove_item`, right before the removal; anything else is
+`path-has-symlink-component` and kept. `tests/hygiene-wt-safety.test.sh` proves a file outside survives apply
+for a symlinked worktree path, a symlinked component, a symlinked session folder and a symlinked artifact path.
+
+Remaining race, disclosed: bash has no `openat`/`O_NOFOLLOW`. Between the last resolution and the
+`git worktree remove` / `rm -rf` call a component can still be swapped. The window is a few milliseconds and
+needs a writer in `~/code` at that moment; every candidate was idle for 24 h / 7 d. It is not closed.
+
+## What the guards do not read
+
+- Ignored files inside a nested clone or worktree (a local `.env`): `git status` does not list them, so they
+  go with the folder or worktree.
+- A missing registry (`HYG_SESSIONS_JSON` absent) counts as "no session alive": only cwd and the idle window bind.
+  An unreadable registry counts as "all alive".
+- A session with no registry row counts as dead. The routines registry has had no new row since 2026-10-29 (last
+  `started_at` 2026-10-29T12:42), so for every session started since, the liveness guard adds nothing and only
+  the process-cwd check and the idle window (24 h; 7 d for worktrees) protect it.
+- Reflog-only commits and commits held only by a stale remote-tracking ref.
 
 ## Developer caches
 
