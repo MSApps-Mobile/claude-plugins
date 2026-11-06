@@ -162,7 +162,7 @@ bash "$HYG" apply "$FX/apply.tsv" > "$FX/apply.out" 2>&1
 git -C "$W/clone-bare-build/build/backup.git" cat-file -e "$BARE_SHA^{commit}" 2>/dev/null && [ -e "$W/clone-sep-dist/dist/sep-data/HEAD" ] && [ -L "$W/clone-symhead/build/sym.git/HEAD" ] \
   && ok "B6 apply left the repos inside artifact dirs alone; the commit held only by the bare repo survives" || bad "B6 a repo inside an artifact dir is gone"
 [ -f "$W/clone-elsewhere/build/notes.txt" ] && ok "B5 apply left the folder's own build/ alone" || bad "B5 clone-elsewhere/build gone"
-[ "$(act "$P" "$W/plain-node")" = remove ] && [ ! -e "$W/plain-node" ] && ok "dead idle plain folder (registry: dead) → session-dirs removed it whole" || bad "plain-node: $(grep 'plain-node$' "$P")"
+grep -q $'\tloose-files-outside-repos\t'"$W/plain-node"'$' "$P" && [ "$(act "$P" "$W/plain-node")" = keep ] && [ -e "$W/plain-node/app/package.json" ] && ok "dead idle plain folder with a file beside its repo → kept (loose-files-outside-repos)" || bad "plain-node: $(grep 'plain-node$' "$P")"
 [ -d "$W/clone-wtowner/.git" ] && [ "$(git -C "$W/clone-wtowner" rev-parse wt-branch 2>/dev/null)" != "" ] \
   && ok "the linked worktree's owner clone survives apply" || bad "clone-wtowner gone after apply"
 [ ! -e "$W/clone-clean" ] && ok "apply removed the clean stale top-level clone" || bad "clone-clean still there: $(cat "$FX/apply.out")"

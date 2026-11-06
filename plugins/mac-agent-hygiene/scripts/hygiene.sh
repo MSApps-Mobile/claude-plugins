@@ -29,7 +29,9 @@
 #                    for HYG_SESSION_AGE_HOURS, nobody's cwd, the session not alive in HYG_SESSIONS_JSON,
 #                    and the folder's own clone plus EVERY git repo or worktree nested inside is clean and
 #                    pushed (same git_safe test as worktrees). One dirty or unpushed repo keeps the whole
-#                    folder; a folder holding no repo at all is kept (no-nested-repo). "Held by a parent-repo
+#                    folder; a folder holding no repo at all is kept (no-nested-repo), and so is a plain folder
+#                    with ANY regular file beside its repos (notes, prompts, scripts, archives; __pycache__ and
+#                    .DS_Store excepted). "Held by a parent-repo
 #                    branch" counts only when HYG_SESSION_PARENT_BRANCH_OK=1 (default 0).
 #   build-artifacts  node_modules, .next, dist, build, .turbo, coverage dirs inside any ~/code/wt/<session>
 #                    folder (down to HYG_ARTIFACT_DEPTH) when the session folder is idle HYG_ARTIFACT_IDLE_HOURS,
@@ -89,7 +91,7 @@ HYG_ANDROID_CACHE_AGE_DAYS="${HYG_ANDROID_CACHE_AGE_DAYS:-7}"
 HYG_ANDROID_SDK="${HYG_ANDROID_SDK:-$HOME/Library/Android/sdk}"
 HYG_PKG_CACHES="${HYG_PKG_CACHES-$HOME/Library/Caches/CocoaPods}"
 HYG_PKG_CACHE_AGE_DAYS="${HYG_PKG_CACHE_AGE_DAYS:-30}"
-HYG_LOCK="${HYG_LOCK:-${TMPDIR:-/tmp}/mac-agent-hygiene.lock}"
+HYG_LOCK="${HYG_LOCK:-${TMPDIR:-/tmp}/mac-agent-hygiene-$(/usr/bin/id -u).lock}"   # per user: /tmp is shared when TMPDIR is unset
 HYG_DERIVED_DATA="${HYG_DERIVED_DATA%/}"; HYG_PLUGIN_CACHE="${HYG_PLUGIN_CACHE%/}"
 case "$HYG_WT_AGE_DAYS$HYG_MODEL_CACHE_AGE_DAYS$HYG_PLUGIN_CLONE_MIN_AGE_MIN$HYG_WT_DEPTH$HYG_SESSION_AGE_HOURS$HYG_GRADLE_AGE_DAYS$HYG_DEVICE_SUPPORT_AGE_DAYS$HYG_ANDROID_CACHE_AGE_DAYS$HYG_PKG_CACHE_AGE_DAYS$HYG_GH_SHA_CHECK_MAX$HYG_ARTIFACT_IDLE_HOURS$HYG_ARTIFACT_DEPTH" in *[!0-9]*) echo "age settings must be integers" >&2; exit 2;; esac
 case "$HYG_SESSION_PARENT_BRANCH_OK" in 0|1) ;; *) echo "HYG_SESSION_PARENT_BRANCH_OK must be 0 or 1" >&2; exit 2;; esac
@@ -193,6 +195,10 @@ nested_repos(){ /usr/bin/find "$1" -mindepth 2 -name .git -print 2>/dev/null | /
 # nested_repos only finds `.git`: a bare repo or separate git-dir has none. Its HEAD (a file, or a symlink
 # in an old-style repo) outside any .git path gives it away. Used by session-dirs and build-artifacts.
 holds_bare_or_separate_git_dir(){ [ -n "$(/usr/bin/find "$1" -path '*/.git' -prune -o \( -type f -o -type l \) -name HEAD -print -quit 2>/dev/null)" ]; }
+# First regular file in $1 that lives OUTSIDE every nested repo (a directory holding a .git file or dir is
+# pruned whole), or nothing. __pycache__ and .DS_Store regenerate and do not count.
+loose_file_in(){ /usr/bin/find "$1" -mindepth 1 \( -type d \( -name __pycache__ -o -exec /bin/test -e '{}/.git' \; \) -prune \) \
+  -o \( -type f ! -name .DS_Store -print -quit \); }
 # Newest-first listing helpers for "never the newest N" rules
 newest_first(){ /bin/ls -1td "$@" 2>/dev/null; }
 list_clones(){ [ -d "$HYG_PLUGIN_CACHE" ] && /usr/bin/find "$HYG_PLUGIN_CACHE" -maxdepth 1 -mindepth 1 -type d -name 'temp_git_*' 2>/dev/null | /usr/bin/sort; }
@@ -233,9 +239,10 @@ check_model(){ local m; for m in $HYG_MODEL_CACHES; do
     REASON=re-downloadable-model-cache; return 0; done
   REASON=not-a-listed-model-cache; return 1; }
 # git run on repos an agent made: repo-local config must not be able to run a command while we only
-# look (core.fsmonitor and hooks are the command-executing keys `status` would honour).
+# look (core.fsmonitor and hooks are the command-executing keys `status` would honour; log.showSignature
+# makes `log` / `stash list` run gpg.program, gpg.ssh.program or gpg.x509.program on a signed commit).
 GITS(){ GIT_CONFIG_NOSYSTEM=1 "$GIT" --no-optional-locks -c core.fsmonitor=false -c core.hooksPath=/dev/null \
-  -c core.untrackedCache=false -c diff.external= -c core.pager=cat "$@"; }
+  -c core.untrackedCache=false -c diff.external= -c core.pager=cat -c log.showSignature=false "$@"; }
 # Repo-local config is input an agent (or a cloned repo) wrote, and git reads it on EVERY call here. Keys that
 # make a look-only call run a program are many: filter/diff/merge drivers, include/includeIf, core.sshCommand,
 # remote.<n>.uploadpack with a promisor remote (lazy fetch spawns it), log.showSignature + gpg.program, ... A
@@ -287,7 +294,7 @@ subjects_all_in(){ local s p pp hit
 # that no remote has must appear among the PR's commits by subject. Any doubt (no commits, gh failure,
 # one subject without a match) ⇒ 1 ⇒ KEEP.
 merged_pr_commits_match(){ local d="$1" repo="$2" f="$3" b="$4" ls="$TMPD/local-subjects" rb ro rn pf
-  GITS -C "$d" log --format=%s HEAD --not --remotes > "$ls" 2>/dev/null || return 1
+  GITS -C "$d" log --no-show-signature --format=%s HEAD --not --remotes > "$ls" 2>/dev/null || return 1
   [ -s "$ls" ] || return 1
   [ "$(/usr/bin/wc -l < "$ls")" -le 200 ] || return 1
   while read -r rb ro rn; do
@@ -300,17 +307,35 @@ merged_pr_commits_match(){ local d="$1" repo="$2" f="$3" b="$4" ls="$TMPD/local-
   return 1; }
 # Physical path of an existing directory, or empty.
 realdir(){ physical "$1"; }   # same as `physical` (B8: one real-path helper)
+# Worktree directory a registered admin dir ($1 = <common>/worktrees/<name>) points at. `gitdir` holds an
+# absolute path, or a path relative to the admin dir when worktree.useRelativePaths=true (git >= 2.48).
+# Prints the (possibly unresolved) directory; rc 1 when the file is missing, unreadable or empty.
+wt_path_of_admin(){ local g
+  g=$(/bin/cat "$1/gitdir" 2>/dev/null) || return 1; [ -n "$g" ] || return 1
+  case "$g" in /*) ;; *) g="$1/$g";; esac
+  /usr/bin/dirname "$g"; }
+# owner/name of $1's origin, or empty (⇒ no gh call ⇒ KEEP). strict: only an anchored github.com URL.
+# loose: any URL ending in github.com[:/]owner/name (main's fixtures use a local .../github.com/acme/demo.git).
+gh_repo_of(){ local url r
+  url=$(GITS -C "$1" remote get-url origin 2>/dev/null)
+  if [ "$2" = strict ]; then
+    r=$(printf '%s\n' "$url" | /usr/bin/sed -nE 's#^(https://|ssh://git@|git@)github\.com[:/]([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)$#\2#p' | /usr/bin/sed -E 's#\.git$##')
+  else
+    r=$(printf '%s\n' "$url" | /usr/bin/sed -E 's#.*github.com[:/]##; s#\.git$##')
+    [[ "$r" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || r=""
+  fi
+  case "$r" in *..*|.*|*/.*) r="";; esac
+  printf '%s' "$r"; }
 # A full clone owns the object store of every worktree registered in $gd/worktrees/*. rm -rf of the
 # clone orphans them (no HEAD, no index, no repo). 0 ⇒ a registered worktree resolves OUTSIDE the
 # deletion boundary $2 and still exists (or is locked, e.g. on an unmounted volume, or its gitdir file is
 # unreadable) ⇒ the clone must stay. Worktrees inside the boundary are nested repos checked on their own.
-clone_has_live_worktree_outside(){ local gd rbound w g wt rw
+clone_has_live_worktree_outside(){ local gd rbound w wt rw
   gd=$(GITS -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 0
   rbound=$(realdir "$2"); [ -n "$rbound" ] || return 0
   for w in "$gd"/worktrees/*; do [ -d "$w" ] || continue
     [ -f "$w/locked" ] && return 0
-    g=$(/bin/cat "$w/gitdir" 2>/dev/null) || return 0; [ -n "$g" ] || return 0
-    wt=$(/usr/bin/dirname "$g")
+    wt=$(wt_path_of_admin "$w") || return 0                         # unreadable gitdir ⇒ treat as live
     [ -e "$wt" ] || continue                                        # gone: `git worktree prune` material
     rw=$(realdir "$wt"); [ -n "$rw" ] || return 0
     case "$rw/" in "$rbound"/*) ;; *) return 0;; esac
@@ -343,8 +368,7 @@ git_safe(){
   iv=$(GITS -C "$d" ls-files -v 2>/dev/null) || { REASON=git-ls-files-failed; return 1; }
   printf '%s\n' "$iv" | LC_ALL=C /usr/bin/grep -q '^[a-zS] ' && { REASON=index-hides-changes; return 1; }
   # owner/name only from an anchored github.com URL; anything else ⇒ empty ⇒ no gh compare call ⇒ KEEP
-  repo=$(GITS -C "$d" remote get-url origin 2>/dev/null | /usr/bin/sed -nE 's#^(https://|ssh://git@|git@)github\.com[:/]([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)$#\2#p' | /usr/bin/sed -E 's#\.git$##')
-  case "$repo" in *..*|.*|*/.*) repo="";; esac
+  repo=$(gh_repo_of "$d" strict)
   if [ -d "$d/.git" ]; then   # a full clone owns its stash, every local ref and its linked worktrees' git data
     [ -z "$(GITS -C "$d" stash list 2>/dev/null)" ] || { REASON=clone-has-stash; return 1; }
     clone_has_live_worktree_outside "$d" "$bound" && { REASON=clone-has-live-worktree-outside; return 1; }
@@ -380,9 +404,7 @@ git_safe(){
   in_github_default "$repo" "$h" && { REASON=in-github-default-branch; return 0; }
   if [ "$HYG_WT_MERGED_PR_CHECK" = 1 ] && [ -n "$GH" ]; then
     b=$(GITS -C "$d" rev-parse --abbrev-ref HEAD 2>/dev/null)
-    prrepo=$(GITS -C "$d" remote get-url origin 2>/dev/null | /usr/bin/sed -E 's#.*github.com[:/]##; s#\.git$##')
-    [[ "$prrepo" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || prrepo=""   # owner/name or nothing ⇒ no gh call
-    case "$prrepo" in *..*|.*|*/.*) prrepo="";; esac
+    prrepo=$(gh_repo_of "$d" loose)   # owner/name or nothing ⇒ no gh call
     if [ -n "$prrepo" ]; then
       f="$TMPD/$(echo "$prrepo" | tr / _)"
       [ -f "$f" ] || "$GH" pr list --repo "$prrepo" --state merged --limit 3000 --json headRefName,headRefOid,number \
@@ -401,7 +423,7 @@ git_safe(){
     wg=$(GITS -C "$d" rev-parse --path-format=absolute --git-dir 2>/dev/null)
     if [ -n "$rc" ] && [ -n "$rbound" ] && case "$rc/" in "$rbound"/*) false;; *) true;; esac \
        && case "$wg" in "$cdir"/worktrees/*) true;; *) false;; esac \
-       && [ "$(realdir "$(/usr/bin/dirname "$(/bin/cat "$wg/gitdir" 2>/dev/null)")")" = "$(realdir "$d")" ] \
+       && [ "$(realdir "$(wt_path_of_admin "$wg")")" = "$(realdir "$d")" ] \
        && [ -n "$(GITS -C "$d" for-each-ref --contains "$h" --format=x refs/heads 2>/dev/null | /usr/bin/head -1)" ]; then
       REASON=branch-kept-in-parent-repo; return 0; fi
   fi
@@ -431,7 +453,7 @@ touched_within_min(){ local d="$1" mins="$2" n e=() out rc; shift 2
   while IFS= read -r n; do e+=( "$n" ); done < <(name_expr "$@")
   out=$(/usr/bin/find "$d" \( "${e[@]}" \) -prune -o -type f -mmin -"$mins" -print -quit 2>/dev/null); rc=$?
   [ -n "$out" ] || [ "$rc" != 0 ]; }
-check_session(){ local d="$1" r n=0
+check_session(){ local d="$1" r n=0 loose
   [ "$(dirname "$d")" = "$HYG_SESSION_ROOT" ] || { REASON=outside-session-root; return 1; }
   [ -L "$d" ] && { REASON=is-a-symlink; return 1; }
   [ -f "$d/.git" ] && { REASON=linked-worktree-see-worktrees-pass; return 1; }
@@ -448,6 +470,13 @@ check_session(){ local d="$1" r n=0
   # The category reclaims checkouts: with no repo there is nothing git_safe vouched for (research notes,
   # review outputs), so the folder stays.
   [ "$n" -gt 0 ] || { REASON=no-nested-repo; return 1; }
+  # rm -rf takes the whole folder, but git_safe vouched only for the repos. A file beside them (a prompt,
+  # notes, a script, an archive, JSON output) has no other copy: keep. A scan that errors keeps too.
+  # A top-level clone has nothing beside it: every file in it is the repo git_safe already judged.
+  if [ ! -d "$d/.git" ]; then
+    loose=$(loose_file_in "$d" 2>/dev/null) || { REASON=loose-file-scan-failed; return 1; }
+    [ -z "$loose" ] || { REASON=loose-files-outside-repos; return 1; }
+  fi
   REASON=stale-session-all-nested-pushed; return 0; }
 # Session folder idle: no file (outside .git and the artifact dirs themselves) newer than the window.
 # Cached per folder for the run.
@@ -639,6 +668,10 @@ run(){ local pf="$TMPD/plan.tsv"
     if [ -L "$HYG_LOCK" ] || [ ! -d "$HYG_LOCK" ] || [ -n "$(/bin/ls -A "$HYG_LOCK" 2>/dev/null)" ]; then
       log "=== scheduled run refused: $HYG_LOCK exists and is not an empty lock directory"
       echo "run: HYG_LOCK $HYG_LOCK exists and is not an empty lock directory; refusing" >&2; return 2
+    fi
+    if [ ! -O "$HYG_LOCK" ]; then   # another user's lock (a shared /tmp): never take it over
+      log "=== scheduled run refused: $HYG_LOCK is not owned by this user"
+      echo "run: HYG_LOCK $HYG_LOCK is not owned by this user; refusing" >&2; return 2
     fi
     if [ -n "$(/usr/bin/find "$HYG_LOCK" -maxdepth 0 -mmin +360 2>/dev/null)" ]; then
       /bin/rmdir "$HYG_LOCK" 2>/dev/null && /bin/mkdir "$HYG_LOCK" 2>/dev/null \

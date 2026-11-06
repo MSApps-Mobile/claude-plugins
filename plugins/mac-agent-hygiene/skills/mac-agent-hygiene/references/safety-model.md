@@ -110,7 +110,20 @@ clones and worktrees nobody returns to. The `session-dirs` category removes the 
    clone with a registered worktree (`.git/worktrees/*/gitdir`) that resolves OUTSIDE the folder and still
    exists, or is locked ⇒ kept (`clone-has-live-worktree-outside`: rm of the clone would orphan it —
    no HEAD, no index, no objects);
-5. HEAD on a remote ref, in the GitHub default branch, or a merged PR (same tests as worktrees).
+5. HEAD on a remote ref, in the GitHub default branch, or a merged PR (same tests as worktrees);
+6. no regular file outside the nested repos (`loose-files-outside-repos`). `git_safe` vouches for the repos
+   only, but `rm -rf` takes the folder: a prompt, notes, a script, a `.tgz` or JSON output beside a clean
+   pushed clone has no other copy. `__pycache__` and `.DS_Store` regenerate and do not count.
+
+Repo config is read before git runs (rule 4, the `CFG_ALLOW_RE` allow-list). Any key outside it keeps the
+repo unread, which covers filter drivers, fsmonitor, `log.showSignature` and `gpg.*` (`gpg.program`,
+`gpg.ssh.program`, `gpg.x509.program`): `git log` and `git stash list` would run that verifier on a signed
+commit, as the user.
+`GITS` also forces `-c log.showSignature=false` and the subject match passes `--no-show-signature`, so the
+same keys in global config cannot run either. `core.worktree` is on the list too: it makes `status` judge a
+different tree than the folder `rm -rf` removes. `tests/hygiene-git-exec-guard.test.sh` and
+`tests/hygiene-session-safety.test.sh` hold the fixtures (a verifier that writes a marker; loose files;
+a `core.worktree` redirect).
 
 "A local branch of the parent repo holds this worktree's HEAD" (`branch-kept-in-parent-repo`) is
 **gated** behind `HYG_SESSION_PARENT_BRANCH_OK=1`, default 0. It loosens rule 5 of the worktree model
@@ -187,7 +200,9 @@ needs a writer in `~/code` at that moment; every candidate was idle for 24 h / 7
 `run` takes `HYG_LOCK` with an atomic `mkdir`; a lock older than 6 h is a crashed run and is taken over by
 `rmdir` + `mkdir`, so its mtime restarts (otherwise every run in the next hours would "take over" too and
 run concurrently). The lock is released with `rmdir`, never `rm -rf`: `HYG_LOCK` can come from config, and a
-directory with content, a file or a symlink at that path is refused untouched.
+directory with content, a file or a symlink at that path is refused untouched. The default path is per user,
+`${TMPDIR:-/tmp}/mac-agent-hygiene-<uid>.lock`, and a lock directory this user does not own (`[ -O ]`) is
+refused, never taken over: with `TMPDIR` unset, `/tmp` is shared.
 
 ## launchd does not give you a PATH
 

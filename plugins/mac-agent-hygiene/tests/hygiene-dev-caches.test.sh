@@ -51,7 +51,7 @@ action_of(){ /usr/bin/awk -F'\t' -v p="$1" '$5==p{print $2}' "$FX/plan.tsv"; }
 # --- session dirs: one repo cloned from a bare origin, committed and pushed
 git init -q --bare "$FX/origin.git"
 mksession(){ local s="$HOME/code/wt/$1"; mkdir -p "$s"; git clone -q "$FX/origin.git" "$s/repo" 2>/dev/null
-  (cd "$s/repo" && echo x > f && git add f && git commit -qm c && git push -q origin HEAD:refs/heads/"$1" 2>/dev/null); echo notes > "$s/PROMPT.md"; }
+  (cd "$s/repo" && echo x > f && git add f && git commit -qm c && git push -q origin HEAD:refs/heads/"$1" 2>/dev/null); }   # no loose files: they keep a folder (hygiene-session-safety.test.sh)
 mksession stale-clean; old "$HOME/code/wt/stale-clean"
 mksession stale-dirty; echo wip > "$HOME/code/wt/stale-dirty/repo/wip.txt"; old "$HOME/code/wt/stale-dirty"
 mksession fresh                                   # files touched now
@@ -98,6 +98,10 @@ mkdir -p "$HOME/code/wt/res-notes/sub"; echo report > "$HOME/code/wt/res-notes/r
 # --- B3: a clean, pushed full clone inside a session with a linked worktree OUTSIDE the session holding staged work
 mksession sess-parent; git -C "$HOME/code/wt/sess-parent/repo" worktree add -q -b outside-work "$HOME/outside-wt" 2>/dev/null
 (cd "$HOME/outside-wt" && echo staged > staged.txt && git add staged.txt); old "$HOME/code/wt/sess-parent"
+# B3 again with worktree.useRelativePaths=true (git >= 2.48): gitdir holds a path relative to the admin dir
+mksession sess-parent-rel; git -C "$HOME/code/wt/sess-parent-rel/repo" -c worktree.useRelativePaths=true worktree add -q -b outside-rel "$HOME/outside-wt-rel" 2>/dev/null
+(cd "$HOME/outside-wt-rel" && echo staged > staged.txt && git add staged.txt); old "$HOME/code/wt/sess-parent-rel"
+REL_OK=0; case "$(/bin/cat "$HOME/code/wt/sess-parent-rel/repo/.git/worktrees/outside-wt-rel/gitdir" 2>/dev/null)" in /*|"") ;; *) REL_OK=1;; esac
 # --- gradle: three old dists with distinct ages; newest two must stay
 for v in 8.11.1 8.14.3 9.5.0; do mkdir -p "$HOME/.gradle/wrapper/dists/gradle-$v-bin/x"; done
 touch -t 202501010000 "$HOME/.gradle/wrapper/dists/gradle-8.11.1-bin"
@@ -142,6 +146,11 @@ grep -q $'\tno-nested-repo\t'"$HOME/code/wt/res-notes"'$' "$FX/plan.tsv" && [ "$
   && ok "B2: stale session with no git repo → keep (no-nested-repo)" || bad "res-notes: $(grep res-notes "$FX/plan.tsv")"
 grep -q $'\tnested-clone-has-live-worktree-outside\t'"$HOME/code/wt/sess-parent"'$' "$FX/plan.tsv" && [ "$(action_of "$HOME/code/wt/sess-parent")" = keep ] \
   && ok "B3: clone with a live worktree outside the session → keep (clone-has-live-worktree-outside)" || bad "sess-parent: $(grep sess-parent "$FX/plan.tsv")"
+if [ "$REL_OK" = 1 ]; then
+  # git writes extensions.relativeWorktrees, which is outside CFG_ALLOW_RE, so the allow-list keeps it first.
+  grep -qE $'\tnested-(clone-has-live-worktree-outside|repo-config-not-allowlisted)\t'"$HOME/code/wt/sess-parent-rel"'$' "$FX/plan.tsv" && [ "$(action_of "$HOME/code/wt/sess-parent-rel")" = keep ] \
+    && ok "B3: relative gitdir (useRelativePaths) → keep" || bad "sess-parent-rel: $(grep sess-parent-rel "$FX/plan.tsv")"
+else ok "B3-relative: SKIP (this git writes absolute gitdir paths)"; fi
 [ "$(action_of "$HOME/code/wt/bare-only")" = keep ] && ok "session holding only a bare repo → keep" || bad "bare-only: $(grep bare-only "$FX/plan.tsv")"
 [ "$(action_of "$HOME/code/wt/wt-parent-inside")" = keep ] && ok "worktree whose bare parent is inside the session → keep" || bad "wt-parent-inside: $(grep wt-parent-inside "$FX/plan.tsv")"
 [ "$(action_of "$HOME/code/wt/wt-detached")" = keep ] && ok "linked worktree on a detached HEAD no branch holds → keep" || bad "wt-detached: $(grep wt-detached "$FX/plan.tsv")"
@@ -165,12 +174,17 @@ rmdir "$HYG_LOCK"
 # --- apply the real plan
 /usr/bin/awk -F'\t' '$2=="remove"{print $1"\t"$5}' "$FX/plan.tsv" > "$FX/apply.tsv"
 printf 'session-dirs\t%s\nsession-dirs\t%s\n' "$HOME/code/wt/res-notes" "$HOME/code/wt/sess-parent" >> "$FX/apply.tsv"   # hand-written: must be refused
+[ "$REL_OK" = 1 ] && printf 'session-dirs\t%s\n' "$HOME/code/wt/sess-parent-rel" >> "$FX/apply.tsv"
 bash "$HYG" apply "$FX/apply.tsv" > "$FX/apply.out" 2>&1
 printf 'session-dirs\t%s\n' "$HOME/code/wt/wt-on-branch" > "$FX/apply-pb.tsv"
 HYG_SESSION_PARENT_BRANCH_OK=1 bash "$HYG" apply "$FX/apply-pb.tsv" >> "$FX/apply.out" 2>&1
 [ -f "$HOME/code/wt/res-notes/report.md" ] && [ -f "$HOME/code/wt/res-notes/sub/n.md" ] && ok "B2: apply refused the no-repo session, notes intact" || bad "res-notes lost: $(cat "$FX/apply.out")"
 [ -d "$HOME/code/wt/sess-parent/repo/.git" ] && git -C "$HOME/outside-wt" status --porcelain 2>/dev/null | grep -q '^A  staged.txt' \
   && ok "B3: apply refused the clone; the outside worktree still works with its staged file" || bad "sess-parent/outside-wt broken: $(git -C "$HOME/outside-wt" status 2>&1 | head -2)"
+if [ "$REL_OK" = 1 ]; then
+  [ -d "$HOME/code/wt/sess-parent-rel/repo/.git" ] && git -C "$HOME/outside-wt-rel" status --porcelain 2>/dev/null | grep -q '^A  staged.txt' \
+    && ok "B3-relative: apply refused the clone; the outside worktree still works" || bad "sess-parent-rel/outside-wt-rel broken: $(git -C "$HOME/outside-wt-rel" status 2>&1 | head -2)"
+fi
 [ ! -e "$HOME/code/wt/stale-clean" ] && ok "apply removed the clean stale session" || bad "stale-clean still there: $(cat "$FX/apply.out")"
 [ -f "$HOME/code/wt/stale-dirty/repo/wip.txt" ] && ok "dirty session's work survived" || bad "dirty work lost"
 [ -d "$HOME/.gradle/wrapper/dists/gradle-9.5.0-bin" ] && [ ! -e "$HOME/.gradle/wrapper/dists/gradle-8.11.1-bin" ] && ok "gradle apply kept newest, removed oldest" || bad "gradle apply wrong"

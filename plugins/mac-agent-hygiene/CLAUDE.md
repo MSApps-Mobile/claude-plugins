@@ -27,6 +27,7 @@
   during `plan`), submodules, dirty, a full clone's stash / unpushed branch / registered worktree outside `bound` ⇒ keep.
 - Session dirs (every `~/code/wt/*` except a linked worktree; a top-level full clone is one too): kept whole if the clone
   or ANY nested repo fails the worktree test, there is no repo at all (`no-nested-repo`), the session is alive in `HYG_SESSIONS_JSON`, or anything was touched < 24 h.
+  A plain folder is also kept whole if ANY regular file lives outside its nested repos (`loose-files-outside-repos`; `__pycache__` / `.DS_Store` excepted).
   A full clone additionally fails (KEEP) when any of its registered linked worktrees resolves outside the folder (their
   git data lives in the clone's `.git`), when any local ref outside `refs/remotes` (branch, tag, notes, ...) points at a
   commit no remote ref contains, or when `worktree list`/`for-each-ref` fails. `status` runs with
@@ -44,10 +45,12 @@
   file or symlink), it lies inside the work tree git resolves (not a `core.worktree` elsewhere), and git IGNORES it with no tracked file
   (no repo: node_modules/.next/.turbo beside package.json only; a `.git` entry at ANY level up to the session folder that
   git cannot read keeps it: `git-cannot-read-repo`). An unreadable registry ⇒ every session alive.
+- `GITS` pins `log.showSignature=false` as a second layer behind the allow-list.
 - Gradle: never the newest two versions or one a running process names. iOS: never the newest DeviceSupport,
   never a simulator whose runtime is installed, never `Xcode/Archives`. Android AVDs / SDK images: report only.
 - `run` holds a mkdir lock so a 4-hourly run never overlaps a slow one (stale after 6 h; a takeover re-creates it so
-  its mtime restarts). The lock is released with `rmdir`, never `rm -rf`; a non-empty or non-directory `HYG_LOCK` is refused.
+  its mtime restarts). The lock is released with `rmdir`, never `rm -rf`; a non-empty or non-directory `HYG_LOCK` is refused,
+  and so is one another user owns. Default path is per user: `${TMPDIR:-/tmp}/mac-agent-hygiene-<uid>.lock`.
 - System binaries by absolute path; explicit PATH in the plist; `mktemp` with a `${TMPDIR:-/tmp}` template.
 - Paths compared as fixed strings (never a grep pattern); `.`/`..` components refused at the apply gate; every
   category checks `dirname`/`basename`, not a glob across `/`. Environment > config file > defaults.
@@ -60,6 +63,8 @@ bash tests/hygiene-worktrees.test.sh        # fixture git repos + stubbed gh; ru
 bash tests/hygiene-wt-scan-roots.test.sh    # default scope incl. ~/code/_worktrees, keep rules, status count
 bash tests/hygiene-port-combined.test.sh    # worktrees + session-dirs at their defaults never disagree destructively
 bash tests/hygiene-keeps-logins.test.sh && bash tests/hygiene-dev-caches.test.sh && bash tests/hygiene-wt-artifacts.test.sh && bash tests/hygiene-git-safe-keep.test.sh && bash tests/hygiene-wt-safety.test.sh   # macOS fixtures, throwaway HOME
+bash tests/hygiene-git-exec-guard.test.sh   # log.showSignature + gpg.program never run during plan
+bash tests/hygiene-session-safety.test.sh   # loose files / core.worktree keep a session; per-user, owned run lock
 bash scripts/hygiene.sh status
 bash scripts/hygiene.sh plan | awk -F'\t' '{print $1, $2, $4}' | sort | uniq -c
 printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}}' \
