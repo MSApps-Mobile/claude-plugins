@@ -13,6 +13,9 @@ on:
       # .claude-plugin/marketplace.json ran none of these jobs — including the
       # coverage check below, whose whole subject is that file.
       - '.claude-plugin/**'
+      # Card TNCrQi31: a PR that edits only this workflow ran none of its
+      # jobs, so a change to the gate itself was never exercised before merge.
+      - '.github/workflows/validate-pr.yml'
 
 # Card DMqfyLzZ: no job here writes to the repo or the PR, so the token gets
 # read-only scope instead of the repo default.
@@ -27,6 +30,8 @@ jobs:
     outputs:
       plugins: ${{ steps.detect.outputs.plugins }}
       has_plugins: ${{ steps.detect.outputs.has_plugins }}
+      tested_plugins: ${{ steps.detect.outputs.tested_plugins }}
+      has_tests: ${{ steps.detect.outputs.has_tests }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -69,11 +74,25 @@ jobs:
                         "plugin directory names must match ^[a-z0-9-]+$ (lowercase letters, digits, hyphens).")
               sys.exit(1)
 
+          # Card TNCrQi31: the plugins that carry their own test suites
+          # (plugins/<name>/tests/*.test.sh). Only these enter the tests job's
+          # matrix, so a plugin with no tests/ folder is skipped, not failed.
+          tested = [
+              n for n in names
+              if os.path.isdir(os.path.join("plugins", n, "tests"))
+              # Hidden files are skipped, as the tests job's bash glob skips them.
+              and any(f.endswith(".test.sh") and not f.startswith(".")
+                      for f in os.listdir(os.path.join("plugins", n, "tests")))
+          ]
+
           with open(os.environ["GITHUB_OUTPUT"], "a") as out:
               out.write(f"has_plugins={'true' if names else 'false'}\n")
               out.write(f"plugins={json.dumps(names)}\n")
+              out.write(f"has_tests={'true' if tested else 'false'}\n")
+              out.write(f"tested_plugins={json.dumps(tested)}\n")
 
           print("Plugins in this PR: " + (", ".join(names) if names else "(none)"))
+          print("Plugins with tests/*.test.sh: " + (", ".join(tested) if tested else "(none)"))
           PYEOF
 
   # ── Job 2: Validate each changed plugin ─────────────────────────
@@ -100,10 +119,7 @@ jobs:
       - name: Check plugin structure
         run: |
           # Defence in depth: detect already refuses any other name.
-          if [[ ! "$PLUGIN" =~ ^[a-z0-9-]+$ ]]; then
-            echo "::error::Plugin directory name is not allowed: must match ^[a-z0-9-]+\$"
-            exit 1
-          fi
+          bash scripts/check-plugin-name.sh "$PLUGIN" || exit 1
           ERRORS=0
 
           if [[ ! -d "plugins/$PLUGIN/.claude-plugin" ]]; then
@@ -248,6 +264,59 @@ jobs:
           chmod +x scripts/package-plugin.sh
           bash scripts/package-plugin.sh "$PLUGIN" /tmp/dist-test
           echo "✓ Package build succeeded"
+
+  # ── Job 2b: Run each changed plugin's own test suites ───────────
+  # Card TNCrQi31: plugins/*/tests/*.test.sh never ran in CI, so a regression
+  # in a plugin that runs `rm -rf` under ~/.claude (claude-folder-janitor)
+  # would merge green. Both runners on purpose: GNU (Linux) and BSD (macOS)
+  # stat/find/date differ, and a suite that only ever ran on one of them has
+  # never exercised the other branch. A suite may print SKIP and exit 0 on an
+  # OS it does not support (mac-agent-hygiene is macOS-only).
+  tests:
+    name: Test ${{ matrix.plugin }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    needs: detect
+    if: needs.detect.outputs.has_tests == 'true'
+    strategy:
+      matrix:
+        plugin: ${{ fromJson(needs.detect.outputs.tested_plugins) }}
+        os: [ubuntu-latest, macos-latest]
+      fail-fast: false
+
+    # Same rule as the validate job (card IcsmluvI): the matrix entry reaches
+    # the shell only through env, never as expression text in a run: body.
+    env:
+      PLUGIN: ${{ matrix.plugin }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run plugins/<plugin>/tests/*.test.sh
+        run: |
+          # Defence in depth, the same script the validate job runs.
+          bash scripts/check-plugin-name.sh "$PLUGIN" || exit 1
+          echo "runner: $(uname -s) $(uname -m), $(bash --version | head -1)"
+          FAILED=0
+          RAN=0
+          for t in "plugins/$PLUGIN"/tests/*.test.sh; do
+            [[ -f "$t" ]] || continue
+            RAN=$((RAN + 1))
+            echo "::group::$t"
+            if bash "$t"; then
+              echo "✓ $t passed"
+            else
+              rc=$?
+              echo "::error file=$t::$t exited $rc"
+              FAILED=$((FAILED + 1))
+            fi
+            echo "::endgroup::"
+          done
+          if [[ "$RAN" -eq 0 ]]; then
+            echo "::error::detect listed $PLUGIN as tested, but no plugins/$PLUGIN/tests/*.test.sh was found"
+            exit 1
+          fi
+          echo "$RAN suite(s) run, $FAILED failed"
+          [[ "$FAILED" -eq 0 ]]
 
   # ── Job 3: SOSA compliance (repo-wide) ──────────────────────────
   sosa:
