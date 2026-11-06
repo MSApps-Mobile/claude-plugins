@@ -89,8 +89,16 @@ emit(){ printf '%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "$5"; }   # category a
 inuse(){ /usr/sbin/lsof +D "$1" >/dev/null 2>&1; }
 xcode_building(){ /usr/bin/pgrep -qx xcodebuild || /usr/bin/pgrep -qx Xcode || /usr/bin/pgrep -qx XCBBuildService; }
 has_dot_component(){ case "/$1/" in */./*|*/../*) return 0;; esac; return 1; }
-# Every process's cwd, read ONCE per run; compared as fixed strings (never as a pattern).
-CWDS=""; load_cwds(){ [ -n "$CWDS" ] || [ -z "$LSOF" ] || CWDS=$("$LSOF" -d cwd -Fn 2>/dev/null | /usr/bin/sed -n 's/^n//p'); }
+# Every process's cwd, read ONCE per run; compared as fixed strings (never as a pattern). lsof missing or not
+# executable, any non-zero exit (a partial list is not a full one), or no cwd at all (it always sees at least
+# this process) means we are blind. cwd_inside then cannot say "nobody is inside", so a deletion must ask
+# cwd_blind too: check_worktree keeps on it, and check_plugin_version has its own fail-closed lsof read.
+CWDS=""; CWDS_LOADED=0; CWDS_BLIND=0
+load_cwds(){ local raw rc; [ "$CWDS_LOADED" = 1 ] && return 0; CWDS_LOADED=1
+  if [ -n "$LSOF" ] && [ -x "$LSOF" ]; then raw=$("$LSOF" -d cwd -Fn 2>/dev/null); rc=$?
+    [ "$rc" = 0 ] && CWDS=$(printf '%s\n' "$raw" | /usr/bin/sed -n 's/^n//p'); fi
+  [ -n "$CWDS" ] || CWDS_BLIND=1; }
+cwd_blind(){ load_cwds; [ "$CWDS_BLIND" = 1 ]; }
 # One awk pass (card NISFIbub): the bash read loop over ~1000 cwds cost ~0.5 s per worktree. index()==1 and
 # == are fixed-string tests, never a regex.
 cwd_inside(){ load_cwds; [ -n "$CWDS" ] || return 1
@@ -191,6 +199,7 @@ check_worktree(){ local d="$1" b h repo f st rb ro rn gd cdir
   cdir=$("$GIT" -C "$d" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
   [ -n "$gd" ] && [ "$gd" != "$cdir" ] || { REASON=not-a-linked-worktree; return 1; }   # submodule / separate git-dir
   wt_recently_touched "$d" && { REASON=touched-recently; return 1; }
+  cwd_blind && { REASON=cwd-unobservable; return 1; }
   cwd_inside "$d" && { REASON=a-process-is-inside; return 1; }
   st=$("$GIT" -C "$d" status --porcelain 2>/dev/null) || { REASON=git-status-failed; return 1; }
   [ -z "$st" ] || { REASON=dirty-uncommitted-work; return 1; }
