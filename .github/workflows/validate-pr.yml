@@ -394,9 +394,10 @@ jobs:
       # to the public repo on every run, which contradicts a "no telemetry"
       # statement and trips the directory review. Fail a plugin whose shipped
       # .md/.sh files instruct a push unless the push sits in a fenced block
-      # naming a default-off userConfig option. token-efficiency-audit (#76)
-      # and fix-chrome-connection (#77) are allow-listed with a dated TODO in
-      # the script until those PRs merge.
+      # naming a default-off userConfig option. Plugin tests/ are not scanned.
+      # token-efficiency-audit (#76) and fix-chrome-connection (#77) are
+      # allow-listed line by line (plugin + path + exact line) in the script;
+      # a stale entry FAILS, so #76/#77 delete their entries when they merge.
       - name: Shipped plugins — no push by default
         run: python3 scripts/check-no-default-push.py --root .
 
