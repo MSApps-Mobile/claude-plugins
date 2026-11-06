@@ -21,7 +21,7 @@ Run the four MCP tools in this order. Never skip the plan.
    is building, whether the LaunchAgent is loaded, and the last log lines.
 2. **`hygiene_plan`** — dry run. Every candidate comes back with `remove` or `keep`, its size, and a
    reason. Read the `keep` reasons as carefully as the `remove` ones: `dirty-uncommitted-work`,
-   `unpushed-commits`, `a-process-is-inside`, `profile-in-use`, `xcode-building` are the routine
+   `unpushed-commits`, `a-process-is-inside`, `cwd-unobservable` (lsof could not list process cwds), `profile-in-use`, `xcode-building` are the routine
    working. The plan returns a `plan_id` valid for 30 minutes.
 3. **`hygiene_apply`** with that `plan_id` and `confirm: true` — each item is re-checked at apply
    time by the same function that planned it; anything that changed since the plan is refused, not

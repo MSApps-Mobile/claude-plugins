@@ -102,13 +102,15 @@ xcode_building(){ /usr/bin/pgrep -qx xcodebuild || /usr/bin/pgrep -qx Xcode || /
 has_dot_component(){ case "/$1/" in */./*|*/../*) return 0;; esac; return 1; }
 # Every process's cwd, read ONCE per run; compared as fixed strings (never as a pattern). lsof missing or not
 # executable, any non-zero exit (a partial list is not a full one), or no cwd at all (it always sees at least
-# this process) means we are blind: every folder then counts as having a process inside, so it is KEPT.
+# this process) means we are blind. cwd_inside then cannot say "nobody is inside", so a deletion must ask
+# cwd_blind too: check_worktree keeps on it, and check_plugin_version has its own fail-closed lsof read.
 CWDS=""; CWDS_LOADED=0; CWDS_BLIND=0
 load_cwds(){ local raw rc; [ "$CWDS_LOADED" = 1 ] && return 0; CWDS_LOADED=1
   if [ -n "$LSOF" ] && [ -x "$LSOF" ]; then raw=$("$LSOF" -d cwd -Fn 2>/dev/null); rc=$?
     [ "$rc" = 0 ] && CWDS=$(printf '%s\n' "$raw" | /usr/bin/sed -n 's/^n//p'); fi
   [ -n "$CWDS" ] || CWDS_BLIND=1; }
-cwd_inside(){ local c; load_cwds; [ "$CWDS_BLIND" = 1 ] && return 0
+cwd_blind(){ load_cwds; [ "$CWDS_BLIND" = 1 ]; }
+cwd_inside(){ local c; load_cwds
   while IFS= read -r c; do [ -n "$c" ] || continue; [ "$c" = "$1" ] && return 0; case "$c" in "$1"/*) return 0;; esac; done <<< "$CWDS"; return 1; }
 TMPD=$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/mac-agent-hygiene.XXXXXX") || { echo "mktemp failed" >&2; exit 2; }
 trap '/bin/rm -rf "$TMPD"' EXIT
@@ -203,6 +205,7 @@ check_worktree(){ local d="$1" b h repo f st rb ro rn gd cdir
   cdir=$("$GIT" -C "$d" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
   [ -n "$gd" ] && [ "$gd" != "$cdir" ] || { REASON=not-a-linked-worktree; return 1; }   # submodule / separate git-dir
   wt_recently_touched "$d" && { REASON=touched-recently; return 1; }
+  cwd_blind && { REASON=cwd-unobservable; return 1; }
   cwd_inside "$d" && { REASON=a-process-is-inside; return 1; }
   st=$("$GIT" -C "$d" status --porcelain 2>/dev/null) || { REASON=git-status-failed; return 1; }
   [ -z "$st" ] || { REASON=dirty-uncommitted-work; return 1; }

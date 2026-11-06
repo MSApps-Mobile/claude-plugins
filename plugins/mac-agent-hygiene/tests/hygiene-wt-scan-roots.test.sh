@@ -19,7 +19,7 @@
 #   apply           removes exactly the planned ones; branch refs survive
 #
 #   KNOWN-NEGATIVE  lsof blind (exit 0 with no cwd, non-zero with a partial list, missing) → every
-#                   worktree is kept a-process-is-inside, and apply refuses it (card 2frXvtE1, review B1)
+#                   worktree is kept cwd-unobservable, and apply refuses it (card 2frXvtE1, review B1)
 #
 # Nothing here touches the real HOME: HOME is a fixture dir. lsof is a stub, so the cwd case never skips.
 # shellcheck disable=SC2015  # ok()/bad() always return 0, so A && ok || bad is safe here
@@ -131,7 +131,7 @@ for stub in "$FX/bin/lsof-empty" "$FX/bin/lsof-partial" "$FX/no-such-lsof"; do
   name="${stub##*/}"; BLIND="$FX/plan-$name.tsv"
   HYG_LSOF="$stub" bash "$HYG" plan > "$BLIND" 2>/dev/null || bad "$name: plan exited non-zero"
   got="$(row "$P_FLAT" "$BLIND")"
-  [ "$got" = "keep a-process-is-inside" ] && ok "$name: a pushed idle worktree is kept" || bad "$name: expected keep a-process-is-inside, got '${got:-<not listed>}'"
+  [ "$got" = "keep cwd-unobservable" ] && ok "$name: a pushed idle worktree is kept" || bad "$name: expected keep cwd-unobservable, got '${got:-<not listed>}'"
   [ "$(awk -F'\t' '$1=="worktrees" && $2=="remove"' "$BLIND" | wc -l | tr -d ' ')" = 0 ] && ok "$name: plan removes no worktree" || bad "$name: plan still removes a worktree"
   printf 'worktrees\t%s\n' "$P_FLAT" > "$FX/blind-apply.tsv"
   HYG_LSOF="$stub" bash "$HYG" apply "$FX/blind-apply.tsv" > "$FX/blind-apply.out" 2>&1
