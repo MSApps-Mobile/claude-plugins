@@ -195,11 +195,12 @@ save_scanned(){ local c f st t; for c in worktrees build-artifacts session-dirs;
       "$( [ -f "$st" ] && echo "$st" || echo /dev/null)" "$f" > "$t" 2>/dev/null && /bin/mv -f "$t" "$st"; done; }
 top_folder(){ local rel="${1#"$HYG_SESSION_ROOT"/}"; printf '%s' "$HYG_SESSION_ROOT/${rel%%/*}"; }
 # Idle bucket of a ~/code/wt top-level folder: dependency trees and .git do not count as a touch.
-age_bucket(){ local t f e=() n; case "$1" in "$HYG_SESSION_ROOT"/*) ;; *) echo -; return;; esac
+age_bucket(){ local t f e=() n pr=(.git "${ARTIFACT_NAMES[@]}" .venv venv Pods DerivedData); case "$1" in "$HYG_SESSION_ROOT"/*) ;; *) echo -; return;; esac
   t=$(top_folder "$1"); f="$TMPD/age-$(path_key "$t")"
   if [ ! -f "$f" ]; then
-    while IFS= read -r n; do e+=( "$n" ); done < <(name_expr .git "${ARTIFACT_NAMES[@]}" .venv venv Pods DerivedData)
-    if touched_within_min "$t" 1440 .git "${ARTIFACT_NAMES[@]}" .venv venv Pods DerivedData; then echo '<1d' > "$f"
+    while IFS= read -r n; do e+=( "$n" ); done < <(name_expr "${pr[@]}")
+    # A walk that failed is unmeasured, not a touch: fall through to the -mtime branch, which ignores the error.
+    if touched_within_min "$t" 1440 "${pr[@]}" && [ -z "$TOUCH_WALK_FAILED" ]; then echo '<1d' > "$f"
     elif [ -n "$(/usr/bin/find "$t" \( "${e[@]}" \) -prune -o -type f -mtime -"$HYG_REPORT_AGE_DAYS" -print -quit 2>/dev/null)" ]; then echo "1-${HYG_REPORT_AGE_DAYS}d" > "$f"
     else echo ">${HYG_REPORT_AGE_DAYS}d" > "$f"; fi
   fi; /bin/cat "$f"; }
@@ -526,9 +527,17 @@ check_worktree(){ local d="$1" gd cdir rel
 #                  skipped: a fresh file in dist/ build/ .next/ coverage/ .turbo/ is recent work and counts.
 #   session_idle   only strips the artifact dirs, so it also skips every ARTIFACT_NAMES dir: what is being
 #                  removed is not evidence that a human is still working in the folder.
-touched_within_min(){ local d="$1" mins="$2" n e=() out rc; shift 2
+# A failed walk with no hit is the fail-closed answer, not a touch: it sets TOUCH_WALK_FAILED=1 and TOUCH_BLOCKER (the
+# first path find could not read, relative to $d, or . when it named none) so a caller can say why and not call it a touch.
+touched_within_min(){ local d="$1" mins="$2" n e=() all out rc p; shift 2; TOUCH_WALK_FAILED=""; TOUCH_BLOCKER=.
   while IFS= read -r n; do e+=( "$n" ); done < <(name_expr "$@")
-  out=$(/usr/bin/find "$d" \( "${e[@]}" \) -prune -o -type f -mmin -"$mins" -print -quit 2>/dev/null); rc=$?
+  # stderr rides in the same capture (no temp file: a read-only $TMPD must not turn into a failed walk); a hit is any
+  # line that is not a "find: ..." diagnostic, since every path find prints starts with the folder.
+  all=$(/usr/bin/find "$d" \( "${e[@]}" \) -prune -o -type f -mmin -"$mins" -print -quit 2>&1); rc=$?
+  out=$(printf '%s\n' "$all" | /usr/bin/grep -v '^find: ' | /usr/bin/head -n1)
+  if [ -z "$out" ] && [ "$rc" != 0 ]; then TOUCH_WALK_FAILED=1
+    p=$(printf '%s\n' "$all" | /usr/bin/sed -n '1s/^find: \(.*\): [^:]*$/\1/p')
+    case "$p" in "$d"/*) TOUCH_BLOCKER="${p#"$d"/}";; esac; fi
   [ -n "$out" ] || [ "$rc" != 0 ]; }
 check_session(){ local d="$1" r n=0 loose
   [ "$(dirname "$d")" = "$HYG_SESSION_ROOT" ] || { REASON=outside-session-root; return 1; }
@@ -536,7 +545,7 @@ check_session(){ local d="$1" r n=0 loose
   [ -f "$d/.git" ] && { REASON=linked-worktree-see-worktrees-pass; return 1; }
   [ -e "$d/.git" ] && [ ! -d "$d/.git" ] && { REASON=odd-git-entry; return 1; }
   session_alive "$d" && { REASON=session-alive-in-registry; return 1; }
-  touched_within_min "$d" "$((HYG_SESSION_AGE_HOURS*60))" .git node_modules .venv Pods && { REASON=touched-recently; return 1; }
+  touched_within_min "$d" "$((HYG_SESSION_AGE_HOURS*60))" .git node_modules .venv Pods && { REASON=touched-recently; [ -n "$TOUCH_WALK_FAILED" ] && BLOCKER="$TOUCH_BLOCKER"; return 1; }
   cwd_inside "$d" && { REASON=a-process-is-inside; return 1; }
   # A walk that failed keeps the folder under its own reason, naming the path it could not read.
   walk_failed "$d" && return 1
