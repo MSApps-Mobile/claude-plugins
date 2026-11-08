@@ -2,7 +2,14 @@
 # mac-agent-hygiene — keeps a Mac that runs Claude Code agents from filling its disk.
 #
 #   hygiene.sh status            key<TAB>value lines (read-only)
-#   hygiene.sh plan              category<TAB>action<TAB>kb<TAB>reason<TAB>path  (read-only dry run)
+#   hygiene.sh plan              category<TAB>action<TAB>kb<TAB>reason<TAB>path<TAB>age<TAB>blocker  (read-only dry run)
+#                                age = idle bucket of the top-level folder (<1d, 1-7d, >7d; - outside ~/code/wt);
+#                                blocker = the path that decided a keep, relative to the folder: the nested repo, the
+#                                first HEAD of a bare or separate git-dir, the path a failed walk could not read
+#                                (repo-walk-failed); . = the folder itself (alive, in use, its own clone, touched);
+#                                kb is 0 on a keep younger than the report window: sizing it costs a full walk
+#   hygiene.sh report [planfile] keep and remove rows grouped by age and reason, then every folder over the
+#                                window that is kept, with its exact blocker (default: the last scheduled plan)
 #   hygiene.sh apply <planfile>  re-checks every "category<TAB>path" line in <planfile> and removes
 #                                only the ones that STILL qualify; prints result lines
 #   hygiene.sh run               plan + apply everything eligible (what the LaunchAgent calls)
@@ -54,7 +61,7 @@ set -u
 umask 077
 
 # ---------- configuration: defaults < config file < environment ----------
-VARS="HYG_LOG HYG_DERIVED_DATA HYG_PLUGIN_CACHE HYG_PLUGIN_CLONE_MIN_AGE_MIN HYG_PW_GLOB HYG_MODEL_CACHES HYG_MODEL_CACHE_AGE_DAYS HYG_WT_ROOT HYG_WT_GLOB HYG_WT_NESTED HYG_WT_DEPTH HYG_WT_AGE_DAYS HYG_WT_MERGED_PR_CHECK HYG_GIT HYG_GH HYG_GH_SHA_CHECK_MAX HYG_SESSION_ROOT HYG_SESSION_AGE_HOURS HYG_SESSION_PARENT_BRANCH_OK HYG_GRADLE_HOME HYG_GRADLE_AGE_DAYS HYG_DEVICE_SUPPORT HYG_DEVICE_SUPPORT_AGE_DAYS HYG_SIM_DEVICES HYG_ANDROID_HOME HYG_ANDROID_CACHE_AGE_DAYS HYG_ANDROID_SDK HYG_PKG_CACHES HYG_PKG_CACHE_AGE_DAYS HYG_LOCK HYG_SESSIONS_JSON HYG_ARTIFACT_IDLE_HOURS HYG_ARTIFACT_DEPTH HYG_JQ HYG_LSOF"
+VARS="HYG_LOG HYG_DERIVED_DATA HYG_PLUGIN_CACHE HYG_PLUGIN_CLONE_MIN_AGE_MIN HYG_PW_GLOB HYG_MODEL_CACHES HYG_MODEL_CACHE_AGE_DAYS HYG_WT_ROOT HYG_WT_GLOB HYG_WT_NESTED HYG_WT_DEPTH HYG_WT_AGE_DAYS HYG_WT_MERGED_PR_CHECK HYG_GIT HYG_GH HYG_GH_SHA_CHECK_MAX HYG_SESSION_ROOT HYG_SESSION_AGE_HOURS HYG_SESSION_PARENT_BRANCH_OK HYG_GRADLE_HOME HYG_GRADLE_AGE_DAYS HYG_DEVICE_SUPPORT HYG_DEVICE_SUPPORT_AGE_DAYS HYG_SIM_DEVICES HYG_ANDROID_HOME HYG_ANDROID_CACHE_AGE_DAYS HYG_ANDROID_SDK HYG_PKG_CACHES HYG_PKG_CACHE_AGE_DAYS HYG_LOCK HYG_SESSIONS_JSON HYG_ARTIFACT_IDLE_HOURS HYG_ARTIFACT_DEPTH HYG_JQ HYG_LSOF HYG_PLAN_BUDGET_MIN HYG_REPORT_AGE_DAYS HYG_STATE_DIR"
 for v in $VARS; do eval "ENV_$v=\"\${$v-}\""; done
 CONF="${XDG_CONFIG_HOME:-$HOME/.config}/mac-agent-hygiene/config.env"
 # shellcheck disable=SC1090
@@ -81,6 +88,9 @@ HYG_SESSIONS_JSON="${HYG_SESSIONS_JSON:-$HOME/.local/state/opsagents-routines/se
 HYG_ARTIFACT_IDLE_HOURS="${HYG_ARTIFACT_IDLE_HOURS:-24}"
 HYG_ARTIFACT_DEPTH="${HYG_ARTIFACT_DEPTH:-6}"
 HYG_SESSION_PARENT_BRANCH_OK="${HYG_SESSION_PARENT_BRANCH_OK:-0}"   # 1 = a session worktree held only by a parent-repo branch counts as safe
+HYG_PLAN_BUDGET_MIN="${HYG_PLAN_BUDGET_MIN:-12}"   # worktrees + build-artifacts + session-dirs wall clock; what is left waits for the next run. 0 = no limit
+HYG_REPORT_AGE_DAYS="${HYG_REPORT_AGE_DAYS:-7}"
+HYG_STATE_DIR="${HYG_STATE_DIR:-$HOME/.local/state/mac-agent-hygiene}"
 HYG_GRADLE_HOME="${HYG_GRADLE_HOME:-${GRADLE_USER_HOME:-$HOME/.gradle}}"; HYG_GRADLE_HOME="${HYG_GRADLE_HOME%/}"
 HYG_GRADLE_AGE_DAYS="${HYG_GRADLE_AGE_DAYS:-30}"
 HYG_DEVICE_SUPPORT="${HYG_DEVICE_SUPPORT:-$HOME/Library/Developer/Xcode/iOS DeviceSupport}"; HYG_DEVICE_SUPPORT="${HYG_DEVICE_SUPPORT%/}"
@@ -93,7 +103,7 @@ HYG_PKG_CACHES="${HYG_PKG_CACHES-$HOME/Library/Caches/CocoaPods}"
 HYG_PKG_CACHE_AGE_DAYS="${HYG_PKG_CACHE_AGE_DAYS:-30}"
 HYG_LOCK="${HYG_LOCK:-${TMPDIR:-/tmp}/mac-agent-hygiene-$(/usr/bin/id -u).lock}"   # per user: /tmp is shared when TMPDIR is unset
 HYG_DERIVED_DATA="${HYG_DERIVED_DATA%/}"; HYG_PLUGIN_CACHE="${HYG_PLUGIN_CACHE%/}"
-case "$HYG_WT_AGE_DAYS$HYG_MODEL_CACHE_AGE_DAYS$HYG_PLUGIN_CLONE_MIN_AGE_MIN$HYG_WT_DEPTH$HYG_SESSION_AGE_HOURS$HYG_GRADLE_AGE_DAYS$HYG_DEVICE_SUPPORT_AGE_DAYS$HYG_ANDROID_CACHE_AGE_DAYS$HYG_PKG_CACHE_AGE_DAYS$HYG_GH_SHA_CHECK_MAX$HYG_ARTIFACT_IDLE_HOURS$HYG_ARTIFACT_DEPTH" in *[!0-9]*) echo "age settings must be integers" >&2; exit 2;; esac
+case "$HYG_WT_AGE_DAYS$HYG_MODEL_CACHE_AGE_DAYS$HYG_PLUGIN_CLONE_MIN_AGE_MIN$HYG_WT_DEPTH$HYG_SESSION_AGE_HOURS$HYG_GRADLE_AGE_DAYS$HYG_DEVICE_SUPPORT_AGE_DAYS$HYG_ANDROID_CACHE_AGE_DAYS$HYG_PKG_CACHE_AGE_DAYS$HYG_GH_SHA_CHECK_MAX$HYG_ARTIFACT_IDLE_HOURS$HYG_ARTIFACT_DEPTH$HYG_PLAN_BUDGET_MIN$HYG_REPORT_AGE_DAYS" in *[!0-9]*) echo "age settings must be integers" >&2; exit 2;; esac
 case "$HYG_SESSION_PARENT_BRANCH_OK" in 0|1) ;; *) echo "HYG_SESSION_PARENT_BRANCH_OK must be 0 or 1" >&2; exit 2;; esac
 
 GIT="${HYG_GIT:-}"
@@ -124,6 +134,11 @@ log(){ echo "$(/bin/date '+%F %T') $*" >> "$HYG_LOG"; }
 kb(){ /usr/bin/du -sk "$1" 2>/dev/null | /usr/bin/cut -f1; }
 emit(){ printf '%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "$5"; }   # category action kb reason path
 inuse(){ [ -x "$LSOF" ] || return 0; "$LSOF" +D "$1" >/dev/null 2>&1; }   # no lsof ⇒ cannot tell ⇒ in use
+path_key(){ printf '%s' "$1" | /usr/bin/shasum | /usr/bin/cut -c1-16; }
+# Answers that cost a tree walk are cached per run; apply drops them so its re-check reads the disk again.
+drop_run_caches(){ /bin/rm -f "$TMPD"/inv-* "$TMPD"/idle-* "$TMPD"/inuse-* "$TMPD"/age-*; CWDS=""; ALIVE=""; ALIVE_LOADED=0; }
+inuse_cached(){ local f; f="$TMPD/inuse-$(path_key "$1")"
+  [ -f "$f" ] || { if inuse "$1"; then echo 1; else echo 0; fi > "$f"; }; [ "$(/bin/cat "$f")" = 1 ]; }
 xcode_building(){ /usr/bin/pgrep -qx xcodebuild || /usr/bin/pgrep -qx Xcode || /usr/bin/pgrep -qx XCBBuildService; }
 simulator_running(){ /usr/bin/pgrep -qx Simulator || /usr/bin/pgrep -qf 'CoreSimulator/.*launchd_sim'; }
 older_than_days(){ [ -n "$(/usr/bin/find "$1" -maxdepth 0 -mtime +"$2" 2>/dev/null)" ]; }
@@ -159,6 +174,36 @@ session_alive(){ local n s; n=$(/usr/bin/basename "$1"); load_alive
 TMPD=$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/mac-agent-hygiene.XXXXXX") || { echo "mktemp failed" >&2; exit 2; }
 trap '/bin/rm -rf "$TMPD"' EXIT
 
+# ---------- scan budget (card iTGD34Ub): a loaded Mac took 72 min; the plan now stops on the clock ----------
+PLAN_T0=$SECONDS
+# Seconds after PLAN_T0 at which a category stops being scanned; 0 = never. Each slow pass gets a share of what
+# is LEFT when it starts, so a slow cache pass ahead of them can never read as "over budget at 0 s".
+budget_deadline(){ local b=$((HYG_PLAN_BUDGET_MIN*60)) now=$((SECONDS-PLAN_T0)) left
+  [ "$b" -gt 0 ] || { echo 0; return; }; left=$((b-now)); [ "$left" -gt 0 ] || left=0
+  case "$1" in worktrees) echo $((now+left/3));; build-artifacts) echo $((now+left/2));; session-dirs) echo "$((now+left))";; *) echo 0;; esac; }
+# Where the artifact walks stop. They run ahead of the plan loop, so they use a fixed share of the whole budget.
+walk_deadline(){ echo $((HYG_PLAN_BUDGET_MIN*60*2/3)); }
+# Longest unscanned first, then oldest: a run the budget cuts short resumes where it stopped.
+fair_order(){ local st="$HYG_STATE_DIR/scanned-$1.tsv"; [ -f "$st" ] || st=/dev/null
+  /usr/bin/tr '\n' '\0' | /usr/bin/xargs -0 /usr/bin/stat -f '%m%t%N' 2>/dev/null \
+    | /usr/bin/awk -F'\t' 'FILENAME!="-"{seen[$1]=$2;next}{print ($2 in seen ? seen[$2] : 0) "\t" $1 "\t" $2}' "$st" - \
+    | /usr/bin/sort -t$'\t' -k1,1n -k2,2n | /usr/bin/cut -f3-; }
+mark_scanned(){ printf '%s\t%s\n' "$2" "$(/bin/date +%s)" >> "$TMPD/scanned-$1"; }
+save_scanned(){ local c f st t; for c in worktrees build-artifacts session-dirs; do f="$TMPD/scanned-$c"; [ -f "$f" ] || continue
+    /bin/mkdir -p "$HYG_STATE_DIR" 2>/dev/null; st="$HYG_STATE_DIR/scanned-$c.tsv"; t="$st.$$"
+    /usr/bin/awk -F'\t' -v min="$(($(/bin/date +%s)-30*86400))" '{a[$1]=$2} END{for(k in a) if(a[k]>=min) print k "\t" a[k]}' \
+      "$( [ -f "$st" ] && echo "$st" || echo /dev/null)" "$f" > "$t" 2>/dev/null && /bin/mv -f "$t" "$st"; done; }
+top_folder(){ local rel="${1#"$HYG_SESSION_ROOT"/}"; printf '%s' "$HYG_SESSION_ROOT/${rel%%/*}"; }
+# Idle bucket of a ~/code/wt top-level folder: dependency trees and .git do not count as a touch.
+age_bucket(){ local t f e=() n; case "$1" in "$HYG_SESSION_ROOT"/*) ;; *) echo -; return;; esac
+  t=$(top_folder "$1"); f="$TMPD/age-$(path_key "$t")"
+  if [ ! -f "$f" ]; then
+    while IFS= read -r n; do e+=( "$n" ); done < <(name_expr .git "${ARTIFACT_NAMES[@]}" .venv venv Pods DerivedData)
+    if [ -n "$(/usr/bin/find "$t" \( "${e[@]}" \) -prune -o -type f -mmin -1440 -print -quit 2>/dev/null)" ]; then echo '<1d' > "$f"
+    elif [ -n "$(/usr/bin/find "$t" \( "${e[@]}" \) -prune -o -type f -mtime -"$HYG_REPORT_AGE_DAYS" -print -quit 2>/dev/null)" ]; then echo "1-${HYG_REPORT_AGE_DAYS}d" > "$f"
+    else echo ">${HYG_REPORT_AGE_DAYS}d" > "$f"; fi
+  fi; /bin/cat "$f"; }
+
 # ---------- enumerators (shared by status, plan and the candidate list) ----------
 # Is $1 a place agent worktrees live? A direct child of HYG_WT_ROOT whose name matches HYG_WT_GLOB, or
 # a path at most HYG_WT_DEPTH levels deep under a top-level dir listed in HYG_WT_NESTED (card SIDmENpf:
@@ -187,17 +232,46 @@ ARTIFACT_NAMES=( node_modules .next dist build .turbo coverage )   # the ONE lis
 # -name a -o -name b ... for find, from one or more names.
 name_expr(){ local n first=1; for n in "$@"; do [ "$first" = 1 ] || printf '%s\n' -o; first=0; printf '%s\n%s\n' -name "$n"; done; }
 # Artifact dirs in every top-level folder (worktrees and clones included); prune at .git and at each hit.
-list_artifacts(){ local t e=(); while IFS= read -r t; do e+=( "$t" ); done < <(name_expr "${ARTIFACT_NAMES[@]}")
-  [ -d "$HYG_SESSION_ROOT" ] || return 0
-  /usr/bin/find "$HYG_SESSION_ROOT" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | /usr/bin/sort | while IFS= read -r t; do
+list_artifacts(){ local t e=() dl; while IFS= read -r t; do e+=( "$t" ); done < <(name_expr "${ARTIFACT_NAMES[@]}")
+  [ -d "$HYG_SESSION_ROOT" ] || return 0; dl=$(walk_deadline)
+  /usr/bin/find "$HYG_SESSION_ROOT" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | fair_order build-artifacts | while IFS= read -r t; do
+    [ "$dl" = 0 ] || [ $((SECONDS-PLAN_T0)) -lt "$dl" ] || break
+    session_idle "$t" || continue   # a folder in use has nothing to strip, so it costs no depth-6 walk
     /usr/bin/find "$t" -mindepth 1 -maxdepth "$HYG_ARTIFACT_DEPTH" -name .git -prune -o -type d \( "${e[@]}" \) -prune -print 2>/dev/null | /usr/bin/sort
   done; }
-# Every .git at any depth, nothing pruned: a repo the search skipped would be rm -rf'd unchecked, so the
-# search fails closed (slower on a big node_modules, which only runs on folders already idle 24 h).
-nested_repos(){ /usr/bin/find "$1" -mindepth 2 -name .git -print 2>/dev/null | /usr/bin/sed 's#/\.git$##'; }
-# nested_repos only finds `.git`: a bare repo or separate git-dir has none. Its HEAD (a file, or a symlink
-# in an old-style repo) outside any .git path gives it away. Used by session-dirs and build-artifacts.
-holds_bare_or_separate_git_dir(){ [ -n "$(/usr/bin/find "$1" -path '*/.git' -prune -o \( -type f -o -type l \) -name HEAD -print -quit 2>/dev/null)" ]; }
+# One walk per folder per run, nothing pruned but .git itself: every .git, and every HEAD outside a .git (a bare
+# repo or separate git-dir has no .git, and its HEAD gives it away; old-style repos make it a symlink). A repo
+# the search skipped would be rm -rf'd unchecked, so a walk that fails reads as a bare repo, and keeps.
+# The marker "<folder>/unreadable/HEAD" is that fail-closed answer. It is printed when find fails, and also when the
+# cache cannot be written or read back whole (a full disk, a read-only $TMPD): an empty cache would read "no repo".
+# find's stderr is kept beside the cache so walk_failed can name the path it could not read.
+repo_inventory(){ local f out; f="$TMPD/inv-$(path_key "$1")"
+  if [ ! -f "$f" ]; then
+    if out=$( { /usr/bin/find "$1" -name .git -print -prune -o \( -type f -o -type l \) -name HEAD -print 2>"$f.err"; } 2>/dev/null ); then
+      { { [ -z "$out" ] || printf '%s\n' "$out"; } > "$f.tmp" && [ "$(/bin/cat "$f.tmp")" = "$out" ] && /bin/mv -f "$f.tmp" "$f"; } 2>/dev/null \
+        || { /bin/rm -f "$f.tmp" 2>/dev/null; printf '%s/unreadable/HEAD\n' "$1"; return 0; }
+    else
+      printf '%s/unreadable/HEAD\n' "$1" > "$f" 2>/dev/null || { printf '%s/unreadable/HEAD\n' "$1"; return 0; }
+    fi
+  fi
+  /bin/cat "$f" 2>/dev/null || printf '%s/unreadable/HEAD\n' "$1"; }
+nested_repos(){ repo_inventory "$1" | TOP="$1/.git" /usr/bin/awk '$0!=ENVIRON["TOP"] && /\/\.git$/' | /usr/bin/sed 's#/\.git$##'; }
+holds_bare_or_separate_git_dir(){ repo_inventory "$1" | /usr/bin/grep -q '/HEAD$'; }
+holds_a_repo(){ repo_inventory "$1" | /usr/bin/grep -q '/\.git$'; }
+# The first entry of a kind, relative to the folder: the exact path a keep names as its blocker (AC 1).
+first_inventory(){ local h; h=$(repo_inventory "$1" | /usr/bin/grep -m1 "$2"); printf '%s' "${h#"$1"/}"; }
+# 0 when the inventory is the fail-closed marker rather than a real HEAD of that name. Sets REASON and BLOCKER:
+#   repo-walk-failed            find could not read part of the folder; BLOCKER = the first path it named
+#   repo-inventory-cache-failed the cache could not be written or read back; BLOCKER = . (nothing in the folder is at fault)
+walk_failed(){ local f p; f="$TMPD/inv-$(path_key "$1")"
+  repo_inventory "$1" | /usr/bin/grep -qxF "$1/unreadable/HEAD" || return 1
+  [ -e "$1/unreadable/HEAD" ] && return 1
+  if [ -f "$f" ] && /bin/cat "$f" >/dev/null 2>&1; then
+    REASON=repo-walk-failed
+    p=$(/usr/bin/sed -n '1s/^find: \(.*\): [^:]*$/\1/p' "$f.err" 2>/dev/null)
+    case "$p" in "$1"/*) BLOCKER="${p#"$1"/}";; *) BLOCKER=.;; esac
+  else REASON=repo-inventory-cache-failed; BLOCKER=.; fi
+  return 0; }
 # First regular file in $1 that lives OUTSIDE every nested repo (a directory holding a .git file or dir is
 # pruned whole), or nothing. __pycache__ and .DS_Store regenerate and do not count.
 loose_file_in(){ /usr/bin/find "$1" -mindepth 1 \( -type d \( -name __pycache__ -o -exec /bin/test -e '{}/.git' \; \) -prune \) \
@@ -232,7 +306,7 @@ check_pwcache(){ local p="$1" prof sub ok=1
       case "$sub" in BrowserMetrics*) [ "$(dirname "$sub")" = . ] && ok=0;; esac
       [ $ok = 0 ] || { REASON=not-in-cache-allowlist; return 1; }
       [ -L "$prof/SingletonLock" ] && { REASON=profile-has-singleton-lock; return 1; }
-      inuse "$prof" && { REASON=profile-in-use; return 1; }
+      inuse_cached "$prof" && { REASON=profile-in-use; return 1; }
       REASON=regenerable-browser-cache; return 0;; esac
   done < <(list_profiles); REASON=not-inside-a-profile; return 1; }
 check_model(){ local m; for m in $HYG_MODEL_CACHES; do
@@ -464,11 +538,13 @@ check_session(){ local d="$1" r n=0 loose
   session_alive "$d" && { REASON=session-alive-in-registry; return 1; }
   touched_within_min "$d" "$((HYG_SESSION_AGE_HOURS*60))" .git node_modules .venv Pods && { REASON=touched-recently; return 1; }
   cwd_inside "$d" && { REASON=a-process-is-inside; return 1; }
+  # A walk that failed keeps the folder under its own reason, naming the path it could not read.
+  walk_failed "$d" && return 1
   # A bare repo or separate git-dir elsewhere in the folder would go with the rm unchecked: keep, unread.
-  holds_bare_or_separate_git_dir "$d" && { REASON=contains-bare-or-separate-git-dir; return 1; }
-  if [ -d "$d/.git" ]; then n=1; git_safe "$d" "$d" 0 || { REASON="clone-$REASON"; return 1; }; fi   # the folder IS a clone (a repo git_safe vouched for)
+  holds_bare_or_separate_git_dir "$d" && { REASON=contains-bare-or-separate-git-dir; BLOCKER=$(first_inventory "$d" '/HEAD$'); return 1; }
+  if [ -d "$d/.git" ]; then n=1; git_safe "$d" "$d" 0 || { REASON="clone-$REASON"; BLOCKER=.; return 1; }; fi   # the folder IS a clone (a repo git_safe vouched for)
   while IFS= read -r r; do [ -n "$r" ] || continue; n=$((n+1))
-    git_safe "$r" "$d" "$HYG_SESSION_PARENT_BRANCH_OK" || { REASON="nested-$REASON"; return 1; }
+    git_safe "$r" "$d" "$HYG_SESSION_PARENT_BRANCH_OK" || { REASON="nested-$REASON"; BLOCKER="${r#"$d"/}"; return 1; }
   done < <(nested_repos "$d")
   # The category reclaims checkouts: with no repo there is nothing git_safe vouched for (research notes,
   # review outputs), so the folder stays.
@@ -485,7 +561,7 @@ check_session(){ local d="$1" r n=0 loose
   REASON=stale-session-all-nested-pushed; return 0; }
 # Session folder idle: no file (outside .git and the artifact dirs themselves) newer than the window.
 # Cached per folder for the run.
-session_idle(){ local t="$1" f k; k=$(printf '%s' "$t" | /usr/bin/shasum | /usr/bin/cut -c1-16); f="$TMPD/idle-$k"
+session_idle(){ local t="$1" f; f="$TMPD/idle-$(path_key "$t")"
   if [ ! -f "$f" ]; then
     if touched_within_min "$t" "$((HYG_ARTIFACT_IDLE_HOURS*60))" .git "${ARTIFACT_NAMES[@]}" .venv Pods
     then echo 0 > "$f"; else echo 1 > "$f"; fi
@@ -503,8 +579,9 @@ check_artifact(){ local p="$1" rel top name parent tracked tl l
   session_alive "$top" && { REASON=session-alive-in-registry; return 1; }
   cwd_inside "$top" && { REASON=a-process-is-inside; return 1; }
   session_idle "$top" || { REASON=session-touched-recently; return 1; }
-  [ -n "$(/usr/bin/find "$p" -name .git -print -quit 2>/dev/null)" ] && { REASON=contains-a-repo; return 1; }
-  holds_bare_or_separate_git_dir "$p" && { REASON=contains-bare-or-separate-git-dir; return 1; }   # B6: the only copy of a commit can sit here
+  walk_failed "$p" && return 1
+  holds_a_repo "$p" && { REASON=contains-a-repo; BLOCKER=$(first_inventory "$p" '/\.git$'); return 1; }
+  holds_bare_or_separate_git_dir "$p" && { REASON=contains-bare-or-separate-git-dir; BLOCKER=$(first_inventory "$p" '/HEAD$'); return 1; }   # B6: the only copy of a commit can sit here
   if GITS -C "$parent" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     repo_config_unvetted "$parent" && { REASON=repo-config-not-allowlisted; return 1; }
     # With core.worktree elsewhere, the two answers below describe that other tree, not this dir (B5).
@@ -575,7 +652,10 @@ real_under_scope(){ local root rr rp; root=$(scope_root "$1"); [ -n "$root" ] ||
   case "$2" in "$root"/*) ;; *) return 1;; esac
   rr=$(physical "$root") && rp=$(physical "$2") || return 1
   [ "$rp" = "$rr/${2#"$root"/}" ]; }
-check_item(){ # category path → 0 removable (REASON=why) / 1 keep (REASON=why)
+check_item(){ # category path → 0 removable (REASON=why) / 1 keep (REASON=why, BLOCKER=the path that decided it, . = the folder)
+  BLOCKER=""; check_item_inner "$1" "$2" && return 0
+  [ -n "$BLOCKER" ] || BLOCKER=.; return 1; }
+check_item_inner(){
   case "$2" in "$HOME"/*) ;; *) REASON=outside-home; return 1;; esac
   has_dot_component "$2" && { REASON=dot-component-in-path; return 1; }
   real_under_scope "$1" "$2" || { REASON=path-has-symlink-component; return 1; }
@@ -595,9 +675,9 @@ candidates(){  # category<TAB>path
     for p in "$prof"/BrowserMetrics*; do [ -e "$p" ] && printf 'browser-caches\t%s\n' "$p"; done
   done
   for d in $HYG_MODEL_CACHES; do [ -d "$d" ] && printf 'model-caches\t%s\n' "${d%/}"; done
-  list_worktrees | while IFS= read -r d; do printf 'worktrees\t%s\n' "$d"; done
+  list_worktrees | fair_order worktrees | while IFS= read -r d; do printf 'worktrees\t%s\n' "$d"; done
   list_artifacts | while IFS= read -r d; do printf 'build-artifacts\t%s\n' "$d"; done
-  list_sessions | while IFS= read -r d; do printf 'session-dirs\t%s\n' "$d"; done
+  list_sessions | fair_order session-dirs | while IFS= read -r d; do printf 'session-dirs\t%s\n' "$d"; done
   for d in "$HYG_GRADLE_HOME/wrapper/dists"/*/ "$HYG_GRADLE_HOME/daemon"/*/; do [ -d "$d" ] && printf 'gradle\t%s\n' "${d%/}"; done
   for d in "$HYG_DEVICE_SUPPORT"/*/; do [ -d "$d" ] && printf 'ios\t%s\n' "${d%/}"; done
   [ -x /usr/bin/xcrun ] && sim_unavailable_udids | while IFS= read -r u; do [ -d "$HYG_SIM_DEVICES/$u" ] && printf 'ios\t%s\n' "$HYG_SIM_DEVICES/$u"; done
@@ -605,18 +685,31 @@ candidates(){  # category<TAB>path
   for d in $HYG_PKG_CACHES; do [ -d "$d" ] && printf 'pkg-caches\t%s\n' "${d%/}"; done
 }
 
-plan(){ local cat p k prev="" n=0 r=0 t0=$SECONDS
+plan(){ local cat p k prev="" n=0 r=0 t0=$SECONDS dl=0 cut=0 action age
   # One log line per category as it finishes (card ugCwRX0v), so a slow or stuck plan is visible
   # from `log_tail` / hygiene_status instead of a silent gap after "=== scheduled run".
-  plan_mark(){ [ -n "$prev" ] && log "plan: $prev $n candidates ($r remove) in $((SECONDS-t0))s"; }
+  plan_mark(){ [ -n "$prev" ] && log "plan: $prev $n candidates ($r remove, $cut over budget) in $((SECONDS-t0))s"; }
+  PLAN_T0=$SECONDS
   while IFS=$'\t' read -r cat p; do
     [ -n "$p" ] || continue
-    if [ "$cat" != "$prev" ]; then plan_mark; prev="$cat"; n=0; r=0; t0=$SECONDS; fi
-    n=$((n+1)); k=$(kb "$p"); [ -n "$k" ] || k=0
-    if check_item "$cat" "$p"; then r=$((r+1)); emit "$cat" remove "$k" "$REASON" "$p"; else emit "$cat" keep "$k" "$REASON" "$p"; fi
+    if [ "$cat" != "$prev" ]; then plan_mark; prev="$cat"; n=0; r=0; cut=0; t0=$SECONDS; dl=$(budget_deadline "$cat"); fi
+    n=$((n+1))
+    if [ "$dl" != 0 ] && [ $((SECONDS-PLAN_T0)) -ge "$dl" ]; then cut=$((cut+1))
+      printf '%s\tkeep\t0\tscan-budget-exceeded\t%s\t?\t\n' "$cat" "$p"; continue; fi
+    if check_item "$cat" "$p"; then action=remove; r=$((r+1)); else action=keep; fi
+    case "$cat" in worktrees|session-dirs) mark_scanned "$cat" "$p";; build-artifacts) mark_scanned "$cat" "$(top_folder "$p")";; esac
+    age=$(age_bucket "$p")
+    # Decide first, size after: a du of every candidate was the largest single cost of a plan.
+    k=0; case "$action/$age" in remove/*|keep/-|keep/\>*) k=$(kb "$p"); [ -n "$k" ] || k=0;; esac
+    printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$cat" "$action" "$k" "$REASON" "$p" "$age" "$BLOCKER"
   done < <(candidates)
-  plan_mark
+  plan_mark; save_scanned
 }
+
+report(){ local f="${1:-$HYG_STATE_DIR/last-plan.tsv}"; [ -f "$f" ] || { echo "report: no plan at $f" >&2; exit 2; }
+  /usr/bin/awk -F'\t' '$6!="" && $6!="-"{ k=$6"\t"$2"\t"$1"\t"$4; c[k]++; kb[k]+=$3 }
+    END{ for(k in c) printf "%s\t%d\t%.1f GB\n", k, c[k], kb[k]/1048576 }' "$f" | /usr/bin/sort
+  /usr/bin/awk -F'\t' -v old=">${HYG_REPORT_AGE_DAYS}d" '$2=="keep" && $6==old && $1!="build-artifacts"{ printf "kept-over-window\t%s\t%s\t%s\n", $4, ($7==""?"-":$7), $5 }' "$f"; }
 
 remove_item(){ local cat="$1" p="$2" common r commons=""
   # Last look before the removal (L2). Every git call below goes through GITS: apply runs git on repos an agent made.
@@ -639,6 +732,7 @@ remove_item(){ local cat="$1" p="$2" common r commons=""
 
 apply(){ local file="$1" cat p k freed=0 n=0 refused=0
   [ -f "$file" ] || { echo "apply: plan file not found" >&2; exit 2; }
+  drop_run_caches
   while IFS=$'\t' read -r cat p; do
     [ -n "$p" ] || continue
     if check_item "$cat" "$p"; then k=$(kb "$p"); [ -n "$k" ] || k=0
@@ -672,7 +766,7 @@ status(){ local prof lock=0 inu=0 nprof=0 d stale=0 total=0
   [ -f "$HYG_LOG" ] && /usr/bin/tail -5 "$HYG_LOG" | while IFS= read -r l; do printf 'log_tail\t%s\n' "$l"; done
 }
 
-run(){ local pf="$TMPD/plan.tsv"
+run(){ local pf="$TMPD/plan.tsv" lp="$HYG_STATE_DIR/last-plan.tsv"
   # Runs every few hours: a slow run must never overlap the next one. mkdir is atomic; a lock older
   # than 6 h is a crashed run and is taken over. The lock is an EMPTY directory this script made: it is
   # released with rmdir (never rm -rf — HYG_LOCK can come from config), a non-empty or non-directory
@@ -694,11 +788,16 @@ run(){ local pf="$TMPD/plan.tsv"
   fi
   trap '/bin/rm -rf "$TMPD"; /bin/rmdir "$HYG_LOCK" 2>/dev/null' EXIT
   log "=== scheduled run"
-  plan | /usr/bin/awk -F'\t' '$2=="remove"{print $1"\t"$5}' > "$pf"
+  /bin/mkdir -p "$HYG_STATE_DIR" 2>/dev/null
+  # kept whole: `report` reads why each folder stayed. A plan that cannot be saved stops the run: applying the
+  # previous run's plan would make every run a silent no-op on stale rows.
+  { plan > "$lp.$$" && /bin/mv -f "$lp.$$" "$lp"; } || { /bin/rm -f "$lp.$$" 2>/dev/null; log "plan failed: cannot write $lp"; return 0; }
+  report "$lp" 2>/dev/null | /usr/bin/awk -F'\t' '$1!="kept-over-window"' | while IFS= read -r l; do log "plan-report: $l"; done
+  /usr/bin/awk -F'\t' '$2=="remove"{print $1"\t"$5}' "$lp" > "$pf"
   apply "$pf"; }
 
 case "${1:-}" in
-  status) status;; plan) plan;; apply) apply "${2:?plan file}";; run) run || exit $?;;
-  *) echo "usage: hygiene.sh status|plan|apply <planfile>|run" >&2; exit 2;;
+  status) status;; plan) plan;; report) report "${2:-}";; apply) apply "${2:?plan file}";; run) run || exit $?;;
+  *) echo "usage: hygiene.sh status|plan|report [planfile]|apply <planfile>|run" >&2; exit 2;;
 esac
 exit 0
