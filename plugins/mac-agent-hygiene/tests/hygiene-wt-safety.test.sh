@@ -10,7 +10,12 @@
 #                        running row on the session folder that holds the worktree → keep, folder survives
 #   B13  KNOWN-POSITIVE  the same worktree with a "done" row → remove (the fixture is otherwise removable)
 #   B16  one helper decides "nothing touched in the window" (static check + the two prune sets behave)
-#   L0   lsof sees the fixture process (FAIL, never SKIP), and no lsof at all keeps (fail closed)
+#   L0   lsof sees the fixture process (FAIL, never SKIP); an lsof we cannot fully read keeps on all three
+#        passes (session-dirs, build-artifacts, worktrees), in plan and apply: missing, exit 1 with no
+#        output, exit 1 after one unrelated row, the real list cut at 60 lines with exit 143 (review B1)
+#   B3   KNOWN-NEGATIVE  a nested repo git cannot read (lost HEAD, empty .git) under a healthy outer repo
+#                        that ignores node_modules: its dirty force-tracked node_modules file is kept and
+#                        survives apply (discovery answers from the outer repo)
 #   L1   KNOWN-NEGATIVE  repo config that makes git run a program during plan/apply never runs it:
 #                        remote.origin.uploadpack + partial clone, and log.showSignature + gpg.program
 #   L1   KNOWN-POSITIVE  a plain config (gh-style clone) is still removable
@@ -65,15 +70,25 @@ old "$W/b12-ext"
 git clone -q "$FX/origin.git" "$FX/b12-parent" 2>/dev/null
 (cd "$FX/b12-parent" && printf 'node_modules/\n' > .gitignore && echo '{}' > package.json && git add -A && git commit -qm p && git push -q origin HEAD:refs/heads/b12-parent 2>/dev/null)
 git -C "$FX/b12-parent" worktree add -q -b b12-wt "$W/b12-orphan" 2>/dev/null
-(cd "$W/b12-orphan" && mkdir -p node_modules/p && echo orig > node_modules/p/i.js && git add -f node_modules/p/i.js && git commit -qm t && echo EDITED-UNCOMMITTED > node_modules/p/i.js)
+(cd "$W/b12-orphan" && for a in node_modules .next .turbo; do mkdir -p $a/p && echo orig > $a/p/i.js && git add -f $a/p/i.js; done && git commit -qm t \
+  && for a in node_modules .next .turbo; do echo EDITED-UNCOMMITTED > $a/p/i.js; done)
 rm -rf "$FX/b12-parent"; old "$W/b12-orphan"
 # (c) a broken .git in a subfolder: the artifact's parent is a subfolder, the session folder has no .git
-mkdir -p "$W/b12-sub/app/node_modules/p" "$W/b12-sub/app/.next/p"; echo '{}' > "$W/b12-sub/app/package.json"
-echo orig > "$W/b12-sub/app/node_modules/p/i.js"; echo orig > "$W/b12-sub/app/.next/p/i.js"
+mkdir -p "$W/b12-sub/app/node_modules/p" "$W/b12-sub/app/.next/p" "$W/b12-sub/app/.turbo/p"; echo '{}' > "$W/b12-sub/app/package.json"
+echo orig > "$W/b12-sub/app/node_modules/p/i.js"; echo orig > "$W/b12-sub/app/.next/p/i.js"; echo orig > "$W/b12-sub/app/.turbo/p/i.js"
 echo "gitdir: $FX/does-not-exist/.git/worktrees/x" > "$W/b12-sub/app/.git"; old "$W/b12-sub"
 # (d) control: no .git anywhere → still removed
 mkdir -p "$W/b12-plain/app/node_modules/p" "$W/b12-plain/app/.turbo/p"; echo '{}' > "$W/b12-plain/app/package.json"
 echo x > "$W/b12-plain/app/node_modules/p/i.js"; echo x > "$W/b12-plain/app/.turbo/p/i.js"; old "$W/b12-plain"
+# ---------------- B3 fixtures ----------------
+# a pushed clean clone (outer .gitignore has node_modules/) holding sub/, a repo with one commit and a
+# force-tracked sub/node_modules/p/i.js edited and uncommitted; then sub's repo is damaged
+mkb3(){ mkclone "$1"; ( cd "$W/$1" && git init -q sub && cd sub && echo s > s && mkdir -p node_modules/p && echo orig > node_modules/p/i.js \
+    && git add s && git add -f node_modules/p/i.js && git commit -qm sub && echo EDITED-UNCOMMITTED > node_modules/p/i.js ); }
+mkb3 b3-lost-head; rm -f "$W/b3-lost-head/sub/.git/HEAD"
+mkb3 b3-empty-git; rm -rf "$W/b3-empty-git/sub/.git"; mkdir "$W/b3-empty-git/sub/.git"
+for c in b3-lost-head b3-empty-git; do git -C "$W/$c/sub" rev-parse --show-toplevel 2>/dev/null | /usr/bin/grep -qx "$(cd -P "$W/$c" && pwd -P)" \
+  || echo "# fixture $c: git does not answer from the outer repo" >&2; old "$W/$c"; done
 
 # ---------------- B13 fixtures ----------------
 # a clean, pushed, idle linked worktree at top level, parent repo outside the session root
@@ -142,19 +157,46 @@ else bad "L0 lsof cannot see the fixture process (lsof=[$LSOF]); the cwd checks 
 
 P="$FX/plan.tsv"; plan "$P"
 expect session-dirs "$W/l0-cwd" "keep/a-process-is-inside" "L0 a folder a process sits in → keep a-process-is-inside"
-HYG_LSOF="$FX/no-such-lsof" plan "$FX/plan-nolsof.tsv"
-case "$(row "$FX/plan-nolsof.tsv" session-dirs "$W/l0-clean")" in keep/*) ok "L0 no lsof at all → a stale clean clone is kept (fail closed)";; *) bad "L0 no lsof: $(row "$FX/plan-nolsof.tsv" session-dirs "$W/l0-clean")";; esac
 expect session-dirs "$W/l0-clean" "remove/stale-session-all-nested-pushed" "L0 control: with lsof the same clone is removable"
+expect build-artifacts "$W/b12-plain/app/node_modules" "remove/node-artifact-beside-package-json" "L0 control: with lsof the no-.git node_modules is removable"
+expect worktrees "$W/b13-done" "remove/pushed" "L0 control: with lsof the idle pushed worktree is removable"
+# B1: an lsof we cannot fully read is blind on every pass. Each stub stands in for a failure part way.
+printf '#!/bin/sh\nexit 1\n' > "$FX/lsof-exit1"
+printf '#!/bin/sh\nprintf "p1\\nfcwd\\nn/\\n"\nexit 1\n' > "$FX/lsof-onerow"
+printf '#!/bin/sh\n"%s" -d cwd -Fn 2>/dev/null | /usr/bin/head -60\nexit 143\n' "${LSOF:-/usr/sbin/lsof}" > "$FX/lsof-cut"
+chmod +x "$FX/lsof-exit1" "$FX/lsof-onerow" "$FX/lsof-cut"
+[ "$("$FX/lsof-onerow" | /usr/bin/sed -n 's/^n//p')" = / ] && ok "L0 stub lsof-onerow prints one unrelated cwd row" || bad "L0 stub lsof-onerow output wrong"
+[ "$("$FX/lsof-cut" | /usr/bin/grep -c '^n')" -gt 0 ] && ok "L0 stub lsof-cut prints real cwd rows before exit 143" || bad "L0 stub lsof-cut printed no cwd row"
+for s in no-such-lsof lsof-exit1 lsof-onerow lsof-cut; do
+  HYG_LSOF="$FX/$s" plan "$FX/plan-$s.tsv"
+  for t in "session-dirs $W/l0-clean" "build-artifacts $W/b12-plain/app/node_modules" "worktrees $W/b13-done"; do
+    set -- $t; got="$(row "$FX/plan-$s.tsv" "$1" "$2")"
+    case "$got" in keep/*) ok "L0 lsof=$s: $1 ${2#"$W/"} kept (blind ⇒ fail closed)";; *) bad "L0 lsof=$s: $1 ${2#"$W/"} [$got]";; esac
+  done
+done
+# the same on apply, with the one-row stub and the cut list: nothing is removed
+printf 'session-dirs\t%s\nbuild-artifacts\t%s\nworktrees\t%s\n' "$W/l0-clean" "$W/b12-plain/app/node_modules" "$W/b13-done" > "$FX/apply-l0.tsv"
+for s in lsof-onerow lsof-cut; do
+  HYG_LSOF="$FX/$s" bash "$HYG" apply "$FX/apply-l0.tsv" > "$FX/apply-l0-$s.out" 2>&1
+  [ -d "$W/l0-clean" ] && [ -d "$W/b12-plain/app/node_modules" ] && [ -d "$W/b13-done" ] && [ "$(/usr/bin/grep -c '	removed	' "$FX/apply-l0-$s.out")" = 0 ] \
+    && ok "L0 apply with lsof=$s removed none of the three" || bad "L0 apply with lsof=$s: $(cat "$FX/apply-l0-$s.out")"
+done
 
 # =============== B12 ===============
 for a in node_modules .next .turbo; do
   expect build-artifacts "$W/b12-ext/$a" "keep/git-cannot-read-repo" "B12 unreadable repo (unknown extension): $a with a dirty tracked file → keep"
 done
-expect build-artifacts "$W/b12-orphan/node_modules" "keep/git-cannot-read-repo" "B12 linked worktree whose parent is gone: tracked node_modules → keep"
-expect build-artifacts "$W/b12-sub/app/node_modules" "keep/git-cannot-read-repo" "B12 broken .git in a subfolder: node_modules → keep"
-expect build-artifacts "$W/b12-sub/app/.next" "keep/git-cannot-read-repo" "B12 broken .git in a subfolder: .next → keep"
+for a in node_modules .next .turbo; do
+  expect build-artifacts "$W/b12-orphan/$a" "keep/git-cannot-read-repo" "B12 linked worktree whose parent is gone: tracked $a → keep"
+  expect build-artifacts "$W/b12-sub/app/$a" "keep/git-cannot-read-repo" "B12 broken .git in a subfolder: $a → keep"
+done
 expect build-artifacts "$W/b12-plain/app/node_modules" "remove/node-artifact-beside-package-json" "B12 control: no .git at any level, node_modules → remove"
 expect build-artifacts "$W/b12-plain/app/.turbo" "remove/node-artifact-beside-package-json" "B12 control: no .git at any level, .turbo → remove"
+
+# =============== B3 ===============
+for c in b3-lost-head b3-empty-git; do
+  expect build-artifacts "$W/$c/sub/node_modules" "keep/git-cannot-read-repo" "B3 nested repo git cannot read ($c) under a healthy outer repo → keep"
+done
 
 # =============== B13 (plans) ===============
 cp "$HYG_SESSIONS_JSON" "$FX/reg-empty.json"
@@ -205,8 +247,12 @@ kill "$SLEEPER" 2>/dev/null; SLEEPER=""
 /usr/bin/awk -F'\t' '$2=="remove"{print $1"\t"$5}' "$P" | /usr/bin/grep -v "/b13-" > "$FX/apply.tsv"
 bash "$HYG" apply "$FX/apply.tsv" > "$FX/apply.out" 2>&1
 edited b12-ext node_modules .next .turbo && ok "B12 apply left the unreadable repo's dirty tracked files alone" || bad "B12 b12-ext after apply: $(cat "$W/b12-ext/node_modules/p/i.js" 2>&1)"
-[ "$(cat "$W/b12-orphan/node_modules/p/i.js" 2>/dev/null)" = EDITED-UNCOMMITTED ] && ok "B12 apply left the orphaned worktree's dirty file alone" || bad "B12 b12-orphan after apply"
-[ -f "$W/b12-sub/app/node_modules/p/i.js" ] && [ -f "$W/b12-sub/app/.next/p/i.js" ] && ok "B12 apply left the broken-.git subfolder's artifacts alone" || bad "B12 b12-sub after apply"
+edited b12-orphan node_modules .next .turbo && ok "B12 apply left the orphaned worktree's dirty files alone" || bad "B12 b12-orphan after apply"
+[ -f "$W/b12-sub/app/node_modules/p/i.js" ] && [ -f "$W/b12-sub/app/.next/p/i.js" ] && [ -f "$W/b12-sub/app/.turbo/p/i.js" ] && ok "B12 apply left the broken-.git subfolder's artifacts alone" || bad "B12 b12-sub after apply"
+# B3 on apply: hand-written lines (the plan keeps them, so they are not in apply.tsv)
+printf 'build-artifacts\t%s\nbuild-artifacts\t%s\n' "$W/b3-lost-head/sub/node_modules" "$W/b3-empty-git/sub/node_modules" > "$FX/apply-b3.tsv"
+bash "$HYG" apply "$FX/apply-b3.tsv" > "$FX/apply-b3.out" 2>&1
+edited b3-lost-head/sub node_modules && edited b3-empty-git/sub node_modules && ok "B3 apply left both damaged nested repos' dirty node_modules files alone" || bad "B3 apply: $(cat "$FX/apply-b3.out")"
 [ ! -e "$W/b12-plain/app/node_modules" ] && ok "B12 control: apply removed the no-.git node_modules" || bad "B12 b12-plain still there"
 /usr/bin/awk -F'\t' '$2=="remove"{print $1"\t"$5}' "$FX/plan-run.tsv" > "$FX/apply-run.tsv"
 grep -q "b13-done" "$FX/apply-run.tsv" && ok "B13 the running-registry plan lists b13-done for removal" || bad "B13 apply-run.tsv has no b13-done line"

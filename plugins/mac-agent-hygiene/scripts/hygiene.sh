@@ -129,12 +129,15 @@ simulator_running(){ /usr/bin/pgrep -qx Simulator || /usr/bin/pgrep -qf 'CoreSim
 older_than_days(){ [ -n "$(/usr/bin/find "$1" -maxdepth 0 -mtime +"$2" 2>/dev/null)" ]; }
 physical(){ cd -P -- "$1" 2>/dev/null && pwd -P; }   # the real path, symlinks resolved; fails on a path that does not resolve
 has_dot_component(){ case "/$1/" in */./*|*/../*) return 0;; esac; return 1; }
-# Every process's cwd, read ONCE per run; compared as fixed strings (never as a pattern). lsof missing, or
+# Every process's cwd, read ONCE per run; compared as fixed strings (never as a pattern). lsof missing,
+# exiting non-zero (a list cut short is not a full one, even when it printed rows: PR #80 review B1), or
 # printing no cwd at all (it always sees at least this process), means we are blind: every folder then
-# counts as having a process inside ⇒ KEEP, never "nobody is inside".
+# counts as having a process inside ⇒ KEEP, never "nobody is inside". cwd_inside answers that itself, so
+# every caller (session-dirs, build-artifacts, worktrees) and any future one is safe by default.
 CWDS=""; CWDS_LOADED=0; CWDS_BLIND=0
-load_cwds(){ [ "$CWDS_LOADED" = 1 ] && return 0; CWDS_LOADED=1
-  if [ -x "$LSOF" ]; then CWDS=$("$LSOF" -d cwd -Fn 2>/dev/null | /usr/bin/sed -n 's/^n//p'); fi
+load_cwds(){ local raw rc; [ "$CWDS_LOADED" = 1 ] && return 0; CWDS_LOADED=1
+  if [ -n "$LSOF" ] && [ -x "$LSOF" ]; then raw=$("$LSOF" -d cwd -Fn 2>/dev/null); rc=$?
+    [ "$rc" = 0 ] && CWDS=$(printf '%s\n' "$raw" | /usr/bin/sed -n 's/^n//p'); fi
   [ -n "$CWDS" ] || CWDS_BLIND=1; }
 cwd_inside(){ local c; load_cwds; [ "$CWDS_BLIND" = 1 ] && return 0
   while IFS= read -r c; do [ -n "$c" ] || continue; [ "$c" = "$1" ] && return 0; case "$c" in "$1"/*) return 0;; esac; done <<< "$CWDS"; return 1; }
@@ -472,7 +475,9 @@ check_session(){ local d="$1" r n=0 loose
   [ "$n" -gt 0 ] || { REASON=no-nested-repo; return 1; }
   # rm -rf takes the whole folder, but git_safe vouched only for the repos. A file beside them (a prompt,
   # notes, a script, an archive, JSON output) has no other copy: keep. A scan that errors keeps too.
-  # A top-level clone has nothing beside it: every file in it is the repo git_safe already judged.
+  # A top-level clone is not scanned: git_safe already kept it for any tracked change or non-ignored
+  # untracked file (status --untracked-files=all), so what still goes with the rm is its IGNORED files
+  # (listed in safety-model.md "What these guards do not read").
   if [ ! -d "$d/.git" ]; then
     loose=$(loose_file_in "$d" 2>/dev/null) || { REASON=loose-file-scan-failed; return 1; }
     [ -z "$loose" ] || { REASON=loose-files-outside-repos; return 1; }
@@ -506,6 +511,14 @@ check_artifact(){ local p="$1" rel top name parent tracked tl l
     tl=$(GITS -C "$parent" rev-parse --show-toplevel 2>/dev/null) && [ -n "$tl" ] || { REASON=worktree-not-this-folder; return 1; }
     tl=$(physical "$tl") && [ -n "$tl" ] || { REASON=worktree-not-this-folder; return 1; }
     case "$(physical "$parent")/" in "$tl"/*) ;; *) REASON=worktree-not-this-folder; return 1;; esac
+    # B3 (sibling of B12): a nested repo git cannot read (lost HEAD, empty .git) is skipped by discovery,
+    # which then answers from the OUTER repo, so the two answers below describe the outer repo, not the one
+    # that tracked this dir. Any .git entry between the artifact's folder and the top level git found ⇒ KEEP.
+    l=$(physical "$parent") && [ -n "$l" ] || { REASON=worktree-not-this-folder; return 1; }
+    while [ "$l" != "$tl" ] && [ "$l" != / ]; do
+      { [ -e "$l/.git" ] || [ -L "$l/.git" ]; } && { REASON=git-cannot-read-repo; return 1; }
+      l=$(/usr/bin/dirname "$l")
+    done
     tracked=$(GITS -C "$parent" ls-files -- "$name" 2>/dev/null | /usr/bin/head -1) || { REASON=git-ls-files-failed; return 1; }
     [ -z "$tracked" ] || { REASON=has-tracked-files; return 1; }
     GITS -C "$parent" check-ignore -q -- "$name/" 2>/dev/null || { REASON=not-gitignored; return 1; }

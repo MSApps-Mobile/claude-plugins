@@ -79,7 +79,7 @@ idle `HYG_ARTIFACT_IDLE_HOURS`: inside a repo only when git-ignored with no trac
 **What these guards do not read, and which goes with the `rm -rf`:**
 
 - ignored files in a clone, such as a local `.env`; keep anything you need outside `~/code/wt`;
-- loose files in a plain session folder, outside any repo;
+- a loose symlink or empty directory in a plain session folder (loose regular files keep the folder, rule 6 below);
 - commits only the reflog holds;
 - commits held only by a stale remote-tracking ref: `branch -r --contains` reads local refs and never asks the remote;
 - objects another clone borrows through alternates (`git clone --shared`): the borrower must re-fetch them.
@@ -120,8 +120,9 @@ repo unread, which covers filter drivers, fsmonitor, `log.showSignature` and `gp
 `gpg.ssh.program`, `gpg.x509.program`): `git log` and `git stash list` would run that verifier on a signed
 commit, as the user.
 `GITS` also forces `-c log.showSignature=false` and the subject match passes `--no-show-signature`, so the
-same keys in global config cannot run either. `core.worktree` is on the list too: it makes `status` judge a
-different tree than the folder `rm -rf` removes. `tests/hygiene-git-exec-guard.test.sh` and
+same keys in global config cannot run either. `core.worktree` is allowed by `CFG_ALLOW_RE`, so its repo is read,
+but `git_safe` then keeps the repo unless the work tree git resolves physically IS the folder
+(`worktree-not-this-folder`): a redirect would make `status` judge a different tree than the one `rm -rf` removes. `tests/hygiene-git-exec-guard.test.sh` and
 `tests/hygiene-session-safety.test.sh` hold the fixtures (a verifier that writes a marker; loose files;
 a `core.worktree` redirect).
 
@@ -184,6 +185,23 @@ needs a writer in `~/code` at that moment; every candidate was idle for 24 h / 7
   `started_at` 2026-10-29T12:42), so for every session started since, the liveness guard adds nothing and only
   the process-cwd check and the idle window (24 h; 7 d for worktrees) protect it.
 - Reflog-only commits and commits held only by a stale remote-tracking ref.
+
+## An lsof we cannot fully read keeps everything (PR #80 review B1)
+
+`load_cwds` reads lsof's own exit status. lsof missing, exiting non-zero (even after printing rows: a list cut
+short is not a full one), or printing no cwd at all sets `CWDS_BLIND=1`, and `cwd_inside` then answers "a process
+is inside" for every folder, so all three callers (`session-dirs`, `build-artifacts`, `worktrees`) keep. The rule
+lives in `cwd_inside` itself so a future caller is safe by default. `tests/hygiene-wt-safety.test.sh` L0 runs plan
+and apply on all three passes with a missing lsof, exit 1 with no output, exit 1 after one unrelated row, and the
+real list cut at 60 lines with exit 143.
+
+## A nested repo git cannot read keeps its artifact dirs (PR #80 review B3)
+
+When a nested repo's `.git` is invalid (lost `HEAD`, an empty `.git`), git's discovery skips it and answers from
+the outer repo, so `ls-files` and `check-ignore` describe the outer repo. `check_artifact` therefore walks from the
+artifact's folder up to, and excluding, the top level git found, and keeps (`git-cannot-read-repo`) on any `.git`
+entry on the way. Fixtures: a pushed clone ignoring `node_modules/`, holding `sub/` with a dirty force-tracked
+`sub/node_modules` file, and `sub/.git/HEAD` deleted or `sub/.git` emptied; the edit survives apply.
 
 ## Developer caches
 

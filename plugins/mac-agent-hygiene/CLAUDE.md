@@ -39,7 +39,7 @@
 - Worktrees honour the registry like every pass (`session-alive-in-registry`, on the worktree and its top-level session
   folder). A path is removed only if `real_under_scope` says it is physical under its root (no symlink leaf or component),
   checked in plan, in apply, and again right before the removal. lsof comes from `$LSOF` (`HYG_LSOF`, else
-  `/usr/sbin/lsof` or `/usr/bin/lsof`); none, or no cwd printed ⇒ blind ⇒ every folder counts as occupied.
+  `/usr/sbin/lsof` or `/usr/bin/lsof`); none, a non-zero exit (even after some rows), or no cwd printed ⇒ blind ⇒ every folder counts as occupied.
 - Build artifacts (`node_modules .next dist build .turbo coverage` inside `~/code/wt/<session>`): only when the session
   is idle 24 h, nobody's cwd, not alive in the registry, the dir holds no `.git`, bare repo or separate git-dir (any `HEAD`
   file or symlink), it lies inside the work tree git resolves (not a `core.worktree` elsewhere), and git IGNORES it with no tracked file
