@@ -44,7 +44,7 @@ mkdir -p "$W/s-dirty/nest/inner"; clone "$W/s-dirty/nest/inner"; echo wip >> "$W
 clone "$W/s-clean"; old "$W/s-clean"
 mkdir -p "$W/s-week"; clone "$W/s-week/repo"; echo wip >> "$W/s-week/repo/a"; old "$W/s-week"; touch -t "$(/bin/date -v-3d +%Y%m%d%H%M)" "$W/s-week/repo/a"
 mkdir -p "$W/s-fresh/pkg/node_modules/x"; echo '{}' > "$W/s-fresh/pkg/package.json"; echo y > "$W/s-fresh/pkg/node_modules/x/y"
-mkdir -p "$W/s-denied/sealed"; echo x > "$W/s-denied/f"; old "$W/s-denied"; chmod 000 "$W/s-denied/sealed"
+mkdir -p "$W/s-denied/node_modules/sealed"; echo x > "$W/s-denied/f"; old "$W/s-denied"; chmod 000 "$W/s-denied/node_modules/sealed"
 mkdir -p "$W/s-stray/vendor/pkg"; echo 'ref: refs/heads/main' > "$W/s-stray/vendor/pkg/HEAD"; echo x > "$W/s-stray/f"; old "$W/s-stray"
 mkdir -p "$W/s-alive"; echo x > "$W/s-alive/f"; old "$W/s-alive"
 
@@ -54,7 +54,7 @@ case "$(row "$P" session-dirs "$W/s-clean")" in *$'\tremove\t'*$'\t>7d\t') ok "r
 [ "$(row "$P" session-dirs "$W/s-dirty" | cut -f3)" -ge 2048 ] && ok "over-window keep is sized" || bad "over-window keep unsized"
 case "$(row "$P" session-dirs "$W/s-week")" in *$'\tkeep\t0\t'*$'\t1-7d\t'*) ok "keep inside the window is not sized";; *) bad "week row: $(row "$P" session-dirs "$W/s-week")";; esac
 [ -z "$(row "$P" build-artifacts "$W/s-fresh/pkg/node_modules")" ] && ok "recently touched folder gets no artifact row" || bad "artifact row for a fresh folder"
-case "$(row "$P" session-dirs "$W/s-denied")" in *$'\tkeep\t'*$'\trepo-walk-failed\t'*$'\t>7d\tsealed') ok "a failed walk keeps the folder as repo-walk-failed, blocker = the unreadable path";; *) bad "denied row: $(row "$P" session-dirs "$W/s-denied")";; esac
+case "$(row "$P" session-dirs "$W/s-denied")" in *$'\tkeep\t'*$'\trepo-walk-failed\t'*$'\t>7d\tnode_modules/sealed') ok "a failed walk keeps the folder as repo-walk-failed, blocker = the unreadable path";; *) bad "denied row: $(row "$P" session-dirs "$W/s-denied")";; esac
 case "$(row "$P" session-dirs "$W/s-stray")" in *$'\tkeep\t'*$'\tcontains-bare-or-separate-git-dir\t'*$'\t>7d\tvendor/pkg/HEAD') ok "a stray HEAD keep names the HEAD path as its blocker";; *) bad "stray row: $(row "$P" session-dirs "$W/s-stray")";; esac
 case "$(row "$P" session-dirs "$W/s-alive")" in *$'\tkeep\t'*$'\tsession-alive-in-registry\t'*$'\t>7d\t.') ok "a folder-level keep names . as its blocker";; *) bad "alive row: $(row "$P" session-dirs "$W/s-alive")";; esac
 
@@ -63,7 +63,7 @@ bash "$HYG" report "$P" > "$FX/report" 2>/dev/null
 /usr/bin/grep -qF "$(printf 'kept-over-window\tnested-dirty-uncommitted-work\tnest/inner\t%s' "$W/s-dirty")" "$FX/report" && ok "report names the over-window keep" || bad "report keep line"
 /usr/bin/grep -q "kept-over-window.*s-week" "$FX/report" && bad "report lists a folder inside the window" || ok "report leaves out folders inside the window"
 /usr/bin/grep -qF "$(printf 'kept-over-window\tcontains-bare-or-separate-git-dir\tvendor/pkg/HEAD\t%s' "$W/s-stray")" "$FX/report" && ok "report names the HEAD path that kept the folder" || bad "report stray line: $(grep s-stray "$FX/report")"
-/usr/bin/grep -qF "$(printf 'kept-over-window\trepo-walk-failed\tsealed\t%s' "$W/s-denied")" "$FX/report" && ok "report names the path a failed walk could not read" || bad "report denied line: $(grep s-denied "$FX/report")"
+/usr/bin/grep -qF "$(printf 'kept-over-window\trepo-walk-failed\tnode_modules/sealed\t%s' "$W/s-denied")" "$FX/report" && ok "report names the path a failed walk could not read" || bad "report denied line: $(grep s-denied "$FX/report")"
 /usr/bin/grep -qF "$(printf 'kept-over-window\tsession-alive-in-registry\t.\t%s' "$W/s-alive")" "$FX/report" && ok "report prints . for a folder-level keep" || bad "report alive line: $(grep s-alive "$FX/report")"
 /usr/bin/awk -F'\t' '$1=="kept-over-window" && $3=="-"{f=1} END{exit f}' "$FX/report" && ok "no over-window keep in the report prints -" || bad "a - blocker: $(grep kept-over-window "$FX/report")"
 

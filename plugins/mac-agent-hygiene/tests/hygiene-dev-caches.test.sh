@@ -135,20 +135,20 @@ grep -q '/avd' "$FX/plan.tsv" && bad "an AVD appeared in the plan" || ok "AVD ne
 [ "$(action_of "$HOME/Library/Caches/CocoaPods")" = remove ] && ok "idle CocoaPods cache → remove" || bad "cocoapods: $(grep CocoaPods "$FX/plan.tsv")"
 
 # --- linked worktrees need no gh: decided in the first plan
-[ "$(action_of "$HOME/code/wt/wt-on-branch")" = keep ] && grep -q $'\tnested-unpushed-commits\t'"$HOME/code/wt/wt-on-branch"'$' "$FX/plan.tsv" \
+[ "$(action_of "$HOME/code/wt/wt-on-branch")" = keep ] && grep -q $'\tnested-unpushed-commits\t'"$HOME/code/wt/wt-on-branch"$'\t' "$FX/plan.tsv" \
   && ok "default HYG_SESSION_PARENT_BRANCH_OK=0: worktree held only by a parent-repo branch → keep" || bad "wt-on-branch default: $(grep wt-on-branch "$FX/plan.tsv")"
 HYG_SESSION_PARENT_BRANCH_OK=1 bash "$HYG" plan > "$FX/plan-pb.tsv" 2>/dev/null
 [ "$(/usr/bin/awk -F'\t' -v p="$HOME/code/wt/wt-on-branch" '$5==p{print $2" "$4}' "$FX/plan-pb.tsv")" = "remove stale-session-all-nested-pushed" ] \
   && ok "HYG_SESSION_PARENT_BRANCH_OK=1: clean linked worktree on a parent-repo branch → remove" || bad "wt-on-branch gated: $(grep wt-on-branch "$FX/plan-pb.tsv")"
 [ "$(/usr/bin/awk -F'\t' -v p="$HOME/code/wt/wt-detached" '$5==p{print $2}' "$FX/plan-pb.tsv")" = keep ] && ok "gate on: detached HEAD no branch holds → still keep" || bad "wt-detached with gate on"
 [ "$(/usr/bin/awk -F'\t' -v p="$HOME/code/wt/wt-parent-inside" '$5==p{print $2}' "$FX/plan-pb.tsv")" = keep ] && ok "gate on: parent inside the session → still keep" || bad "wt-parent-inside with gate on"
-grep -q $'\tno-nested-repo\t'"$HOME/code/wt/res-notes"'$' "$FX/plan.tsv" && [ "$(action_of "$HOME/code/wt/res-notes")" = keep ] \
+grep -q $'\tno-nested-repo\t'"$HOME/code/wt/res-notes"$'\t' "$FX/plan.tsv" && [ "$(action_of "$HOME/code/wt/res-notes")" = keep ] \
   && ok "B2: stale session with no git repo → keep (no-nested-repo)" || bad "res-notes: $(grep res-notes "$FX/plan.tsv")"
-grep -q $'\tnested-clone-has-live-worktree-outside\t'"$HOME/code/wt/sess-parent"'$' "$FX/plan.tsv" && [ "$(action_of "$HOME/code/wt/sess-parent")" = keep ] \
+grep -q $'\tnested-clone-has-live-worktree-outside\t'"$HOME/code/wt/sess-parent"$'\t' "$FX/plan.tsv" && [ "$(action_of "$HOME/code/wt/sess-parent")" = keep ] \
   && ok "B3: clone with a live worktree outside the session → keep (clone-has-live-worktree-outside)" || bad "sess-parent: $(grep sess-parent "$FX/plan.tsv")"
 if [ "$REL_OK" = 1 ]; then
   # git writes extensions.relativeWorktrees, which is outside CFG_ALLOW_RE, so the allow-list keeps it first.
-  grep -qE $'\tnested-(clone-has-live-worktree-outside|repo-config-not-allowlisted)\t'"$HOME/code/wt/sess-parent-rel"'$' "$FX/plan.tsv" && [ "$(action_of "$HOME/code/wt/sess-parent-rel")" = keep ] \
+  grep -qE $'\tnested-(clone-has-live-worktree-outside|repo-config-not-allowlisted)\t'"$HOME/code/wt/sess-parent-rel"$'\t' "$FX/plan.tsv" && [ "$(action_of "$HOME/code/wt/sess-parent-rel")" = keep ] \
     && ok "B3: relative gitdir (useRelativePaths) → keep" || bad "sess-parent-rel: $(grep sess-parent-rel "$FX/plan.tsv")"
 else ok "B3-relative: SKIP (this git writes absolute gitdir paths)"; fi
 [ "$(action_of "$HOME/code/wt/bare-only")" = keep ] && ok "session holding only a bare repo → keep" || bad "bare-only: $(grep bare-only "$FX/plan.tsv")"

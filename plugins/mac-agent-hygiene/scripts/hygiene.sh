@@ -199,7 +199,7 @@ age_bucket(){ local t f e=() n; case "$1" in "$HYG_SESSION_ROOT"/*) ;; *) echo -
   t=$(top_folder "$1"); f="$TMPD/age-$(path_key "$t")"
   if [ ! -f "$f" ]; then
     while IFS= read -r n; do e+=( "$n" ); done < <(name_expr .git "${ARTIFACT_NAMES[@]}" .venv venv Pods DerivedData)
-    if [ -n "$(/usr/bin/find "$t" \( "${e[@]}" \) -prune -o -type f -mmin -1440 -print -quit 2>/dev/null)" ]; then echo '<1d' > "$f"
+    if touched_within_min "$t" 1440 .git "${ARTIFACT_NAMES[@]}" .venv venv Pods DerivedData; then echo '<1d' > "$f"
     elif [ -n "$(/usr/bin/find "$t" \( "${e[@]}" \) -prune -o -type f -mtime -"$HYG_REPORT_AGE_DAYS" -print -quit 2>/dev/null)" ]; then echo "1-${HYG_REPORT_AGE_DAYS}d" > "$f"
     else echo ">${HYG_REPORT_AGE_DAYS}d" > "$f"; fi
   fi; /bin/cat "$f"; }
