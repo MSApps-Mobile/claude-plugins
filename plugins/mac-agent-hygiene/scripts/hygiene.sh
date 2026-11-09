@@ -159,12 +159,18 @@ cwd_inside(){ local c; load_cwds; [ "$CWDS_BLIND" = 1 ] && return 0
 JQ="${HYG_JQ:-}"; if [ -z "$JQ" ]; then for c in /usr/bin/jq /opt/homebrew/bin/jq /usr/local/bin/jq; do [ -x "$c" ] && { JQ="$c"; break; }; done; fi
 # Sessions the routines registry does not call finished. Read ONCE per run. No registry ⇒ none alive
 # (cwd + idle still bind). A registry we cannot read ⇒ the sentinel "*" ⇒ all alive: no jq, bad JSON, a
-# truncated (0-byte) file, or any shape other than one array whose entries all carry a string .session.
+# truncated (0-byte) file, or any shape other than one array (or one non-empty object keyed by session)
+# whose entries all carry a string .session.
 ALIVE=""; ALIVE_LOADED=0
 load_alive(){ [ "$ALIVE_LOADED" = 1 ] && return 0; ALIVE_LOADED=1
   [ -e "$HYG_SESSIONS_JSON" ] || return 0
-  [ -n "$JQ" ] && ALIVE=$("$JQ" -rs 'if length == 1 and (.[0] | type) == "array" and (.[0] | all(type == "object" and (.session | type) == "string"))
-      then .[0][] | select(((.status // "") | IN("done","dead","stopped","failed","killed","finished")) | not) | .session
+  # Two shapes are read: an array of rows, or (the routines orchestrator since 2026-11) an object keyed by
+  # session whose every value is a row. Either way every row must be an object with a string .session.
+  [ -n "$JQ" ] && ALIVE=$("$JQ" -rs 'if length == 1 and ((.[0] | type) == "array" or ((.[0] | type) == "object" and (.[0] | length) > 0))
+      then (.[0] | if type == "object" then [.[]] else . end) as $rows
+        | if ($rows | all(type == "object" and (.session | type) == "string"))
+          then $rows[] | select(((.status // "") | IN("done","dead","stopped","failed","killed","finished")) | not) | .session
+          else error("unreadable registry") end
       else error("unreadable registry") end' "$HYG_SESSIONS_JSON" 2>/dev/null) || ALIVE="*"; }
 session_alive(){ local n s; n=$(/usr/bin/basename "$1"); load_alive
   [ "$ALIVE" = "*" ] && return 0

@@ -149,6 +149,18 @@ HYG_SESSIONS_JSON="$FX/empty.json" bash "$HYG" plan > "$FX/plan-empty.tsv" 2>/de
 /usr/bin/awk -F'\t' '$1=="session-dirs" && $2=="remove"{f=1} END{exit !f}' "$FX/plan-empty.tsv" \
   && ok "B7 an empty array stays a valid registry (a removal is still planned)" || bad "B7 [] should stay valid"
 
+# --- the orchestrator's object-keyed registry is read, not treated as unreadable (card hygiene-registry-object)
+cat > "$FX/obj.json" <<JSON
+{"clone-alive":{"session":"clone-alive","status":"running"},"clone-clean":{"session":"clone-clean","status":"done"}}
+JSON
+HYG_SESSIONS_JSON="$FX/obj.json" bash "$HYG" plan > "$FX/plan-obj.tsv" 2>/dev/null
+[ "$(act "$FX/plan-obj.tsv" "$W/clone-clean")" = remove ] && grep -q "session-alive-in-registry	$W/clone-alive	" "$FX/plan-obj.tsv" \
+  && ok "object-keyed registry: done session removable, running session kept" || bad "object registry: $(grep -E 'clone-(clean|alive)	' "$FX/plan-obj.tsv")"
+echo '{"x":{"session":"x","status":"running"},"y":"oops"}' > "$FX/obj-bad.json"
+HYG_SESSIONS_JSON="$FX/obj-bad.json" bash "$HYG" plan > "$FX/plan-objbad.tsv" 2>/dev/null
+/usr/bin/awk -F'\t' '($1=="session-dirs"||$1=="build-artifacts"||$1=="worktrees") && $2=="remove"{f=1} END{exit f}' "$FX/plan-objbad.tsv" \
+  && ok "object registry with a non-row value → nothing removed" || bad "bad object registry still removes"
+
 # --- apply: artifacts first, then sessions; dirty work and unpushed branches survive
 kill "$SLEEPER" 2>/dev/null; SLEEPER=""
 /usr/bin/awk -F'\t' '$2=="remove"{print $1"\t"$5}' "$P" > "$FX/apply.tsv"
