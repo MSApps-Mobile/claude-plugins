@@ -669,11 +669,14 @@ check_pkg(){ local m; for m in $HYG_PKG_CACHES; do
     REASON=refetchable-package-cache; return 0; done
   REASON=not-a-listed-package-cache; return 1; }
 gradle_running(){ /bin/ps -axo command= 2>/dev/null | /usr/bin/grep -v grep | /usr/bin/grep -qE 'GradleDaemon|GradleWrapperMain|gradle-launcher'; }
-uv_cache_dir(){ [ -n "$HYG_UV" ] && [ -x "$HYG_UV" ] && "$HYG_UV" cache dir 2>/dev/null; }
+UVD=""; UVD_LOADED=0   # asked once per run: one uv spawn per candidate made a 7,000-entry plan take 8 min
+uv_cache_dir(){ if [ "$UVD_LOADED" = 0 ]; then UVD_LOADED=1
+    [ -n "$HYG_UV" ] && [ -x "$HYG_UV" ] && UVD=$("$HYG_UV" cache dir 2>/dev/null); UVD="${UVD%/}"; fi
+  [ -n "$UVD" ] && printf '%s\n' "$UVD"; }
 check_devcache(){ local p="$1" parent m ok=1 uvd
   parent="$(dirname "$p")"
-  uvd=$(uv_cache_dir)
-  if [ -n "$uvd" ] && [ "$p" = "${uvd%/}" ]; then REASON=uv-cache-prune-unused-only; return 0; fi
+  uv_cache_dir >/dev/null; uvd="$UVD"
+  if [ -n "$uvd" ] && [ "$p" = "$uvd" ]; then REASON=uv-cache-prune-unused-only; return 0; fi
   case "$(basename "$p")" in com.*.ShipIt) [ "$parent" = "$HOME/Library/Caches" ] && ok=0;; esac
   for m in $HYG_DEV_CACHES; do [ "$parent" = "${m%/}" ] && ok=0; done
   [ "$ok" = 0 ] || { REASON=not-a-listed-dev-cache; return 1; }
@@ -716,10 +719,6 @@ candidates(){  # category<TAB>path
     for p in "$prof"/BrowserMetrics*; do [ -e "$p" ] && printf 'browser-caches\t%s\n' "$p"; done
   done
   for d in $HYG_MODEL_CACHES; do [ -d "$d" ] && printf 'model-caches\t%s\n' "${d%/}"; done
-  for d in $HYG_DEV_CACHES; do d="${d%/}"; [ -d "$d" ] && [ ! -L "$d" ] || continue
-    for p in "$d"/* "$d"/.[!.]*; do [ -e "$p" ] && printf 'dev-caches\t%s\n' "$p"; done; done
-  for d in "$HOME/Library/Caches"/com.*.ShipIt; do [ -d "$d" ] && printf 'dev-caches\t%s\n' "$d"; done
-  p=$(uv_cache_dir) && [ -n "$p" ] && [ -d "$p" ] && printf 'dev-caches\t%s\n' "${p%/}"
   list_worktrees | fair_order worktrees | while IFS= read -r d; do printf 'worktrees\t%s\n' "$d"; done
   list_artifacts | while IFS= read -r d; do printf 'build-artifacts\t%s\n' "$d"; done
   list_sessions | fair_order session-dirs | while IFS= read -r d; do printf 'session-dirs\t%s\n' "$d"; done
@@ -728,6 +727,11 @@ candidates(){  # category<TAB>path
   [ -x /usr/bin/xcrun ] && sim_unavailable_udids | while IFS= read -r u; do [ -d "$HYG_SIM_DEVICES/$u" ] && printf 'ios\t%s\n' "$HYG_SIM_DEVICES/$u"; done
   for d in "$HYG_ANDROID_HOME/cache"/*; do [ -e "$d" ] && printf 'android\t%s\n' "$d"; done
   for d in $HYG_PKG_CACHES; do [ -d "$d" ] && printf 'pkg-caches\t%s\n' "${d%/}"; done
+  # last: a big cache dir (7,000 Claude CLI log folders) must never eat the worktree / session-dirs budget
+  for d in $HYG_DEV_CACHES; do d="${d%/}"; [ -d "$d" ] && [ ! -L "$d" ] || continue
+    for p in "$d"/* "$d"/.[!.]*; do [ -e "$p" ] && printf 'dev-caches\t%s\n' "$p"; done; done
+  for d in "$HOME/Library/Caches"/com.*.ShipIt; do [ -d "$d" ] && printf 'dev-caches\t%s\n' "$d"; done
+  p=$(uv_cache_dir) && [ -n "$p" ] && [ -d "$p" ] && printf 'dev-caches\t%s\n' "${p%/}"
 }
 
 plan(){ local cat p k prev="" n=0 r=0 t0=$SECONDS dl=0 cut=0 action age
@@ -771,7 +775,7 @@ remove_item(){ local cat="$1" p="$2" common r commons=""
     /bin/rm -rf -- "$p" || return 1
     printf '%s' "$commons" | /usr/bin/sort -u | while IFS= read -r common; do
       [ -n "$common" ] && [ -d "$common" ] && GITS --git-dir="$common" worktree prune >/dev/null 2>&1; done
-  elif [ "$cat" = dev-caches ] && [ "$p" = "$(uv_cache_dir | /usr/bin/sed 's#/$##')" ]; then
+  elif [ "$cat" = dev-caches ] && uv_cache_dir >/dev/null && [ "$p" = "$UVD" ]; then
     UV_LOCK_TIMEOUT=15 "$HYG_UV" cache prune >>"$HYG_LOG" 2>&1 || return 1   # never --force, never rm
   elif [ "$cat" = ios ] && [ "$(dirname "$p")" = "$HYG_SIM_DEVICES" ]; then
     /usr/bin/xcrun simctl delete "$(basename "$p")" >>"$HYG_LOG" 2>&1 || return 1
