@@ -44,8 +44,10 @@ mkdir -p "$W/s-dirty/nest/inner"; clone "$W/s-dirty/nest/inner"; echo wip >> "$W
 clone "$W/s-clean"; old "$W/s-clean"
 mkdir -p "$W/s-week"; clone "$W/s-week/repo"; echo wip >> "$W/s-week/repo/a"; old "$W/s-week"; touch -t "$(/bin/date -v-3d +%Y%m%d%H%M)" "$W/s-week/repo/a"
 mkdir -p "$W/s-fresh/pkg/node_modules/x"; echo '{}' > "$W/s-fresh/pkg/package.json"; echo y > "$W/s-fresh/pkg/node_modules/x/y"
-mkdir -p "$W/s-denied/node_modules/sealed"; echo x > "$W/s-denied/f"; old "$W/s-denied"; chmod 000 "$W/s-denied/node_modules/sealed"
-mkdir -p "$W/s-unread/sealed"; echo x > "$W/s-unread/f"; old "$W/s-unread"; chmod 000 "$W/s-unread/sealed"   # CTO 5748467355 B1 / 5818823453 B3: idle 30 days, unreadable subfolder outside the pruned trees
+# CTO 5748467355 B1 / 5818823453 B3: the original fixture, idle 30 days with an unreadable subfolder outside the pruned trees.
+mkdir -p "$W/s-denied/sealed"; echo x > "$W/s-denied/f"; old "$W/s-denied"; chmod 000 "$W/s-denied/sealed"
+# Extra case: the unreadable folder sits in a pruned dependency tree, so only the repo inventory walk meets it.
+mkdir -p "$W/s-denied-deps/node_modules/sealed"; echo x > "$W/s-denied-deps/f"; old "$W/s-denied-deps"; chmod 000 "$W/s-denied-deps/node_modules/sealed"
 mkdir -p "$W/s-stray/vendor/pkg"; echo 'ref: refs/heads/main' > "$W/s-stray/vendor/pkg/HEAD"; echo x > "$W/s-stray/f"; old "$W/s-stray"
 mkdir -p "$W/s-alive"; echo x > "$W/s-alive/f"; old "$W/s-alive"
 
@@ -55,8 +57,8 @@ case "$(row "$P" session-dirs "$W/s-clean")" in *$'\tremove\t'*$'\t>7d\t') ok "r
 [ "$(row "$P" session-dirs "$W/s-dirty" | cut -f3)" -ge 2048 ] && ok "over-window keep is sized" || bad "over-window keep unsized"
 case "$(row "$P" session-dirs "$W/s-week")" in *$'\tkeep\t0\t'*$'\t1-7d\t'*) ok "keep inside the window is not sized";; *) bad "week row: $(row "$P" session-dirs "$W/s-week")";; esac
 [ -z "$(row "$P" build-artifacts "$W/s-fresh/pkg/node_modules")" ] && ok "recently touched folder gets no artifact row" || bad "artifact row for a fresh folder"
-case "$(row "$P" session-dirs "$W/s-denied")" in *$'\tkeep\t'*$'\trepo-walk-failed\t'*$'\t>7d\tnode_modules/sealed') ok "a failed walk keeps the folder as repo-walk-failed, blocker = the unreadable path";; *) bad "denied row: $(row "$P" session-dirs "$W/s-denied")";; esac
-case "$(row "$P" session-dirs "$W/s-unread")" in *$'\tkeep\t'*$'\ttouched-recently\t'*$'\t>7d\tsealed') ok "an unreadable subfolder keeps as touched-recently but reads >7d with the unreadable path as blocker (not <1d)";; *) bad "unread row: $(row "$P" session-dirs "$W/s-unread")";; esac
+case "$(row "$P" session-dirs "$W/s-denied")" in *$'\tkeep\t'*$'\ttouched-recently\t'*$'\t>7d\tsealed') ok "an unreadable subfolder keeps as touched-recently but reads >7d with the unreadable path as blocker (not <1d)";; *) bad "denied row: $(row "$P" session-dirs "$W/s-denied")";; esac
+case "$(row "$P" session-dirs "$W/s-denied-deps")" in *$'\tkeep\t'*$'\trepo-walk-failed\t'*$'\t>7d\tnode_modules/sealed') ok "a failed inventory walk keeps the folder as repo-walk-failed, blocker = the unreadable path";; *) bad "denied-deps row: $(row "$P" session-dirs "$W/s-denied-deps")";; esac
 case "$(row "$P" session-dirs "$W/s-stray")" in *$'\tkeep\t'*$'\tcontains-bare-or-separate-git-dir\t'*$'\t>7d\tvendor/pkg/HEAD') ok "a stray HEAD keep names the HEAD path as its blocker";; *) bad "stray row: $(row "$P" session-dirs "$W/s-stray")";; esac
 case "$(row "$P" session-dirs "$W/s-alive")" in *$'\tkeep\t'*$'\tsession-alive-in-registry\t'*$'\t>7d\t.') ok "a folder-level keep names . as its blocker";; *) bad "alive row: $(row "$P" session-dirs "$W/s-alive")";; esac
 
@@ -65,8 +67,8 @@ bash "$HYG" report "$P" > "$FX/report" 2>/dev/null
 /usr/bin/grep -qF "$(printf 'kept-over-window\tnested-dirty-uncommitted-work\tnest/inner\t%s' "$W/s-dirty")" "$FX/report" && ok "report names the over-window keep" || bad "report keep line"
 /usr/bin/grep -q "kept-over-window.*s-week" "$FX/report" && bad "report lists a folder inside the window" || ok "report leaves out folders inside the window"
 /usr/bin/grep -qF "$(printf 'kept-over-window\tcontains-bare-or-separate-git-dir\tvendor/pkg/HEAD\t%s' "$W/s-stray")" "$FX/report" && ok "report names the HEAD path that kept the folder" || bad "report stray line: $(grep s-stray "$FX/report")"
-/usr/bin/grep -qF "$(printf 'kept-over-window\trepo-walk-failed\tnode_modules/sealed\t%s' "$W/s-denied")" "$FX/report" && ok "report names the path a failed walk could not read" || bad "report denied line: $(grep s-denied "$FX/report")"
-/usr/bin/grep -qF "$(printf 'kept-over-window\ttouched-recently\tsealed\t%s' "$W/s-unread")" "$FX/report" && ok "report lists the unreadable-subfolder keep with its blocker" || bad "report unread line: $(grep s-unread "$FX/report")"
+/usr/bin/grep -qF "$(printf 'kept-over-window\ttouched-recently\tsealed\t%s' "$W/s-denied")" "$FX/report" && ok "report lists the unreadable-subfolder keep with its blocker" || bad "report denied line: $(grep s-denied "$FX/report")"
+/usr/bin/grep -qF "$(printf 'kept-over-window\trepo-walk-failed\tnode_modules/sealed\t%s' "$W/s-denied-deps")" "$FX/report" && ok "report names the path a failed inventory walk could not read" || bad "report denied-deps line: $(grep s-denied-deps "$FX/report")"
 /usr/bin/grep -qF "$(printf 'kept-over-window\tsession-alive-in-registry\t.\t%s' "$W/s-alive")" "$FX/report" && ok "report prints . for a folder-level keep" || bad "report alive line: $(grep s-alive "$FX/report")"
 /usr/bin/awk -F'\t' '$1=="kept-over-window" && $3=="-"{f=1} END{exit f}' "$FX/report" && ok "no over-window keep in the report prints -" || bad "a - blocker: $(grep kept-over-window "$FX/report")"
 
@@ -85,7 +87,7 @@ INNER
 [ "$(bash "$FX/hyg-dl.sh" 2>/dev/null)" = "440 510 720 0 0" ] && ok "each pass gets a share of what is left, cache passes and budget 0 have no limit" || bad "deadlines: $(bash "$FX/hyg-dl.sh" 2>&1)"
 
 # Fairness: the folder never scanned goes first
-mkdir -p "$FX/state"; printf '%s\t%s\n' "$W/s-clean" "$(/bin/date +%s)" "$W/s-week" "$(/bin/date +%s)" "$W/s-fresh" "$(/bin/date +%s)" "$W/s-denied" "$(/bin/date +%s)" "$W/s-unread" "$(/bin/date +%s)" "$W/s-stray" "$(/bin/date +%s)" "$W/s-alive" "$(/bin/date +%s)" > "$FX/state/scanned-session-dirs.tsv"
+mkdir -p "$FX/state"; printf '%s\t%s\n' "$W/s-clean" "$(/bin/date +%s)" "$W/s-week" "$(/bin/date +%s)" "$W/s-fresh" "$(/bin/date +%s)" "$W/s-denied" "$(/bin/date +%s)" "$W/s-denied-deps" "$(/bin/date +%s)" "$W/s-stray" "$(/bin/date +%s)" "$W/s-alive" "$(/bin/date +%s)" > "$FX/state/scanned-session-dirs.tsv"
 bash "$HYG" plan > "$FX/fair.tsv" 2>/dev/null
 [ "$(/usr/bin/awk -F'\t' '$1=="session-dirs"{print $5; exit}' "$FX/fair.tsv")" = "$W/s-dirty" ] && ok "the folder the last run did not reach goes first" || bad "fair order: $(awk -F'\t' '$1=="session-dirs"{print $5}' "$FX/fair.tsv")"
 [ -f "$FX/state/scanned-session-dirs.tsv" ] && /usr/bin/grep -qF "$W/s-dirty" "$FX/state/scanned-session-dirs.tsv" && ok "a scanned folder is recorded" || bad "scanned state not written"
