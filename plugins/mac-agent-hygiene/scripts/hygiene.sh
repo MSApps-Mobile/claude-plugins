@@ -53,6 +53,14 @@
 #   android          ~/.android/cache/* older than HYG_ANDROID_CACHE_AGE_DAYS. AVDs and SDK system images
 #                    are user data: reported by `status`, never removed.
 #   pkg-caches       ~/Library/Caches/CocoaPods, untouched for HYG_PKG_CACHE_AGE_DAYS (pod install refills it)
+#   dev-caches       what /mac-cleanup used to clear by hand on every run, now on the schedule: each ENTRY directly
+#                    inside a HYG_DEV_CACHES root (Chrome disk cache, pip, SwiftPM, node-gyp, Yarn, Homebrew, npm
+#                    _cacache, Claude Code CLI logs, Xcode + CoreSimulator caches, ~/.gradle/caches, Android build
+#                    cache) with no file written for HYG_DEV_CACHE_IDLE_HOURS; auto-update leftovers
+#                    ~/Library/Caches/com.*.ShipIt; and `uv cache prune` (unused entries only, 15 s lock wait,
+#                    never --force: uvx MCP servers run from that cache). Gradle entries wait while any Gradle runs,
+#                    Xcode and CoreSimulator entries while Xcode or Simulator runs. Never ~/.npm/_npx, browser
+#                    profiles, ms-playwright browsers, Archives or AVDs.
 #
 # Config: ~/.config/mac-agent-hygiene/config.env (optional). Environment variables win over the
 # config file, so an MCP call can override one value for one run.
@@ -61,7 +69,7 @@ set -u
 umask 077
 
 # ---------- configuration: defaults < config file < environment ----------
-VARS="HYG_LOG HYG_DERIVED_DATA HYG_PLUGIN_CACHE HYG_PLUGIN_CLONE_MIN_AGE_MIN HYG_PW_GLOB HYG_MODEL_CACHES HYG_MODEL_CACHE_AGE_DAYS HYG_WT_ROOT HYG_WT_GLOB HYG_WT_NESTED HYG_WT_DEPTH HYG_WT_AGE_DAYS HYG_WT_MERGED_PR_CHECK HYG_GIT HYG_GH HYG_GH_SHA_CHECK_MAX HYG_SESSION_ROOT HYG_SESSION_AGE_HOURS HYG_SESSION_PARENT_BRANCH_OK HYG_GRADLE_HOME HYG_GRADLE_AGE_DAYS HYG_DEVICE_SUPPORT HYG_DEVICE_SUPPORT_AGE_DAYS HYG_SIM_DEVICES HYG_ANDROID_HOME HYG_ANDROID_CACHE_AGE_DAYS HYG_ANDROID_SDK HYG_PKG_CACHES HYG_PKG_CACHE_AGE_DAYS HYG_LOCK HYG_SESSIONS_JSON HYG_ARTIFACT_IDLE_HOURS HYG_ARTIFACT_DEPTH HYG_JQ HYG_LSOF HYG_PLAN_BUDGET_MIN HYG_REPORT_AGE_DAYS HYG_STATE_DIR"
+VARS="HYG_LOG HYG_DERIVED_DATA HYG_PLUGIN_CACHE HYG_PLUGIN_CLONE_MIN_AGE_MIN HYG_PW_GLOB HYG_MODEL_CACHES HYG_MODEL_CACHE_AGE_DAYS HYG_WT_ROOT HYG_WT_GLOB HYG_WT_NESTED HYG_WT_DEPTH HYG_WT_AGE_DAYS HYG_WT_MERGED_PR_CHECK HYG_GIT HYG_GH HYG_GH_SHA_CHECK_MAX HYG_SESSION_ROOT HYG_SESSION_AGE_HOURS HYG_SESSION_PARENT_BRANCH_OK HYG_GRADLE_HOME HYG_GRADLE_AGE_DAYS HYG_DEVICE_SUPPORT HYG_DEVICE_SUPPORT_AGE_DAYS HYG_SIM_DEVICES HYG_ANDROID_HOME HYG_ANDROID_CACHE_AGE_DAYS HYG_ANDROID_SDK HYG_PKG_CACHES HYG_PKG_CACHE_AGE_DAYS HYG_DEV_CACHES HYG_DEV_CACHE_IDLE_HOURS HYG_UV HYG_LOCK HYG_SESSIONS_JSON HYG_ARTIFACT_IDLE_HOURS HYG_ARTIFACT_DEPTH HYG_JQ HYG_LSOF HYG_PLAN_BUDGET_MIN HYG_REPORT_AGE_DAYS HYG_STATE_DIR"
 for v in $VARS; do eval "ENV_$v=\"\${$v-}\""; done
 CONF="${XDG_CONFIG_HOME:-$HOME/.config}/mac-agent-hygiene/config.env"
 # shellcheck disable=SC1090
@@ -101,9 +109,12 @@ HYG_ANDROID_CACHE_AGE_DAYS="${HYG_ANDROID_CACHE_AGE_DAYS:-7}"
 HYG_ANDROID_SDK="${HYG_ANDROID_SDK:-$HOME/Library/Android/sdk}"
 HYG_PKG_CACHES="${HYG_PKG_CACHES-$HOME/Library/Caches/CocoaPods}"
 HYG_PKG_CACHE_AGE_DAYS="${HYG_PKG_CACHE_AGE_DAYS:-30}"
+HYG_DEV_CACHES="${HYG_DEV_CACHES-$HOME/Library/Caches/Google $HOME/Library/Caches/pip $HOME/Library/Caches/org.swift.swiftpm $HOME/Library/Caches/node-gyp $HOME/Library/Caches/Yarn $HOME/Library/Caches/Homebrew $HOME/Library/Caches/claude-cli-nodejs $HOME/Library/Caches/com.apple.dt.Xcode $HOME/Library/Developer/CoreSimulator/Caches $HOME/.npm/_cacache $HOME/.gradle/caches $HOME/.android/build-cache}"
+HYG_DEV_CACHE_IDLE_HOURS="${HYG_DEV_CACHE_IDLE_HOURS:-24}"
+HYG_UV="${HYG_UV-}"; if [ -z "$HYG_UV" ]; then for c in "$HOME/.local/bin/uv" /opt/homebrew/bin/uv /usr/local/bin/uv; do [ -x "$c" ] && { HYG_UV="$c"; break; }; done; fi
 HYG_LOCK="${HYG_LOCK:-${TMPDIR:-/tmp}/mac-agent-hygiene-$(/usr/bin/id -u).lock}"   # per user: /tmp is shared when TMPDIR is unset
 HYG_DERIVED_DATA="${HYG_DERIVED_DATA%/}"; HYG_PLUGIN_CACHE="${HYG_PLUGIN_CACHE%/}"
-case "$HYG_WT_AGE_DAYS$HYG_MODEL_CACHE_AGE_DAYS$HYG_PLUGIN_CLONE_MIN_AGE_MIN$HYG_WT_DEPTH$HYG_SESSION_AGE_HOURS$HYG_GRADLE_AGE_DAYS$HYG_DEVICE_SUPPORT_AGE_DAYS$HYG_ANDROID_CACHE_AGE_DAYS$HYG_PKG_CACHE_AGE_DAYS$HYG_GH_SHA_CHECK_MAX$HYG_ARTIFACT_IDLE_HOURS$HYG_ARTIFACT_DEPTH$HYG_PLAN_BUDGET_MIN$HYG_REPORT_AGE_DAYS" in *[!0-9]*) echo "age settings must be integers" >&2; exit 2;; esac
+case "$HYG_WT_AGE_DAYS$HYG_MODEL_CACHE_AGE_DAYS$HYG_PLUGIN_CLONE_MIN_AGE_MIN$HYG_WT_DEPTH$HYG_SESSION_AGE_HOURS$HYG_GRADLE_AGE_DAYS$HYG_DEVICE_SUPPORT_AGE_DAYS$HYG_ANDROID_CACHE_AGE_DAYS$HYG_PKG_CACHE_AGE_DAYS$HYG_DEV_CACHE_IDLE_HOURS$HYG_GH_SHA_CHECK_MAX$HYG_ARTIFACT_IDLE_HOURS$HYG_ARTIFACT_DEPTH$HYG_PLAN_BUDGET_MIN$HYG_REPORT_AGE_DAYS" in *[!0-9]*) echo "age settings must be integers" >&2; exit 2;; esac
 case "$HYG_SESSION_PARENT_BRANCH_OK" in 0|1) ;; *) echo "HYG_SESSION_PARENT_BRANCH_OK must be 0 or 1" >&2; exit 2;; esac
 
 GIT="${HYG_GIT:-}"
@@ -657,6 +668,24 @@ check_pkg(){ local m; for m in $HYG_PKG_CACHES; do
     [ -n "$(/usr/bin/find "$1" -type f -mtime -"$HYG_PKG_CACHE_AGE_DAYS" -print -quit 2>/dev/null)" ] && { REASON=used-recently; return 1; }
     REASON=refetchable-package-cache; return 0; done
   REASON=not-a-listed-package-cache; return 1; }
+gradle_running(){ /bin/ps -axo command= 2>/dev/null | /usr/bin/grep -v grep | /usr/bin/grep -qE 'GradleDaemon|GradleWrapperMain|gradle-launcher'; }
+UVD=""; UVD_LOADED=0   # asked once per run: one uv spawn per candidate made a 7,000-entry plan take 8 min
+uv_cache_dir(){ if [ "$UVD_LOADED" = 0 ]; then UVD_LOADED=1
+    [ -n "$HYG_UV" ] && [ -x "$HYG_UV" ] && UVD=$("$HYG_UV" cache dir 2>/dev/null); UVD="${UVD%/}"; fi
+  [ -n "$UVD" ] && printf '%s\n' "$UVD"; }
+check_devcache(){ local p="$1" parent m ok=1 uvd
+  parent="$(dirname "$p")"
+  uv_cache_dir >/dev/null; uvd="$UVD"
+  if [ -n "$uvd" ] && [ "$p" = "$uvd" ]; then REASON=uv-cache-prune-unused-only; return 0; fi
+  case "$(basename "$p")" in com.*.ShipIt) [ "$parent" = "$HOME/Library/Caches" ] && ok=0;; esac
+  for m in $HYG_DEV_CACHES; do [ "$parent" = "${m%/}" ] && ok=0; done
+  [ "$ok" = 0 ] || { REASON=not-a-listed-dev-cache; return 1; }
+  [ -L "$p" ] && { REASON=symlink; return 1; }
+  case "$p" in "$HYG_GRADLE_HOME"/caches/*) gradle_running && { REASON=gradle-running; return 1; };; esac
+  case "$p" in "$HOME/Library/Caches/com.apple.dt.Xcode"/*|"$HOME/Library/Developer/CoreSimulator/Caches"/*)
+    { xcode_building || simulator_running; } && { REASON=xcode-or-simulator-running; return 1; };; esac
+  [ -n "$(/usr/bin/find "$p" -mmin -"$((HYG_DEV_CACHE_IDLE_HOURS*60))" -print -quit 2>/dev/null)" ] && { REASON=used-recently; return 1; }
+  REASON=regenerable-dev-cache; return 0; }
 
 # L2: the path must be physical under its category's root: no symlink as the leaf or as any component, or
 # `git worktree remove` / `rm -rf` act on whatever the link points at. Resolved in check_item (plan AND apply) and
@@ -677,7 +706,7 @@ check_item_inner(){
   case "$1" in
     derived-data) check_derived "$2";; plugin-clones) check_clone "$2";; browser-caches) check_pwcache "$2";;
     model-caches) check_model "$2";; worktrees) check_worktree "$2";; session-dirs) check_session "$2";; build-artifacts) check_artifact "$2";;
-    gradle) check_gradle "$2";; ios) check_ios "$2";; android) check_android "$2";; pkg-caches) check_pkg "$2";;
+    gradle) check_gradle "$2";; ios) check_ios "$2";; android) check_android "$2";; pkg-caches) check_pkg "$2";; dev-caches) check_devcache "$2";;
     *) REASON=unknown-category; return 1;; esac; }
 
 # ---------- candidates ----------
@@ -698,6 +727,11 @@ candidates(){  # category<TAB>path
   [ -x /usr/bin/xcrun ] && sim_unavailable_udids | while IFS= read -r u; do [ -d "$HYG_SIM_DEVICES/$u" ] && printf 'ios\t%s\n' "$HYG_SIM_DEVICES/$u"; done
   for d in "$HYG_ANDROID_HOME/cache"/*; do [ -e "$d" ] && printf 'android\t%s\n' "$d"; done
   for d in $HYG_PKG_CACHES; do [ -d "$d" ] && printf 'pkg-caches\t%s\n' "${d%/}"; done
+  # last: a big cache dir (7,000 Claude CLI log folders) must never eat the worktree / session-dirs budget
+  for d in $HYG_DEV_CACHES; do d="${d%/}"; [ -d "$d" ] && [ ! -L "$d" ] || continue
+    for p in "$d"/* "$d"/.[!.]*; do [ -e "$p" ] && printf 'dev-caches\t%s\n' "$p"; done; done
+  for d in "$HOME/Library/Caches"/com.*.ShipIt; do [ -d "$d" ] && printf 'dev-caches\t%s\n' "$d"; done
+  p=$(uv_cache_dir) && [ -n "$p" ] && [ -d "$p" ] && printf 'dev-caches\t%s\n' "${p%/}"
 }
 
 plan(){ local cat p k prev="" n=0 r=0 t0=$SECONDS dl=0 cut=0 action age
@@ -741,17 +775,20 @@ remove_item(){ local cat="$1" p="$2" common r commons=""
     /bin/rm -rf -- "$p" || return 1
     printf '%s' "$commons" | /usr/bin/sort -u | while IFS= read -r common; do
       [ -n "$common" ] && [ -d "$common" ] && GITS --git-dir="$common" worktree prune >/dev/null 2>&1; done
+  elif [ "$cat" = dev-caches ] && uv_cache_dir >/dev/null && [ "$p" = "$UVD" ]; then
+    UV_LOCK_TIMEOUT=15 "$HYG_UV" cache prune >>"$HYG_LOG" 2>&1 || return 1   # never --force, never rm
   elif [ "$cat" = ios ] && [ "$(dirname "$p")" = "$HYG_SIM_DEVICES" ]; then
     /usr/bin/xcrun simctl delete "$(basename "$p")" >>"$HYG_LOG" 2>&1 || return 1
   else /bin/rm -rf -- "$p" || return 1; fi; return 0; }
 
-apply(){ local file="$1" cat p k freed=0 n=0 refused=0
+apply(){ local file="$1" cat p k a freed=0 n=0 refused=0
   [ -f "$file" ] || { echo "apply: plan file not found" >&2; exit 2; }
   drop_run_caches
   while IFS=$'\t' read -r cat p; do
     [ -n "$p" ] || continue
     if check_item "$cat" "$p"; then k=$(kb "$p"); [ -n "$k" ] || k=0
-      if remove_item "$cat" "$p"; then emit "$cat" removed "$k" "$REASON" "$p"; log "removed [$cat] $((k/1024))MB $REASON $p"; freed=$((freed+k)); n=$((n+1))
+      if remove_item "$cat" "$p"; then [ -e "$p" ] && { a=$(kb "$p"); k=$((k-${a:-0})); [ "$k" -ge 0 ] || k=0; }   # a prune leaves the dir: count only what went
+        emit "$cat" removed "$k" "$REASON" "$p"; log "removed [$cat] $((k/1024))MB $REASON $p"; freed=$((freed+k)); n=$((n+1))
       else emit "$cat" refused "$k" remove-failed "$p"; refused=$((refused+1)); fi
     else emit "$cat" refused 0 "$REASON" "$p"; refused=$((refused+1)); fi
   done < "$file"
