@@ -18,7 +18,7 @@
 #                        survives apply (discovery answers from the outer repo)
 #   L1   KNOWN-NEGATIVE  repo config that makes git run a program during plan/apply never runs it:
 #                        remote.origin.uploadpack + partial clone, and log.showSignature + gpg.program
-#   L1   KNOWN-POSITIVE  a plain config (gh-style clone) is still removable
+#   L1   KNOWN-POSITIVE  a plain config (gh-style clone), or one with a github insteadOf + rerere, is still removable
 #   L2   KNOWN-NEGATIVE  a symlink standing where apply will remove (worktree path, a component of it, a
 #                        session folder, an artifact path): a file outside survives apply
 set -u
@@ -124,6 +124,12 @@ printf '#!/bin/sh\ncase "$*" in *"pr list"*) echo "l1-sig 0000000000000000000000
 # control: the config a gh/git clone really has (+ user and branch tracking) is NOT blocked
 mkrepo "$W/l1-plain" l1-plain; git -C "$W/l1-plain" config user.name t; git -C "$W/l1-plain" config branch.l1-plain.remote origin
 git -C "$W/l1-plain" config branch.l1-plain.merge refs/heads/l1-plain; git -C "$W/l1-plain" config remote.origin.gh-resolved base; old "$W/l1-plain"
+# control: a github https-for-ssh rewrite + rerere (what ~/code/opsagent and opsagents-maya carry) is NOT blocked
+mkrepo "$W/l1-insteadof" l1-insteadof; git -C "$W/l1-insteadof" config url.https://github.com/.insteadOf git@github.com:
+git -C "$W/l1-insteadof" config rerere.enabled true; old "$W/l1-insteadof"
+# trap: an insteadOf whose base is not github (ext:: names a command transport) stays blocked
+CANARY_C="$FX/canary-ext"; printf '#!/bin/sh\necho ran >> "%s"\nexit 1\n' "$CANARY_C" > "$FX/canaryC.sh"; chmod +x "$FX/canaryC.sh"
+mkrepo "$W/l1-ext" l1-ext; git -C "$W/l1-ext" config "url.ext::$FX/canaryC.sh %S.insteadOf" "$FX/origin.git"; old "$W/l1-ext"
 
 # ---------------- L2 fixtures (a symlink where apply removes) ----------------
 OUT="$FX/outside"; mkdir -p "$OUT"
@@ -227,6 +233,9 @@ HYG_WT_MERGED_PR_CHECK=1 HYG_GH="$FX/gh-stub" plan "$FX/plan-l1.tsv"
 case "$(row "$FX/plan-l1.tsv" session-dirs "$W/l1-promisor")" in keep/*) ok "L1 the promisor clone is kept";; *) bad "L1 promisor: $(row "$FX/plan-l1.tsv" session-dirs "$W/l1-promisor")";; esac
 case "$(row "$FX/plan-l1.tsv" worktrees "$W/l1-sig")" in keep/*) ok "L1 the signed-commit worktree is kept";; *) bad "L1 sig: $(row "$FX/plan-l1.tsv" worktrees "$W/l1-sig")";; esac
 expect session-dirs "$W/l1-plain" "remove/stale-session-all-nested-pushed" "L1 control: a plain gh-style config is not blocked"
+expect session-dirs "$W/l1-insteadof" "remove/stale-session-all-nested-pushed" "L1 control: github insteadOf + rerere.enabled is not blocked"
+case "$(row "$FX/plan-l1.tsv" session-dirs "$W/l1-ext")" in keep/*) ok "L1 a non-github insteadOf base (ext::) is kept";; *) bad "L1 ext insteadOf: $(row "$FX/plan-l1.tsv" session-dirs "$W/l1-ext")";; esac
+[ -e "$CANARY_C" ] && bad "L1 ext:: insteadOf: the canary RAN during plan" || ok "L1 ext:: insteadOf canary did not run during plan"
 # the same on apply: hand-written plan lines for the two trap repos
 rm -f "$CANARY_A" "$CANARY_B"
 printf 'session-dirs\t%s\nworktrees\t%s\n' "$W/l1-promisor" "$W/l1-sig" > "$FX/apply-l1.tsv"

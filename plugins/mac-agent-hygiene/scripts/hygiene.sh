@@ -344,7 +344,9 @@ GITS(){ GIT_CONFIG_NOSYSTEM=1 "$GIT" --no-optional-locks -c core.fsmonitor=false
 # deny-list of them cannot be finished (card w1t7IqUt: both of the last two ran a canary during `plan` at
 # 923f715 while the deny-list passed). So this is an ALLOW-list: a repo whose config holds ANY key outside
 # CFG_ALLOW_RE, or whose config cannot be listed, is KEPT unread. -c overrides in GITS stay as a second layer.
-CFG_ALLOW_RE='^(core\.(repositoryformatversion|filemode|bare|logallrefupdates|ignorecase|precomposeunicode|symlinks|worktree)|extensions\.worktreeconfig|remote\..+\.(url|pushurl|fetch|tagopt|prune|gh-resolved)|branch\..+\.(remote|merge|rebase|description|vscode-merge-base|github-pr-owner-number)|user\.(name|email)|init\.defaultbranch|pull\.(rebase|ff)|push\.(default|autosetupremote)|fetch\.prune)$'
+# url.<base>.insteadOf passes ONLY when <base> (the URL git substitutes in) is plain github.com: any other
+# base, e.g. ext::<cmd>, can name a transport that runs a program. rerere acts only on merge/rebase.
+CFG_ALLOW_RE='^(core\.(repositoryformatversion|filemode|bare|logallrefupdates|ignorecase|precomposeunicode|symlinks|worktree)|extensions\.worktreeconfig|remote\..+\.(url|pushurl|fetch|tagopt|prune|gh-resolved)|branch\..+\.(remote|merge|rebase|description|vscode-merge-base|github-pr-owner-number)|user\.(name|email)|init\.defaultbranch|pull\.(rebase|ff)|push\.(default|autosetupremote)|fetch\.prune|url\.(https://github\.com/|git@github\.com:|ssh://git@github\.com/)\.insteadof|rerere\.(enabled|autoupdate))$'
 repo_config_unvetted(){ local gd wd f out
   gd=$(GITS -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) || return 0
   wd=$(GITS -C "$1" rev-parse --path-format=absolute --git-dir 2>/dev/null) || return 0
