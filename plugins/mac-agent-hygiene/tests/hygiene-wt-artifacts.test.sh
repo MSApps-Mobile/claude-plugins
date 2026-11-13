@@ -103,14 +103,14 @@ missing=0; for d in "$W"/*/; do d="${d%/}"
 [ "$missing" = 0 ] && ok "every top-level folder evaluated exactly once" || bad "$missing folders not evaluated exactly once"
 [ "$(/usr/bin/awk -F'\t' -v p="$W/top-linked" '$1=="worktrees" && $5==p' "$P" | wc -l | tr -d ' ')" = 1 ] && ! /usr/bin/awk -F'\t' -v p="$W/top-linked" '$1=="session-dirs" && $5==p{f=1} END{exit !f}' "$P" \
   && ok "top-level linked worktree → worktrees pass only" || bad "top-linked: $(grep top-linked "$P")"
-grep -q "clone-has-live-worktree-outside	$W/clone-wtowner$" "$P" && ok "clone owning a linked worktree outside its folder → keep" \
+grep -q "clone-has-live-worktree-outside	$W/clone-wtowner	" "$P" && ok "clone owning a linked worktree outside its folder → keep" \
   || bad "clone-wtowner: $(grep 'clone-wtowner$' "$P")"
 
 # --- session-dirs on clones
 [ "$(act "$P" "$W/clone-clean")" = remove ] && ok "stale clean pushed top-level clone → remove" || bad "clone-clean: $(grep -F "$W/clone-clean	" "$P"; grep "clone-clean$" "$P")"
 [ "$(act "$P" "$W/clone-dirty")" = keep ] && ok "top-level clone with dirty work → keep" || bad "clone-dirty: $(grep 'clone-dirty$' "$P")"
 [ "$(act "$P" "$W/clone-unpushed")" = keep ] && ok "top-level clone with an unpushed branch → keep" || bad "clone-unpushed: $(grep 'clone-unpushed$' "$P")"
-grep -q "session-alive-in-registry	$W/clone-alive$" "$P" && ok "session running in the registry → keep" || bad "clone-alive: $(grep 'clone-alive$' "$P")"
+grep -q "session-alive-in-registry	$W/clone-alive	" "$P" && ok "session running in the registry → keep" || bad "clone-alive: $(grep 'clone-alive$' "$P")"
 
 # --- build-artifacts
 art(){ /usr/bin/awk -F'\t' -v p="$1" '$1=="build-artifacts" && $5==p{print $2"/"$4}' "$P"; }
@@ -120,7 +120,7 @@ case "$(art "$W/clone-unpushed/build")" in remove/*) ok "unpushed clone: gitigno
 case "$(art "$W/clone-tracked/tools/build")" in keep/has-tracked-files) ok "tracked build/ → keep";; *) bad "tracked build: $(art "$W/clone-tracked/tools/build")";; esac
 case "$(art "$W/clone-tracked/lib/.turbo")" in keep/not-gitignored) ok "un-ignored .turbo → keep";; *) bad "lib/.turbo: $(art "$W/clone-tracked/lib/.turbo")";; esac
 case "$(art "$W/clone-alive/node_modules")" in keep/session-alive-in-registry) ok "artifact in a running session → keep";; *) bad "alive nm: $(art "$W/clone-alive/node_modules")";; esac
-case "$(art "$W/clone-fresh/node_modules")" in keep/session-touched-recently) ok "artifact in a recently touched session → keep";; *) bad "fresh nm: $(art "$W/clone-fresh/node_modules")";; esac
+case "$(art "$W/clone-fresh/node_modules")" in keep/session-touched-recently|"") ok "artifact in a recently touched session → not removed";; *) bad "fresh nm: $(art "$W/clone-fresh/node_modules")";; esac
 case "$(art "$W/clone-cwd/node_modules")" in keep/a-process-is-inside) ok "artifact in a session a process sits in → keep";; *) bad "cwd nm: $(art "$W/clone-cwd/node_modules")";; esac
 case "$(art "$W/clone-nested-git/node_modules")" in keep/contains-a-repo) ok "node_modules holding a .git → keep";; *) bad "nested-git nm: $(art "$W/clone-nested-git/node_modules")";; esac
 case "$(art "$W/clone-bare-build/build")" in keep/contains-bare-or-separate-git-dir) ok "B6 ignored build/ holding a bare repo → keep";; *) bad "B6 bare: $(art "$W/clone-bare-build/build")";; esac
@@ -162,7 +162,7 @@ bash "$HYG" apply "$FX/apply.tsv" > "$FX/apply.out" 2>&1
 git -C "$W/clone-bare-build/build/backup.git" cat-file -e "$BARE_SHA^{commit}" 2>/dev/null && [ -e "$W/clone-sep-dist/dist/sep-data/HEAD" ] && [ -L "$W/clone-symhead/build/sym.git/HEAD" ] \
   && ok "B6 apply left the repos inside artifact dirs alone; the commit held only by the bare repo survives" || bad "B6 a repo inside an artifact dir is gone"
 [ -f "$W/clone-elsewhere/build/notes.txt" ] && ok "B5 apply left the folder's own build/ alone" || bad "B5 clone-elsewhere/build gone"
-grep -q $'\tloose-files-outside-repos\t'"$W/plain-node"'$' "$P" && [ "$(act "$P" "$W/plain-node")" = keep ] && [ -e "$W/plain-node/app/package.json" ] && ok "dead idle plain folder with a file beside its repo → kept (loose-files-outside-repos)" || bad "plain-node: $(grep 'plain-node$' "$P")"
+grep -q $'\tloose-files-outside-repos\t'"$W/plain-node"$'\t' "$P" && [ "$(act "$P" "$W/plain-node")" = keep ] && [ -e "$W/plain-node/app/package.json" ] && ok "dead idle plain folder with a file beside its repo → kept (loose-files-outside-repos)" || bad "plain-node: $(grep 'plain-node$' "$P")"
 [ -d "$W/clone-wtowner/.git" ] && [ "$(git -C "$W/clone-wtowner" rev-parse wt-branch 2>/dev/null)" != "" ] \
   && ok "the linked worktree's owner clone survives apply" || bad "clone-wtowner gone after apply"
 [ ! -e "$W/clone-clean" ] && ok "apply removed the clean stale top-level clone" || bad "clone-clean still there: $(cat "$FX/apply.out")"

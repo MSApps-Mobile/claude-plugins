@@ -55,7 +55,9 @@ case "$ACTION" in
     ;;
   install)
     mkdir -p "$HOME/Library/LaunchAgents" "$HOME/Library/Logs" "$SHARE" || exit 1
-    /bin/cp "$HERE/hygiene.sh" "$STABLE_SCRIPT" && chmod 700 "$STABLE_SCRIPT" || { echo "copy failed" >&2; exit 1; }
+    # Temp file + mv, never cp over it: bash reads a script by offset, so an in-place copy corrupts a running job.
+    /bin/cp "$HERE/hygiene.sh" "$STABLE_SCRIPT.new.$$" && chmod 700 "$STABLE_SCRIPT.new.$$" && /bin/mv -f "$STABLE_SCRIPT.new.$$" "$STABLE_SCRIPT" \
+      || { /bin/rm -f "$STABLE_SCRIPT.new.$$"; echo "copy failed" >&2; exit 1; }
     tmp="$PLIST.tmp"; render > "$tmp" && /usr/bin/plutil -lint "$tmp" >/dev/null && mv "$tmp" "$PLIST" || { /bin/rm -f "$tmp"; echo "render failed" >&2; exit 1; }
     loaded "$LABEL" && /bin/launchctl bootout "gui/$UID_N/$LABEL" 2>/dev/null
     if loaded "$LEGACY_LABEL"; then

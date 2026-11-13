@@ -11,7 +11,9 @@ const fs = require('node:fs');
 const os = require('node:os');
 
 const SCRIPTS = path.resolve(__dirname, '..', 'scripts');
-const HYGIENE = path.join(SCRIPTS, 'hygiene.sh');
+// The LaunchAgent's copy is what really runs on this Mac; a plugin cache can lag it by several versions.
+const INSTALLED = path.join(os.homedir(), '.local', 'share', 'mac-agent-hygiene', 'hygiene.sh');
+const HYGIENE = fs.existsSync(INSTALLED) ? INSTALLED : path.join(SCRIPTS, 'hygiene.sh');
 const LAUNCHD = path.join(SCRIPTS, 'install-launchd.sh');
 const PLAN_TTL_MS = 30 * 60 * 1000;
 const plans = new Map(); // plan_id → { at, items }
@@ -68,7 +70,7 @@ function sh(file, args, env) {
 }
 const SUPPORTED_PROTOCOLS = ['2024-11-05', '2025-03-26', '2025-06-18'];
 const tsv = (out) => out.split('\n').filter(Boolean).map((l) => l.split('\t'));
-const planItems = (out) => tsv(out).map(([category, action, kb, reason, p]) => ({ category, action, kb: Number(kb) || 0, reason, path: p }));
+const planItems = (out) => tsv(out).map(([category, action, kb, reason, p, age, blocker]) => ({ category, action, kb: Number(kb) || 0, reason, path: p, age, blocker }));
 const planId = (items) => createHash('sha1').update(items.filter((i) => i.action === 'remove').map((i) => i.category + '\t' + i.path).sort().join('\n')).digest('hex').slice(0, 16);
 const mb = (kb) => Math.round(kb / 1024);
 
