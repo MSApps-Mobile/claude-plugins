@@ -74,7 +74,8 @@ other than one array whose entries all carry a string `.session`. A missing regi
 
 `build-artifacts` removes `node_modules`, `.next`, `dist`, `build`, `.turbo`, `coverage` from a session folder
 idle `HYG_ARTIFACT_IDLE_HOURS`: inside a repo only when git-ignored with no tracked file; outside a repo only
-`node_modules`, `.next` or `.turbo` beside a `package.json`. A dir holding any repo is kept.
+`node_modules`, `.next` or `.turbo` beside a `package.json`. A dir holding any repo is kept, and so is one
+whose repo git finds above the session folder (`repo-above-session-folder`, below).
 
 **What these guards do not read, and which goes with the `rm -rf`:**
 
@@ -202,6 +203,18 @@ the outer repo, so `ls-files` and `check-ignore` describe the outer repo. `check
 artifact's folder up to, and excluding, the top level git found, and keeps (`git-cannot-read-repo`) on any `.git`
 entry on the way. Fixtures: a pushed clone ignoring `node_modules/`, holding `sub/` with a dirty force-tracked
 `sub/node_modules` file, and `sub/.git/HEAD` deleted or `sub/.git` emptied; the edit survives apply.
+
+## A repo above the session folder never answers for it (PR #80 review B4)
+
+A session folder with no repo of its own is not "outside a repo" to git: discovery climbs past it to any ancestor
+repo, such as a dotfiles repo at `~` (often with `.gitignore` = `*`) or a `~/code` repo ignoring `wt/`. That repo's
+`ls-files` and `check-ignore` then call `build/`, `dist/` or `coverage/` ignored build output, though their files
+exist nowhere else. `check_artifact` therefore keeps (`repo-above-session-folder`) unless the top level git resolves
+is the session folder or lies below it. It does not fall through to the no-repo `package.json` rule either: the
+ancestor repo may track files there. This and the B3 walk guard against the same mistake, trusting a repo that is
+not this dir's repo. `tests/hygiene-wt-ancestor-repo.test.sh`: `~/.git` ignoring `*` and `~/code/.git` ignoring
+`wt/`, plain `build/`, `dist/` and `node_modules` beside a `package.json` are kept and survive apply; a session
+folder that is a repo, and a repo nested in one, still lose their ignored `dist/`.
 
 ## Developer caches
 

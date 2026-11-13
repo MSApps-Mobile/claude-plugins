@@ -511,6 +511,13 @@ check_artifact(){ local p="$1" rel top name parent tracked tl l
     tl=$(GITS -C "$parent" rev-parse --show-toplevel 2>/dev/null) && [ -n "$tl" ] || { REASON=worktree-not-this-folder; return 1; }
     tl=$(physical "$tl") && [ -n "$tl" ] || { REASON=worktree-not-this-folder; return 1; }
     case "$(physical "$parent")/" in "$tl"/*) ;; *) REASON=worktree-not-this-folder; return 1;; esac
+    # B4 and B3 below guard against ONE mistake: trusting a repo's answer when that repo is not the one this dir
+    # belongs to. Loosen neither. B4: in a session folder with no repo of its own, discovery climbs past it to
+    # any ancestor repo (a dotfiles repo at ~, a ~/code repo), whose .gitignore then "ignores" build/ or dist/
+    # that exist nowhere else. The top level must be the session folder or below it; above it ⇒ KEEP. Its
+    # files may even be tracked by that ancestor, so this does not fall through to the no-repo rule either.
+    l=$(physical "$top") && [ -n "$l" ] || { REASON=repo-above-session-folder; return 1; }
+    case "$tl/" in "$l"/*) ;; *) REASON=repo-above-session-folder; return 1;; esac
     # B3 (sibling of B12): a nested repo git cannot read (lost HEAD, empty .git) is skipped by discovery,
     # which then answers from the OUTER repo, so the two answers below describe the outer repo, not the one
     # that tracked this dir. Any .git entry between the artifact's folder and the top level git found ⇒ KEEP.

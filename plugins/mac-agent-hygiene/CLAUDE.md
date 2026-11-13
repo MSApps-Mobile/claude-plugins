@@ -42,7 +42,8 @@
   `/usr/sbin/lsof` or `/usr/bin/lsof`); none, a non-zero exit (even after some rows), or no cwd printed ⇒ blind ⇒ every folder counts as occupied.
 - Build artifacts (`node_modules .next dist build .turbo coverage` inside `~/code/wt/<session>`): only when the session
   is idle 24 h, nobody's cwd, not alive in the registry, the dir holds no `.git`, bare repo or separate git-dir (any `HEAD`
-  file or symlink), it lies inside the work tree git resolves (not a `core.worktree` elsewhere), and git IGNORES it with no tracked file
+  file or symlink), it lies inside the work tree git resolves (not a `core.worktree` elsewhere), that work tree's top level is the session
+  folder or below it (a repo above, e.g. a dotfiles `~/.git`, keeps it: `repo-above-session-folder`), and git IGNORES it with no tracked file
   (no repo: node_modules/.next/.turbo beside package.json only; a `.git` entry at ANY level up to the session folder that
   git cannot read keeps it: `git-cannot-read-repo`). An unreadable registry ⇒ every session alive.
 - `GITS` pins `log.showSignature=false` as a second layer behind the allow-list.
@@ -65,6 +66,7 @@ bash tests/hygiene-port-combined.test.sh    # worktrees + session-dirs at their 
 bash tests/hygiene-keeps-logins.test.sh && bash tests/hygiene-dev-caches.test.sh && bash tests/hygiene-wt-artifacts.test.sh && bash tests/hygiene-git-safe-keep.test.sh && bash tests/hygiene-wt-safety.test.sh   # macOS fixtures, throwaway HOME
 bash tests/hygiene-git-exec-guard.test.sh   # log.showSignature + gpg.program never run during plan
 bash tests/hygiene-session-safety.test.sh   # loose files / core.worktree keep a session; per-user, owned run lock
+bash tests/hygiene-wt-ancestor-repo.test.sh # a ~/.git or ~/code/.git never answers for a session folder's build/ dist/
 bash scripts/hygiene.sh status
 bash scripts/hygiene.sh plan | awk -F'\t' '{print $1, $2, $4}' | sort | uniq -c
 printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}}' \
