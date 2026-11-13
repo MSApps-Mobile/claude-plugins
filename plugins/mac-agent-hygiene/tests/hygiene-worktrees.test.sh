@@ -13,7 +13,7 @@
 #   KNOWN-POSITIVE  apply removes exactly the planned worktrees; branch refs survive (`git worktree remove`)
 #
 # Needs git and the absolute-path tools hygiene.sh calls (/usr/bin/find, /usr/bin/du, ...); prints SKIP
-# without them. lsof is optional (missing ⇒ no cwd is "inside"). Nothing here touches the real HOME.
+# without them. lsof is required (missing ⇒ hygiene.sh keeps everything: fail closed). Nothing here touches the real HOME.
 # shellcheck disable=SC2015  # ok()/bad() always return 0, so A && ok || bad is safe here
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"

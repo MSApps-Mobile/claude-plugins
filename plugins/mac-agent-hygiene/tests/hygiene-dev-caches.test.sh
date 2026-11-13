@@ -147,8 +147,9 @@ grep -q $'\tno-nested-repo\t'"$HOME/code/wt/res-notes"'$' "$FX/plan.tsv" && [ "$
 grep -q $'\tnested-clone-has-live-worktree-outside\t'"$HOME/code/wt/sess-parent"'$' "$FX/plan.tsv" && [ "$(action_of "$HOME/code/wt/sess-parent")" = keep ] \
   && ok "B3: clone with a live worktree outside the session → keep (clone-has-live-worktree-outside)" || bad "sess-parent: $(grep sess-parent "$FX/plan.tsv")"
 if [ "$REL_OK" = 1 ]; then
-  grep -q $'\tnested-clone-has-live-worktree-outside\t'"$HOME/code/wt/sess-parent-rel"'$' "$FX/plan.tsv" && [ "$(action_of "$HOME/code/wt/sess-parent-rel")" = keep ] \
-    && ok "B3: relative gitdir (useRelativePaths) → keep (clone-has-live-worktree-outside)" || bad "sess-parent-rel: $(grep sess-parent-rel "$FX/plan.tsv")"
+  # git writes extensions.relativeWorktrees, which is outside CFG_ALLOW_RE, so the allow-list keeps it first.
+  grep -qE $'\tnested-(clone-has-live-worktree-outside|repo-config-not-allowlisted)\t'"$HOME/code/wt/sess-parent-rel"'$' "$FX/plan.tsv" && [ "$(action_of "$HOME/code/wt/sess-parent-rel")" = keep ] \
+    && ok "B3: relative gitdir (useRelativePaths) → keep" || bad "sess-parent-rel: $(grep sess-parent-rel "$FX/plan.tsv")"
 else ok "B3-relative: SKIP (this git writes absolute gitdir paths)"; fi
 [ "$(action_of "$HOME/code/wt/bare-only")" = keep ] && ok "session holding only a bare repo → keep" || bad "bare-only: $(grep bare-only "$FX/plan.tsv")"
 [ "$(action_of "$HOME/code/wt/wt-parent-inside")" = keep ] && ok "worktree whose bare parent is inside the session → keep" || bad "wt-parent-inside: $(grep wt-parent-inside "$FX/plan.tsv")"

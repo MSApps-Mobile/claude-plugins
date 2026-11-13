@@ -5,7 +5,7 @@
 #
 #   KNOWN-NEGATIVE  a linked worktree whose repo config sets log.showSignature=true + gpg.program (and
 #                   gpg.ssh.program / gpg.x509.program) on a signed, unpushed commit: `plan` keeps it
-#                   (repo-config-can-run-commands) and the program NEVER runs (no marker file)
+#                   (repo-config-not-allowlisted) and the program NEVER runs (no marker file)
 #   KNOWN-NEGATIVE  the same keys in the user's GLOBAL config (the deny-list reads only repo files):
 #                   `plan` still never runs the program (GITS forces log.showSignature=false)
 #
@@ -89,9 +89,9 @@ rm -f "$FX/PWNED"
 PLAN="$FX/plan.tsv"
 bash "$HYG" plan > "$PLAN" 2>"$FX/plan.err" || bad "plan exited non-zero: $(cat "$FX/plan.err")"
 act(){ awk -F'\t' -v c="$1" -v p="$2" '$1==c && $5==p {print $2" "$4}' "$3"; }
-[ "$(act worktrees "$SIG" "$PLAN")" = "keep repo-config-can-run-commands" ] \
+[ "$(act worktrees "$SIG" "$PLAN")" = "keep repo-config-not-allowlisted" ] \
   && ok "repo-local log.showSignature + gpg.program → worktree kept unread" || bad "signed worktree: '$(act worktrees "$SIG" "$PLAN")'"
-[ "$(act session-dirs "$CODE/wt/pipe-sig" "$PLAN")" = "keep nested-repo-config-can-run-commands" ] \
+[ "$(act session-dirs "$CODE/wt/pipe-sig" "$PLAN")" = "keep nested-repo-config-not-allowlisted" ] \
   && ok "repo-local log.showSignature + gpg.program → session folder kept unread" || bad "signed session: '$(act session-dirs "$CODE/wt/pipe-sig" "$PLAN")'"
 [ ! -e "$FX/PWNED" ] && ok "repo-local keys: plan never ran gpg.program (no marker)" || bad "plan ran the repo's gpg.program: $(cat "$FX/PWNED")"
 
