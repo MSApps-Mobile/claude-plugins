@@ -388,3 +388,22 @@ jobs:
       # (block, heredoc, inline, folded) must red on every run.
       - name: Workflow run bodies — prove the guard can FAIL
         run: python3 scripts/check-workflow-run-expressions.test.py
+
+      # ── Card TJ93ychx ──────────────────────────────────────────
+      # Two plugins shipped instructions that push transcript-derived content
+      # to the public repo on every run, which contradicts a "no telemetry"
+      # statement and trips the directory review. Fail a plugin whose shipped
+      # .md/.sh files instruct a push unless the push sits in a fenced block
+      # naming a default-off userConfig option. Plugin tests/ are not scanned.
+      # token-efficiency-audit (#76) and fix-chrome-connection (#77) are
+      # allow-listed line by line (plugin + path + exact line) in the script;
+      # a stale entry FAILS, so #76/#77 delete their entries when they merge.
+      - name: Shipped plugins — no push by default
+        run: python3 scripts/check-no-default-push.py --root .
+
+      # Negative control: committed fixtures (the real token-efficiency-audit
+      # CLAUDE.md as on main, a shell push, an 'update https://github.com/'
+      # prompt, ...) must red on every run; the real docs that merely mention
+      # git push must stay green.
+      - name: Shipped plugins — prove the guard can FAIL
+        run: python3 scripts/check-no-default-push.test.py
