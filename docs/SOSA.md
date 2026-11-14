@@ -28,7 +28,7 @@ Every agent operates under a defined supervision policy. Supervision is graduate
 - Low-impact plugins (read-only, local cleanup) operate fully autonomously
 - Medium-impact plugins (sending messages, modifying data) include confirmation checkpoints
 - High-impact plugins (financial operations, bulk outreach) require human approval before execution
-- The **trust gradient** means plugins that consistently succeed earn expanded autonomy over time
+- The **trust gradient** means autonomy is earned by verified behaviour, per class of action. Today the widening is done by people reading the record, not by a computed score (see [Trust doctrine](#trust-doctrine-autonomy-is-earned))
 
 ### 2. Orchestrated
 
@@ -99,6 +99,108 @@ Every SOSA-compliant plugin follows a three-phase execution loop:
 
 ---
 
+## Trust doctrine: autonomy is earned
+
+> **Autonomy is earned by trust.** It is granted per class of action, on evidence, under a ceiling set by risk, and withdrawn when the evidence regresses. The same rule binds human and AI agents.
+
+Nobody gives a new engineer production keys on their first morning. That isn't distrust; there is simply no evidence yet. SOSA treats an AI agent the same way. Autonomy is **architected, not prompted**: it is enforced by the gateway and the gates, not requested of the model. The customer chooses the level: **if you wish, nothing ships without your approval.**
+
+The full argument, with sources, is in the OpsAgents AI white paper *Autonomy is earned by trust* (draft, 2026-10-16).
+
+### The trust ladder
+
+Each actor, human or AI, holds one step **per class of action** (for example: edit docs, merge to an internal repo, deploy to production, send a client message, move money).
+
+| Step | The actor may | The human |
+|---|---|---|
+| **T0 · Suggest** | Gather, analyse, propose. Change nothing. | Decides and acts |
+| **T1 · Act with approval** | Prepare the change; execute after a yes | Approves each action |
+| **T2 · Act, then report** | Execute through gates; the record is reviewed after | Reviews; can reverse |
+| **T3 · Act within an envelope** | Execute inside declared limits; logged and stoppable | Sets the envelope; holds the stop |
+
+Rules:
+- **There is no step above T3.** Nothing acts while ignoring the human. Every step is designed to keep a log and a stop; log completeness is not yet measured.
+- **People decide promotion today**, by reading the record on that class of action.
+- **Demotion is immediate** on a regression, a gate breach or a false green.
+- **The customer can hold code changes at T1**: a hold on the ticket stops the merge gate. Other classes are agreed per project.
+- **Some acts never leave T1** in our fleet: sending money, cold outreach to new contacts, credentials only a person holds, and spend beyond budget.
+
+### The ceiling: supervision levels
+
+Trust moves an actor up the ladder. Risk (the impact score: magnitude, external visibility, reversibility, sensitivity) caps how far it can go:
+
+| Supervision level | Highest ladder step |
+|---|---|
+| L0 Auto | T3 |
+| L1 Async | T2 |
+| L2 Pre-merge | T1 |
+| L3 Gated | T1, with a domain reviewer |
+| L4 Prohibited | T0 (a human executes) |
+
+**Practice note.** Since 2026-08-24, production deploys on OpsAgents AI's **own internal repositories** run automatically, and only when four evidence legs hold: front-end QA, back-end QA, a CTO-agent review on the latest commit, and a production sanity check after deploy with revert on regression. Client projects are decided case by case.
+
+### Mapping: controls, NIST trust characteristics, ladder
+
+This is **our own reading, not a compliance or alignment claim.** It has not been reviewed by a qualified third party. *NISTIR 8332* (draft, 2021) was withdrawn by NIST on 2023-01-04 and is used only as vocabulary. The *AI RMF 1.0* is voluntary and under revision.
+
+| Control (pillar) | NISTIR 8332 draft | AI RMF 1.0 | Ladder role | Status |
+|---|---|---|---|---|
+| Builder ≠ reviewer; a pipeline agent cannot move its own work to deploy (S) | Objectivity, Accountability | Accountable & transparent | Precondition for T1+ | Measured 2026-10-12 |
+| Approval counts only on the exact commit being merged (S) | Reliability, Accountability | Valid & reliable | Gate for T1/T2 merges | Measured |
+| Isolation gate + builder stamps (S) | Objectivity | Valid & reliable | Gate for T2 | In use since the 2026-10-15 ruling |
+| Merge gate fails closed: unclean isolation, no approval at head, or missing tooling ⇒ refuse (S) | Safety, Resiliency | Safe; Secure & resilient | Keeps T2 honest | Measured 2026-10-15 |
+| A human gate label on the ticket halts the merge (S) | Accountability | Accountable & transparent | The customer's T1 pin | Measured |
+| Four-leg production bar (S) | Accuracy, Reliability, Safety | Valid & reliable; Safe | T3 envelope, internal deploys | Ruled 2026-08-24; no deploy-path deny event on record |
+| Human-only acts (S) | Safety, Accountability | Safe; Accountable | Hard ceiling at T1 | Doctrine |
+| Gateway: deny-list + credentials held server-side (Sec) | Security, Privacy | Secure & resilient; Privacy-enhanced | Caps blast radius at every step | Measured; not every rail is gateway-only yet |
+| Role spec + capability set (A) | Security, Safety | Secure & resilient | Bounds every step | Method (white paper §4); runtime enforcement not measured |
+| Claim protocol + fan-out cap (O) | Reliability, Resiliency | Valid & reliable | Coherent parallel work | Measured 2026-10-12 |
+| Audit trail on the ticket (Sec) | Explainability, Accountability | Accountable & transparent; Explainable | The evidence promotion reads | Partial: completeness not measured; not immutable |
+| Domain reviewers: a security review (`/security-review`) and an accessibility review (the `/a11y-debugging` skill), each to run in a fresh context; blocking findings to block the merge (S) | Security, Safety, Objectivity | Secure & resilient; Safe | Raises reviewer expertise (axis B) | In rollout, ruled 2026-10-16 |
+| Trust rating (S) | Objectivity, Explainability | Accountable & transparent | Future input to promotion | In build; changes no permission today |
+
+### Trust rating (in build)
+
+A deterministic score per subject (**agent, human, skill, system**) **per class of action**. It will be computed by code, so the same inputs always give the same score, and every score will list the factors that moved it. Inputs:
+
+1. **Actor level**: declared weights in a versioned config (human levels such as owner, senior, employee, client approver; agent levels such as model tier, role and lane).
+2. **Isolation**, on two axes (below).
+3. **Track record**, time-decayed: merged vs reworked changes, gate breaches, false greens, reverts, CI pass rate.
+4. **Reversibility and blast radius** of the action being trusted.
+
+**Isolation has two axes.** The working theory is *same-context pollution*: a reviewer that shares the builder's context tends to confirm what the builder believed.
+
+| A · Context isolation (what the reviewer saw) | B · Reviewer diversity (who reviews) |
+|---|---|
+| A0 same session as the builder | B0 same model, same prompt or skill |
+| A1 same checkout or worktree | B1 same model, different role prompt |
+| A2 new session, same machine, fed the builder's transcript or summary | B2 different model tier, same vendor |
+| A3 fresh session, sees only the diff + spec | B3 different vendor or model family |
+| A4 fresh session that writes its own tests or repro before reading the builder's claims | B4 a human with domain knowledge (also track-record-weighted) |
+
+Trust from isolation = f(A, B). A human who only reads the agent's summary (**A2 + B4**) can be weaker evidence than a different-vendor model at **A4 + B3**. Neither axis settles it alone.
+
+Guards: **publish the method, never individual scores.** Human scores are internal, never used for HR decisions. Unmeasured inputs stay UNMEASURED, never defaulted to good. Weights are a config the owner can change.
+
+### Evidence from our own gates
+
+- **2026-09-10:** our pipeline guard was found **failing open**. It was armed with a timestamp in seconds but compared in milliseconds, so it judged its own state stale and allowed every move. The fix merged on 2026-09-13; the installed hook was proved to block on 2026-09-15.
+- **2026-10-07:** a merge went through 30 minutes after a human put a "do not merge" label on its ticket. The merge gate now reads the ticket's live gate labels; unreadable labels count as blocked.
+- **2026-10-12:** the re-armed guard blocked a forbidden move (rc=2) and allowed a permitted one (rc=0).
+- **2026-10-15:** two pull requests merged past our gates. One merged while the isolation gate said HOLD. The other, a security fix, merged at 18:31:45Z with only a COMMENTED review; the approval came at 18:37:40Z. The fail-closed merge-gate fix was merged at 19:56:48Z the same evening. Both heads carry a CTO-agent approval (#13 before its merge, #14 six minutes after); nothing was reverted.
+
+The common shape: the rule existed but was not in the path. Each fix moved it from operator discipline into a control that fails closed, then proved the control both ways.
+
+### Install the plugins
+
+Get SOSA: the SOSA plugins are free to install in Claude, at *Settings → Plugins → Marketplaces → Add →* `MSApps-Mobile/claude-plugins`.
+
+### What this section does not claim
+
+No certification (SOC 2, ISO or other), no audit, no penetration test. No compliance or alignment with NIST, ISO/IEC 42001 or the EU AI Act. The EU AI Act's human-oversight article (Art. 14) applies to high-risk systems from 2 Dec 2027 / 2 Aug 2028, as amended by Reg. (EU) 2026/1744. No computed trust score changes a permission yet. The audit store is not immutable.
+
+---
+
 ## SOSA Compliance Levels
 
 | Level | Requirements | Example Plugins |
@@ -137,7 +239,15 @@ The `sosa-compliance-checker` runs the `token-efficiency-audit` as part of its O
 
 ## Reference Implementation
 
-[OpsAgents](https://opsagents.agency) by MSApps is the first commercial implementation of the SOSA framework, operating in production across 18+ agent types. The framework is presented as a live, citable page — with a real production audit-log proof — at **[opsagents.agency/sosa](https://opsagents.agency/sosa)**.
+[OpsAgents AI](https://opsagents.agency) runs its own agent fleet under the SOSA methodology. The framework is presented as a live, citable page — with a real production audit-log proof — at **[opsagents.agency/sosa](https://opsagents.agency/sosa)**.
+
+---
+
+## About the publisher
+
+SOSA is published by MSApps. [MSApps is Certified in the Claude Partner Network.](https://claude.com/partners)
+
+SOSA is published as a plugin in the Claude Directory. To install it, add the marketplace in Claude at *Settings → Plugins → Marketplaces → Add →* `MSApps-Mobile/claude-plugins`.
 
 ---
 
