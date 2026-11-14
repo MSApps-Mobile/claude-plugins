@@ -3,7 +3,7 @@ name: fix-chrome-connection
 description: >
   Use when: tabs_context_mcp fails, Chrome MCP is broken, user says "fix Chrome", "reconnect Chrome",
   "Chrome extension not responding", or after switching Claude Desktop accounts. Diagnoses and repairs
-  broken Claude-in-Chrome MCP connections step by step, then commits any new learnings to GitHub.
+  broken Claude-in-Chrome MCP connections step by step, then records any new learnings locally.
 metadata:
   version: "1.1.4"
   author: "MSApps"
@@ -93,7 +93,7 @@ If the bridge URL shows `chrome/{UUID-A}` but extension `accountUuid` is `UUID-B
 
 **When:** the bridge looks alive (`connected=true, authenticated=true`) but tool calls fail, OR `list_connected_browsers=[]` with the native host alive. Often the MCP browser-bridge **extension's service worker has gone idle** — reloading it re-wakes the bridge without touching `0.sock`.
 
-**Prereq:** Chrome stable **≥ 149** and `chrome-devtools-mcp` ≥ 1.1.1 started with `--categoryExtensions` (extension tools are pipe-connection only; attach-mode `--categoryExtensions` is unsupported before Chrome 149). Verify Chrome:
+**Prereq:** Chrome stable **≥ 149** and `chrome-devtools-mcp` ≥ 1.1.1 started with `--categoryExtensions --no-usage-statistics` (extension tools are pipe-connection only; attach-mode `--categoryExtensions` is unsupported before Chrome 149). Verify Chrome:
 
 ```bash
 defaults read "/Applications/Google Chrome.app/Contents/Info.plist" CFBundleShortVersionString
@@ -236,14 +236,7 @@ Tell the user to open `chrome://extensions`, remove Claude in Chrome, then reins
 If yes:
 
 1. Update relevant files in `~/claude-plugins/plugins/fix-chrome-connection/`
-2. Commit and push:
-
-```bash
-cd ~/claude-plugins
-git add plugins/fix-chrome-connection/
-git commit -m "fix-chrome-connection: self-improvement $(date '+%Y-%m-%d')"
-git pull --rebase origin main && git push origin main
-```
+2. Stop there. Do NOT commit or publish anything to a git remote, and do not send run data (log excerpts, account emails, UUIDs) to any outside endpoint. If the learning is worth sharing upstream, tell the user so they can open a pull request themselves.
 
 If no: state "No new learnings from this run."
 
@@ -438,7 +431,7 @@ If they don't match → account mismatch → Step 6 (manual re-auth) is required
 
 DevTools 148 (release notes: https://developer.chrome.com/blog/new-in-devtools-148/#extension-debugging) added a 5-tool **Extensions** category to `chrome-devtools-mcp`. Verified against the locally installed CLI **v1.1.1**:
 
-- Tools (enabled with the `--categoryExtensions` / `--category-extensions` flag): `list_extensions`, `reload_extension`, `trigger_extension_action`, `install_extension`, `uninstall_extension`.
+- Tools (enabled with the `--categoryExtensions` / `--category-extensions` flag; always launch together with `--no-usage-statistics`): `list_extensions`, `reload_extension`, `trigger_extension_action`, `install_extension`, `uninstall_extension`.
 - **Hard gate (from the chrome-devtools-mcp README):** these tools are *only* supported over a **pipe connection**. `autoConnect`, `browserUrl`, and `wsEndpoint` (i.e. **attach mode**) are **unsupported until Chrome 149**.
 - This skill debugs the user's **already-running** Chrome — i.e. attach mode — so the extension tools **cannot inspect the live bridge extension until Chrome 149 ships**. Local Chrome at time of writing: `148.0.7778.181`.
 
@@ -448,7 +441,7 @@ defaults read "/Applications/Google Chrome.app/Contents/Info.plist" CFBundleShor
 # >= 149 → extension tools should work in attach mode; wire the diagnostic below.
 ```
 
-**Diagnostic to wire in once Chrome >= 149 (planned, not yet active):** before the `0.sock` symlink surgery (Step 2b) or manual re-auth (Step 6), launch chrome-devtools-mcp with `--categoryExtensions` and:
+**Diagnostic to wire in once Chrome >= 149 (planned, not yet active):** before the `0.sock` symlink surgery (Step 2b) or manual re-auth (Step 6), launch chrome-devtools-mcp with `--categoryExtensions --no-usage-statistics` and:
 1. `list_extensions` — confirm the Claude-in-Chrome extension (`fcoeoabgfenejglbffodgkkbkcdhcgfn`) is present and read its background service-worker state directly, instead of inferring health from `chrome-native-host.log` + LevelDB greps.
 2. `reload_extension` on that ID — a targeted service-worker reload that may restore the bridge without a full Chrome restart or socket-symlink intervention.
 
