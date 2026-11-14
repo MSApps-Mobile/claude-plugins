@@ -3,7 +3,8 @@
 <plist version="1.0"><dict>
   <key>Label</key><string>__LABEL__</string>
   <key>ProgramArguments</key><array><string>/bin/bash</string><string>__SCRIPT__</string><string>run</string></array>
-  <key>StartCalendarInterval</key><dict><key>Hour</key><integer>__HOUR__</integer><key>Minute</key><integer>__MINUTE__</integer></dict>
+  __SCHEDULE__
+  <key>RunAtLoad</key><true/>
   <key>EnvironmentVariables</key><dict><key>PATH</key><string>__PATH__</string><key>HOME</key><string>__HOME__</string></dict>
   <key>LowPriorityIO</key><true/>
   <key>Nice</key><integer>10</integer>
