@@ -183,4 +183,33 @@ echo "second apply is a no-op"
 echo "bad usage"
 "$JANITOR" --force >/dev/null 2>&1; [ $? -eq 2 ] && ok "unknown argument exits 2" || fail "unknown argument did not exit 2"
 
+# Age check must fail closed (card HxpQwzEz). Own temp tree in a subshell (its own trap), so a
+# chmod 000 folder never outlives the block.
+echo "age check fails closed"
+(
+  R2="$(cd "$(mktemp -d)" && pwd -P)"; C2="$R2/claude"
+  trap 'chmod 755 "$C2/session-env/unreadable-old" 2>/dev/null; rm -rf "$R2"' EXIT
+  mkdir -p "$C2/session-env/fresh-empty" "$C2/session-env/unreadable-old"
+  touch -t 202001010000 "$C2/session-env/unreadable-old"
+  F2=0
+  #  1. a non-integer JANITOR_MIN_AGE_DAYS exits 2 before listing anything (it used to switch the age check off,
+  #     so the fresh empty folder was listed)
+  for bad in 7d abc -1 1.5; do
+    O2="$(JANITOR_CLAUDE_DIR="$C2" JANITOR_MIN_AGE_DAYS="$bad" "$JANITOR" 2>/dev/null)"; rc=$?
+    if [ $rc -eq 2 ] && [ -z "$O2" ]; then echo "  ✓ JANITOR_MIN_AGE_DAYS=$bad exits 2 and lists nothing"
+    else echo "  ✗ JANITOR_MIN_AGE_DAYS=$bad: exit $rc, output: $O2"; F2=1; fi
+  done
+  #  2. a folder find cannot read is kept, not counted as untouched (skipped as root: root reads it)
+  if [ "$(id -u)" -ne 0 ]; then
+    chmod 000 "$C2/session-env/unreadable-old"
+    O2="$(JANITOR_CLAUDE_DIR="$C2" "$JANITOR" 2>/dev/null)"
+    chmod 755 "$C2/session-env/unreadable-old"
+    if printf '%s\n' "$O2" | grep -q 'unreadable-old'; then echo "  ✗ an unreadable session-env folder was listed"; F2=1
+    else echo "  ✓ an unreadable session-env folder is kept"; fi
+  else
+    echo "  - skipped unreadable-folder check (running as root)"
+  fi
+  exit $F2
+) || FAIL=1
+
 [ "$FAIL" -eq 0 ] && echo "PASS" || { echo "FAIL"; exit 1; }
