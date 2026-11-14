@@ -18,7 +18,8 @@
 - Browser profiles: cache-subfolder allowlist only; profile with `SingletonLock` or open files skipped.
 - Worktrees: linked (`[ -f .git ]` AND git-dir ≠ common-dir), in scope (direct child matching
   `HYG_WT_GLOB`, or ≤ `HYG_WT_DEPTH` deep under a `HYG_WT_NESTED` dir), untouched > age, nobody's cwd,
-  clean, and pushed / merged-PR head / merged PR on the same branch whose commits cover every local-only
+  clean (or dirty ONLY with the fixed agent-scaffold shapes in `wt_scaffold_path`, archived and verified
+  before removal; card d9GJrXfc), and pushed / merged-PR head / merged PR on the same branch whose commits cover every local-only
   commit subject. `gh` failure ⇒ keep. Never `--force`. macOS `/bin/bash` is 3.2: no `declare -A`;
   per-repo gh results are cache files in `$TMPD`.
 - DerivedData skipped while Xcode builds. Never sudo. Paths outside `$HOME` refused at apply.
@@ -32,6 +33,7 @@
 bash -n scripts/*.sh && node --check server/index.js
 bash tests/hygiene-worktrees.test.sh        # fixture git repos + stubbed gh; runs on Linux too
 bash tests/hygiene-wt-scan-roots.test.sh    # default scope incl. ~/code/_worktrees, keep rules, status count
+bash tests/hygiene-wt-scaffold.test.sh      # agent-scaffold-only dirt: archived, then removed; real dirt kept
 bash tests/hygiene-keeps-logins.test.sh     # macOS only
 bash scripts/hygiene.sh status
 bash scripts/hygiene.sh plan | awk -F'\t' '{print $1, $2, $4}' | sort | uniq -c
