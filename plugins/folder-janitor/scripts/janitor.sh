@@ -1,5 +1,5 @@
 #!/bin/bash
-# claude-folder-janitor — dry-run-first cleanup of provably-safe clutter in ~/.claude/.
+# folder-janitor — dry-run-first cleanup of provably-safe clutter in ~/.claude/.
 #
 #   janitor.sh            dry run: list every candidate with size and reason, delete nothing
 #   janitor.sh apply      re-derive the same candidates and delete exactly those
