@@ -93,8 +93,19 @@ MOUNTED_CWD="/dev/janitor-test-gone-$$/proj"
 mkdir -p "$C/projects/$(enc "$MOUNTED_CWD")"
 printf '{"cwd":"%s"}\n' "$MOUNTED_CWD" > "$C/projects/$(enc "$MOUNTED_CWD")/s.jsonl"
 old "$C/projects/$(enc "$MOUNTED_CWD")/s.jsonl" "$C/projects/$(enc "$MOUNTED_CWD")"
-mkdir -p "$LOCKED"; chmod 000 "$LOCKED"
-trap 'chmod 755 "$LOCKED" 2>/dev/null; rm -rf "$ROOT"' EXIT
+#   h) the project's cwd EXISTS, but its parent is readable and not searchable (chmod 444, r--): `ls -A`
+#      lists the child while `[ -e child ]` and `[ -d child ]` fail, so it can look gone (card VOi8wuuQ).
+#      `cd` into an r-- folder is refused, so cwd_provably_gone must answer "unknown" and keep it. Also a
+#      deeper cwd under the same parent.
+RO="$ROOT/readonly-parent"; RO_CWD="$RO/proj"; RO_DEEP="$RO/proj/deep/sub"
+mkdir -p "$RO_DEEP" "$RO/sibling"
+for cwd in "$RO_CWD" "$RO_DEEP"; do
+  mkdir -p "$C/projects/$(enc "$cwd")"
+  printf '{"cwd":"%s"}\n' "$cwd" > "$C/projects/$(enc "$cwd")/s.jsonl"
+  old "$C/projects/$(enc "$cwd")/s.jsonl" "$C/projects/$(enc "$cwd")"
+done
+mkdir -p "$LOCKED"; chmod 000 "$LOCKED"; chmod 444 "$RO"
+trap 'chmod 755 "$LOCKED" "$RO" 2>/dev/null; rm -rf "$ROOT"' EXIT
 
 # protected — all old, none may ever be listed
 mkdir -p "$C/skills/a" "$C/plugins/b" "$C/scheduled-tasks/c"
@@ -128,6 +139,12 @@ if [ "$(id -u)" -ne 0 ]; then
   printf '%s\n' "$GOT" | grep -qF -- "$(enc "$LOCKED_CWD")" && fail "project under an unreadable parent was listed" || ok "unreadable-parent project is not an orphan"
 else
   echo "  - skipped unreadable-parent check (running as root)"
+fi
+if [ "$(id -u)" -ne 0 ]; then
+  printf '%s\n' "$GOT" | grep -qF -- "$(enc "$RO_CWD")" && fail "existing project under an r-- (444) parent was listed as an orphan" || ok "existing project under an r-- parent is not an orphan"
+  printf '%s\n' "$GOT" | grep -qF -- "$(enc "$RO_DEEP")" && fail "existing deep project under an r-- (444) parent was listed as an orphan" || ok "existing deep project under an r-- parent is not an orphan"
+else
+  echo "  - skipped r-- parent checks (running as root)"
 fi
 
 echo "symlink alias to a stale mount / memory-only projects"
@@ -171,6 +188,7 @@ for kept in "$C/backups/.claude.json.backup.170000000003" "$C/session-env/empty-
             "$C/projects/$(enc "$STALE")/s.jsonl" "$C/projects/$(enc "$ALIAS_CWD")/s.jsonl" \
             "$C/projects/$(enc "$MEM_ALIAS")/memory/MEMORY.md" "$C/projects/$(enc "$MEM_LOCKED")/memory/MEMORY.md" \
             "$C/projects/$(enc "$EMPTYP_CWD")/s.jsonl" "$C/projects/$(enc "$MOUNTED_CWD")/s.jsonl" \
+            "$C/projects/$(enc "$RO_CWD")/s.jsonl" "$C/projects/$(enc "$RO_DEEP")/s.jsonl" \
             "$C/CLAUDE.md" "$C/settings.json" "$C/settings.local.json" "$C/history.jsonl" \
             "$C/skills/a/SKILL.md" "$C/plugins/b/p.json" "$C/scheduled-tasks/c/t.md"; do
   [ -e "$kept" ] || fail "removed something it must keep: $kept"
