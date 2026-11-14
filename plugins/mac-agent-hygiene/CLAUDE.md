@@ -18,8 +18,9 @@
 - Browser profiles: cache-subfolder allowlist only; profile with `SingletonLock` or open files skipped.
 - Worktrees: linked (`[ -f .git ]` AND git-dir ≠ common-dir), in scope (direct child matching
   `HYG_WT_GLOB`, or ≤ `HYG_WT_DEPTH` deep under a `HYG_WT_NESTED` dir), untouched > age, nobody's cwd,
-  clean (or dirty ONLY with the fixed agent-scaffold shapes in `wt_scaffold_path`, archived and verified
-  before removal; card d9GJrXfc), and pushed / merged-PR head / merged PR on the same branch whose commits cover every local-only
+  not locked, clean (or dirty ONLY with the fixed agent-scaffold shapes in `wt_scaffold_path`, whose
+  `docs/qa/<id>` must be an id the worktree declares, archived and verified before removal and restored
+  if the remove fails; card d9GJrXfc), and pushed / merged-PR head / merged PR on the same branch whose commits cover every local-only
   commit subject. `gh` failure ⇒ keep. Never `--force`. macOS `/bin/bash` is 3.2: no `declare -A`;
   per-repo gh results are cache files in `$TMPD`.
 - DerivedData skipped while Xcode builds. Never sudo. Paths outside `$HOME` refused at apply.

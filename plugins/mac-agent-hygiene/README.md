@@ -88,7 +88,7 @@ HYG_SCAFFOLD_ARCHIVE="$HOME/.local/state/mac-agent-hygiene/scaffold-archive"  # 
 Environment variables win over the config file, so one MCP call can override one value for one run.
 "Clean" means `git status --porcelain` is empty — gitignored files (a local `.env`, `node_modules`)
 are removed together with a clean worktree.
-Agent scaffolding (card d9GJrXfc): a worktree whose ONLY dirt is untracked `PROMPT.md` (top level) or files under `docs/qa/<8-char card id>/` is not "uncommitted work". It is removable (reason `<pushed|merged-pr-head|merged-pr-commits>-scaffold-only`) once apply has tarred those files to `HYG_SCAFFOLD_ARCHIVE/<date>/` and verified the archive; then the plain `git worktree remove` (never `--force`) runs. Any tracked or staged change, or any other untracked file, keeps `dirty-uncommitted-work` as before.
+Agent scaffolding (card d9GJrXfc): a worktree whose ONLY dirt is untracked `PROMPT.md` (top level) or files under `docs/qa/<card id>/` is not "uncommitted work", where `<card id>` must be the Trello shortLink the worktree itself declares (its branch `card/<id>-…` or an `<id>` token of its folder name, e.g. `qa-GTFuHzt9`); any other folder, such as `docs/qa/database/`, is real work and keeps the tree. It is removable (reason `<pushed|merged-pr-head|merged-pr-commits>-scaffold-only`) once apply has tarred those files to `HYG_SCAFFOLD_ARCHIVE/<date>/` and verified the archive; then the plain `git worktree remove` (never `--force`) runs. If that remove fails, the files are put back from the tarball. A locked worktree (`git worktree lock`) is always kept (reason `locked`). Any tracked or staged change, or any other untracked file, keeps `dirty-uncommitted-work` as before.
 
 ### Without the MCP server
 

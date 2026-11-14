@@ -4,7 +4,14 @@
 # scripts/hygiene.sh against a fixture HOME (local bare "github.com/acme/demo" origin, no gh).
 #
 #   KNOWN-POSITIVE  pushed + only `?? PROMPT.md`                        → remove pushed-scaffold-only
-#   KNOWN-POSITIVE  pushed + only `?? docs/qa/GTFuHzt9/...`             → remove pushed-scaffold-only
+#   KNOWN-POSITIVE  pushed + only `?? docs/qa/GTFuHzt9/...` in folder qa-GTFuHzt9 → remove pushed-scaffold-only
+#   KNOWN-POSITIVE  only `?? docs/qa/Xy7Kp2Qa/...` on branch card/Xy7Kp2Qa-…    → remove pushed-scaffold-only
+#   KNOWN-NEGATIVE  B1 (review 5817501927): docs/qa/<id> the worktree does NOT declare → keep
+#                   dirty-uncommitted-work: docs/qa/database/schema.sql (also in a folder named
+#                   research-database), another card's id, a date token of the folder name
+#   KNOWN-NEGATIVE  B2: a locked worktree with only PROMPT.md → keep locked; apply refuses, PROMPT.md intact
+#   KNOWN-NEGATIVE  B2: `git worktree remove` fails after the delete → refused remove-failed and every
+#                   scaffold file is back byte for byte (mode too), the folder still reads as idle
 #   KNOWN-POSITIVE  apply archives the scaffolding to a dated .tar.gz first, then removes the worktree;
 #                   the archive holds the files byte for byte and the branch ref survives
 #   KNOWN-NEGATIVE  PROMPT.md + one real untracked file                → keep dirty-uncommitted-work
@@ -56,13 +63,14 @@ MAIN="$CODE/demo"; q clone -q "$ORIGIN" "$MAIN"
 echo base > "$MAIN/tracked.txt"; q -C "$MAIN" add tracked.txt; q -C "$MAIN" commit -qm initial; q -C "$MAIN" push -q origin HEAD:main
 
 # mkwt <name>: a pushed linked worktree at ~/code/wt/pipe-test/<name> on branch b-<name>
-mkwt(){ local w="$CODE/wt/pipe-test/$1"; mkdir -p "$(dirname "$w")"
-  q -C "$MAIN" worktree add -q -b "b-$1" "$w"; echo "$1" > "$w/f-$1"; q -C "$w" add "f-$1"; q -C "$w" commit -qm "work $1"
-  [ "${2:-push}" = push ] && q -C "$w" push -q origin "b-$1"; printf '%s' "$w"; }
+# (BR=<branch> overrides the branch name)
+mkwt(){ local w="$CODE/wt/pipe-test/$1" br="${BR:-b-$1}"; mkdir -p "$(dirname "$w")"
+  q -C "$MAIN" worktree add -q -b "$br" "$w"; echo "$1" > "$w/f-$1"; q -C "$w" add "f-$1"; q -C "$w" commit -qm "work $1"
+  [ "${2:-push}" = push ] && q -C "$w" push -q origin "$br"; printf '%s' "$w"; }
 
 CLEAN=$(mkwt clean)
 PROMPT=$(mkwt prompt-only);   printf 'phase prompt\nline 2\n' > "$PROMPT/PROMPT.md"
-QA=$(mkwt qa-only);           mkdir -p "$QA/docs/qa/GTFuHzt9/shots"; echo evidence > "$QA/docs/qa/GTFuHzt9/report.md"; echo png > "$QA/docs/qa/GTFuHzt9/shots/a.png"
+QA=$(mkwt qa-GTFuHzt9);       mkdir -p "$QA/docs/qa/GTFuHzt9/shots"; echo evidence > "$QA/docs/qa/GTFuHzt9/report.md"; echo png > "$QA/docs/qa/GTFuHzt9/shots/a.png"
 MIXED=$(mkwt mixed);          echo p > "$MIXED/PROMPT.md"; echo real > "$MIXED/notes.txt"
 TRACKED=$(mkwt tracked);      echo edit >> "$TRACKED/tracked.txt"
 TRPROMPT=$(mkwt tracked-prompt); echo edit >> "$TRPROMPT/tracked.txt"; echo p > "$TRPROMPT/PROMPT.md"
@@ -76,6 +84,17 @@ LOOK4=$(mkwt look-qa-file);   mkdir -p "$LOOK4/docs/qa"; echo x > "$LOOK4/docs/q
 LOOK5=$(mkwt look-bak);       echo p > "$LOOK5/PROMPT.md.bak"
 LATE=$(mkwt late);            echo p > "$LATE/PROMPT.md"
 NOARCH=$(mkwt no-archive);    echo p > "$NOARCH/PROMPT.md"
+QABR=$(BR=card/Xy7Kp2Qa-fix-thing mkwt qa-branch); mkdir -p "$QABR/docs/qa/Xy7Kp2Qa"; echo e > "$QABR/docs/qa/Xy7Kp2Qa/r.md"
+# B1: an 8-character folder under docs/qa/ that the worktree does not declare is real work
+QADB=$(mkwt qa-db);           mkdir -p "$QADB/docs/qa/database"; echo 'create table t(id int);' > "$QADB/docs/qa/database/schema.sql"
+QADB2=$(mkwt research-database); mkdir -p "$QADB2/docs/qa/database"; echo x > "$QADB2/docs/qa/database/x"
+QAOTH=$(mkwt w2-Pq8Lm3Zt);    mkdir -p "$QAOTH/docs/qa/GTFuHzt9"; echo x > "$QAOTH/docs/qa/GTFuHzt9/x"
+QADATE=$(mkwt pipe-sUIVGVt2-20261114-2352); mkdir -p "$QADATE/docs/qa/20261114"; echo x > "$QADATE/docs/qa/20261114/x"
+# B2: a locked worktree, and one whose `git worktree remove` fails after the scaffold is deleted
+LOCKED=$(mkwt locked);        printf 'locked prompt\n' > "$LOCKED/PROMPT.md"; q -C "$MAIN" worktree lock "$LOCKED"
+RMFAIL=$(mkwt rmfail-Rk4Tz9Qa); printf 'rm-fail prompt\n' > "$RMFAIL/PROMPT.md"; chmod 640 "$RMFAIL/PROMPT.md"
+mkdir -p "$RMFAIL/docs/qa/Rk4Tz9Qa"; printf 'evidence\n' > "$RMFAIL/docs/qa/Rk4Tz9Qa/report.md"
+SAVE="$FX/saved"; mkdir -p "$SAVE"; cp -p "$RMFAIL/PROMPT.md" "$SAVE/PROMPT.md"; cp -p "$RMFAIL/docs/qa/Rk4Tz9Qa/report.md" "$SAVE/report.md"; cp -p "$LOCKED/PROMPT.md" "$SAVE/locked.md"
 q -C "$MAIN" fetch -q origin
 
 # corrupt the worktree's own index AFTER setup: `git status` now fails, rev-parse still works
@@ -105,16 +124,23 @@ expect "$LOOK2"    "keep dirty-uncommitted-work"    "look-alike prompt.md"
 expect "$LOOK3"    "keep dirty-uncommitted-work"    "look-alike docs/qa/<not an id>/"
 expect "$LOOK4"    "keep dirty-uncommitted-work"    "look-alike docs/qa/<id> as a file"
 expect "$LOOK5"    "keep dirty-uncommitted-work"    "look-alike PROMPT.md.bak"
+expect "$QABR"     "remove pushed-scaffold-only"  "docs/qa/<id> declared by branch card/<id>-…"
+expect "$QADB"     "keep dirty-uncommitted-work"  "B1 docs/qa/database/schema.sql"
+expect "$QADB2"    "keep dirty-uncommitted-work"  "B1 docs/qa/database/ in folder research-database"
+expect "$QAOTH"    "keep dirty-uncommitted-work"  "B1 docs/qa/<another card's id>/"
+expect "$QADATE"   "keep dirty-uncommitted-work"  "B1 docs/qa/<date token of the folder name>/"
+expect "$LOCKED"   "keep locked"                  "B2 locked worktree with only PROMPT.md"
+expect "$RMFAIL"   "remove pushed-scaffold-only"  "B2 rm-fail fixture plans as removable"
 
 # ---- apply: a real file lands in LATE after the plan; NOARCH's archive dir is unwritable ----
 echo "real work" > "$LATE/new-work.txt"; touch -t 202001010000 "$LATE/new-work.txt" "$LATE"   # old, so only the dirt rule can refuse it
 expect "$NOARCH"   "remove pushed-scaffold-only"  "no-archive fixture plans as removable"
-awk -F'\t' -v n="$NOARCH" '$2=="remove" && $5!=n {print $1"\t"$5}' "$PLAN" > "$FX/real.tsv"   # NOARCH gets its own run below
+awk -F'\t' -v n="$NOARCH" -v r="$RMFAIL" '$2=="remove" && $5!=n && $5!=r {print $1"\t"$5}' "$PLAN" > "$FX/real.tsv"   # NOARCH, RMFAIL get their own runs below
 printf 'worktrees\t%s\n' "$LATE" >> "$FX/real.tsv"
 for w in "$TRACKED" "$MIXED" "$CORRUPT"; do printf 'worktrees\t%s\n' "$w" >> "$FX/real.tsv"; done
 bash "$HYG" apply "$FX/real.tsv" > "$FX/apply.out" 2>&1
 
-for d in "$CLEAN" "$PROMPT" "$QA"; do [ ! -e "$d" ] && ok "removed $d" || bad "still present: $d ($(cat "$FX/apply.out"))"; done
+for d in "$CLEAN" "$PROMPT" "$QA" "$QABR"; do [ ! -e "$d" ] && ok "removed $d" || bad "still present: $d ($(cat "$FX/apply.out"))"; done
 awk -F'\t' -v p="$LATE" '$5==p && $2=="refused" && $4=="dirty-uncommitted-work"{f=1} END{exit !f}' "$FX/apply.out" \
   && ok "apply refuses a worktree that gained a real file after the plan" || bad "late: $(grep "$LATE" "$FX/apply.out")"
 [ -f "$LATE/PROMPT.md" ] && [ -f "$LATE/new-work.txt" ] && ok "late worktree intact" || bad "late worktree touched"
@@ -124,9 +150,9 @@ for d in "$TRACKED" "$MIXED" "$CORRUPT"; do [ -d "$d" ] && ok "apply refused han
 # the archive: dated folder, one tarball per removed scaffold worktree, contents byte-identical
 TODAY=$(date +%F)
 n=$(find "$ARCH/$TODAY" -name '*.tar.gz' 2>/dev/null | wc -l | tr -d ' ')
-[ "$n" = 2 ] && ok "two scaffold archives under $TODAY" || bad "expected 2 archives, got $n: $(ls -R "$ARCH" 2>&1)"
+[ "$n" = 3 ] && ok "three scaffold archives under $TODAY" || bad "expected 3 archives, got $n: $(ls -R "$ARCH" 2>&1)"
 PT=$(find "$ARCH/$TODAY" -name '*prompt-only*.tar.gz' | head -1)
-QT=$(find "$ARCH/$TODAY" -name '*qa-only*.tar.gz' | head -1)
+QT=$(find "$ARCH/$TODAY" -name '*qa-GTFuHzt9*.tar.gz' | head -1)
 X="$FX/x"; mkdir -p "$X/p" "$X/q"
 [ -n "$PT" ] && tar -xzf "$PT" -C "$X/p" && [ "$(cat "$X/p/PROMPT.md")" = "$(printf 'phase prompt\nline 2')" ] \
   && ok "PROMPT.md recoverable byte for byte" || bad "PROMPT.md archive: ${PT:-missing}"
@@ -145,6 +171,36 @@ else
     && ok "unwritable archive → refused remove-failed" || bad "noarch: $(cat "$FX/noarch.out")"
   [ -f "$NOARCH/PROMPT.md" ] && ok "PROMPT.md kept when it could not be archived" || bad "PROMPT.md deleted without an archive"
 fi
+
+# ---- B2: locked worktree, forced into an apply → refused locked, nothing touched ----
+ARCH2="$FX/arch2"
+printf 'worktrees\t%s\n' "$LOCKED" > "$FX/locked.tsv"
+HYG_SCAFFOLD_ARCHIVE="$ARCH2" bash "$HYG" apply "$FX/locked.tsv" > "$FX/locked.out" 2>&1
+awk -F'\t' -v p="$LOCKED" '$5==p && $2=="refused" && $4=="locked"{f=1} END{exit !f}' "$FX/locked.out" \
+  && ok "B2 apply refuses a locked worktree (reason locked)" || bad "locked: $(cat "$FX/locked.out")"
+cmp -s "$SAVE/locked.md" "$LOCKED/PROMPT.md" && ok "B2 locked worktree keeps PROMPT.md byte for byte" || bad "B2 locked PROMPT.md changed or gone"
+[ -z "$(find "$ARCH2" -name '*.tar.gz' 2>/dev/null)" ] && ok "B2 nothing archived for a locked worktree" || bad "B2 locked worktree was archived"
+
+# ---- B2: `git worktree remove` fails AFTER the scaffold was archived and deleted → restored ----
+GITFAIL="$FX/git-refuses-remove"
+printf '#!/bin/bash\n[ "${1:-}" = -C ] && [ "${3:-}" = worktree ] && [ "${4:-}" = remove ] && { echo "test: remove refused" >&2; exit 1; }\nexec "%s" "$@"\n' "$GITBIN" > "$GITFAIL"
+chmod 755 "$GITFAIL"
+printf 'worktrees\t%s\n' "$RMFAIL" > "$FX/rmfail.tsv"
+HYG_GIT="$GITFAIL" HYG_SCAFFOLD_ARCHIVE="$ARCH2" bash "$HYG" apply "$FX/rmfail.tsv" > "$FX/rmfail.out" 2>&1
+awk -F'\t' -v p="$RMFAIL" '$5==p && $2=="refused" && $4=="remove-failed"{f=1} END{exit !f}' "$FX/rmfail.out" \
+  && ok "B2 a failed remove reports refused remove-failed" || bad "rmfail: $(cat "$FX/rmfail.out")"
+[ -n "$(find "$ARCH2" -name '*rmfail*.tar.gz' 2>/dev/null)" ] && ok "B2 rm-fail scaffold was archived (the delete really ran)" || bad "B2 no archive: the failure path was not exercised"
+cmp -s "$SAVE/PROMPT.md" "$RMFAIL/PROMPT.md" && ok "B2 PROMPT.md restored byte for byte" || bad "B2 PROMPT.md not restored"
+cmp -s "$SAVE/report.md" "$RMFAIL/docs/qa/Rk4Tz9Qa/report.md" && ok "B2 docs/qa/<id>/ restored byte for byte" || bad "B2 qa report not restored"
+mode(){ ls -l "$1" | awk '{print $1}'; }
+[ "$(mode "$SAVE/PROMPT.md")" = "$(mode "$RMFAIL/PROMPT.md")" ] && ok "B2 PROMPT.md mode restored" || bad "B2 mode $(mode "$RMFAIL/PROMPT.md") != $(mode "$SAVE/PROMPT.md")"
+[ -z "$(find "$RMFAIL" -maxdepth 0 -mtime -1)" ] && [ -z "$(find "$RMFAIL" -type f -mtime -1 -not -path '*/.git' 2>/dev/null)" ] \
+  && ok "B2 the kept tree still reads as idle (folder + file mtimes restored)" || bad "B2 the restore made the tree look touched"
+[ -z "$("$GITBIN" -C "$RMFAIL" status --porcelain | grep -v -e '^?? PROMPT.md$' -e '^?? docs/')" ] && ok "B2 git status unchanged after the restore" || bad "B2 status: $("$GITBIN" -C "$RMFAIL" status --porcelain)"
+grep -q "scaffold of $RMFAIL restored" "$HYG_LOG" && ok "B2 log names the restore" || bad "B2 no restore line in log"
+bash "$HYG" plan > "$FX/plan2.tsv" 2>/dev/null
+awk -F'\t' -v p="$RMFAIL" '$5==p && $2=="remove" && $4=="pushed-scaffold-only"{f=1} END{exit !f}' "$FX/plan2.tsv" \
+  && ok "B2 next plan sees the restored tree exactly as before" || bad "B2 re-plan: $(awk -F'\t' -v p="$RMFAIL" '$5==p' "$FX/plan2.tsv")"
 
 echo "---"; echo "pass=$PASS fail=$FAILN"
 [ "$FAILN" = 0 ]

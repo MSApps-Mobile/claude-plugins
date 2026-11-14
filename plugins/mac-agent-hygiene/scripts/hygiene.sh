@@ -23,7 +23,9 @@
 #                    the branch: exact head SHA, or (rebased / force-pushed heads) every local-only
 #                    commit subject matches one of the PR's commits. Dirty / unpushed / in-use: KEPT.
 #                    Exception (card d9GJrXfc): dirt that is ONLY untracked agent scaffolding (PROMPT.md,
-#                    docs/qa/<card>/...) is tarred to HYG_SCAFFOLD_ARCHIVE/<date>/ first, then the tree goes.
+#                    docs/qa/<card>/... for the card id the worktree's branch or folder declares) is tarred
+#                    to HYG_SCAFFOLD_ARCHIVE/<date>/ first, then the tree goes; a failed remove restores it.
+#                    A locked worktree (`git worktree lock`) is always kept.
 #                    Note: "clean" is `git status --porcelain`, so gitignored files (a local .env,
 #                    node_modules) go with the worktree. The branch ref stays — nothing is unrecoverable.
 #
@@ -180,24 +182,45 @@ merged_pr_commits_match(){ local d="$1" repo="$2" f="$3" b="$4" ls="$TMPD/local-
 # folder. Fixed in code on purpose, exact shapes only, never a broad glob. A worktree whose ONLY dirt is
 # these is not "uncommitted work": apply archives them (wt_archive_scaffold) and then removes the tree.
 #   PROMPT.md                  top level only, exact case
-#   docs/qa/<card>/<file>      <card> = an 8-character Trello shortLink ([A-Za-z0-9]{8})
+#   docs/qa/<card>/<file>      <card> = a Trello shortLink THIS worktree declares (wt_declared_ids): the
+#                              <id> of its branch `card/<id>-...`, or an <id> token of its folder name.
+#                              A folder name that only looks like an id (docs/qa/database/) is real work.
+# ASCII letters spelled out: bash 3.2 ranges ([a-z]) follow the locale's collation.
+WT_LOW=abcdefghijklmnopqrstuvwxyz; WT_UP=ABCDEFGHIJKLMNOPQRSTUVWXYZ; WT_DIG=0123456789
+wt_card_id(){  # 0 = $1 has the shape of a Trello shortLink and is not an ordinary word or a number
+  [ ${#1} -eq 8 ] || return 1
+  case "$1" in *[!"$WT_LOW$WT_UP$WT_DIG"]*) return 1;; esac
+  case "$1" in *[!"$WT_LOW"]*) ;; *) return 1;; esac               # database, research, payments
+  case "$1" in *[!"$WT_UP"]*) ;; *) return 1;; esac                # FEATURES
+  case "$1" in *[!"$WT_DIG"]*) ;; *) return 1;; esac               # 20261114 (a date in a folder name)
+  case "$1" in ["$WT_UP"]*) case "${1#?}" in *[!"$WT_LOW"]*) ;; *) return 1;; esac;; esac   # Overview
+  return 0; }
+WT_IDS=""
+wt_declared_ids(){ local d="$1" b t parts
+  WT_IDS=""
+  b=$("$GIT" -C "$d" symbolic-ref -q --short HEAD 2>/dev/null)
+  case "$b" in card/?*) t="${b#card/}"; t="${t%%-*}"; wt_card_id "$t" && WT_IDS=" $t";; esac
+  IFS='-_.' read -r -a parts <<< "${d##*/}"
+  for t in ${parts[@]+"${parts[@]}"}; do wt_card_id "$t" && WT_IDS="$WT_IDS $t"; done
+  WT_IDS="$WT_IDS "; }
 wt_scaffold_path(){ local c
   [ "$1" = PROMPT.md ] && return 0
   case "$1" in docs/qa/*/*) ;; *) return 1;; esac
   case "$1" in */) return 1;; esac                      # a nested repo / dir entry is never scaffolding
   c="${1#docs/qa/}"; c="${c%%/*}"
-  [ ${#c} -eq 8 ] || return 1
-  case "$c" in *[!A-Za-z0-9]*) return 1;; esac
-  return 0; }
+  wt_card_id "$c" || return 1
+  case "$WT_IDS" in *" $c "*) return 0;; esac           # the id this worktree declares, nothing else
+  return 1; }
 # Called only when `git status --porcelain` is non-empty. 0 = every entry is an untracked scaffold path
 # (the NUL list is left in $TMPD/scaffold-list for apply); 1 = keep, REASON says why:
 #   dirty-uncommitted-work  any tracked change, staged or not (rescue doctrine: it may be the only copy),
 #                           or any untracked file outside the scaffold shapes (same reason as before)
 #   git-status-failed       the second, file-level read failed or listed nothing
-SCAFFOLD=""
+SCAFFOLD=""; SCAFFOLD_TGZ=""
 wt_dirt_scaffold_only(){ local d="$1" e other=0 z="$TMPD/status.z" list="$TMPD/scaffold-list"
   : > "$list"
   "$GIT" -C "$d" status --porcelain=v1 -z --untracked-files=all > "$z" 2>/dev/null || { REASON=git-status-failed; return 1; }
+  wt_declared_ids "$d"
   while IFS= read -r -d '' e; do
     case "$e" in '?? '?*) ;; *) REASON=dirty-uncommitted-work; return 1;; esac
     wt_scaffold_path "${e#\?\? }" || other=1
@@ -207,9 +230,9 @@ wt_dirt_scaffold_only(){ local d="$1" e other=0 z="$TMPD/status.z" list="$TMPD/s
   [ $other = 0 ] || { REASON=dirty-uncommitted-work; return 1; }
   return 0; }
 # Copy the scaffold files of $1 (listed in $TMPD/scaffold-list) to a dated tarball under
-# HYG_SCAFFOLD_ARCHIVE, verify every path is in it, then delete exactly those files so the plain
-# `git worktree remove` (never --force) can run; git itself refuses if anything else is left.
+# HYG_SCAFFOLD_ARCHIVE and verify every path is in it. Nothing is deleted here; SCAFFOLD_TGZ names it.
 wt_archive_scaffold(){ local d="$1" list="$TMPD/scaffold-list" dir tgz p
+  SCAFFOLD_TGZ=""
   [ -s "$list" ] || return 1
   dir="$HYG_SCAFFOLD_ARCHIVE/$(/bin/date +%F)"
   /bin/mkdir -p "$dir" 2>/dev/null || return 1
@@ -219,9 +242,23 @@ wt_archive_scaffold(){ local d="$1" list="$TMPD/scaffold-list" dir tgz p
   while IFS= read -r -d '' p; do
     /usr/bin/grep -qxF -- "$p" "$TMPD/scaffold-listed" || { /bin/rm -f "$tgz"; return 1; }
   done < "$list"
-  log "archived scaffold of $d to $tgz"
-  while IFS= read -r -d '' p; do /bin/rm -f -- "$d/$p" || return 1; done < "$list"
+  SCAFFOLD_TGZ="$tgz"; log "archived scaffold of $d to $tgz"
   return 0; }
+# Delete exactly the archived files so the plain `git worktree remove` (never --force) can run; git
+# itself refuses if anything else is left.
+wt_delete_scaffold(){ local d="$1" p
+  while IFS= read -r -d '' p; do /bin/rm -f -- "$d/$p" || return 1; done < "$TMPD/scaffold-list"
+  return 0; }
+# The remove failed after the delete: put every file back from the tarball just written (contents, mode,
+# mtime; an existing file is never overwritten) and the folder's own mtime, so a refusal leaves the kept
+# tree as it was. 1 = something is still missing; the log names the tarball that holds it.
+wt_restore_scaffold(){ local d="$1" ref="$2" p miss=0
+  [ -n "$SCAFFOLD_TGZ" ] && [ -d "$d" ] || { log "RESTORE FAILED for $d: scaffold is in ${SCAFFOLD_TGZ:-<no archive>}"; return 1; }
+  /usr/bin/tar -xpkzf "$SCAFFOLD_TGZ" -C "$d" 2>>"$HYG_LOG"
+  while IFS= read -r -d '' p; do [ -e "$d/$p" ] || miss=1; done < "$TMPD/scaffold-list"
+  [ -e "$ref" ] && /usr/bin/touch -r "$ref" "$d" 2>/dev/null
+  [ $miss = 0 ] || { log "RESTORE FAILED for $d: scaffold is in $SCAFFOLD_TGZ"; return 1; }
+  log "remove failed, scaffold of $d restored from $SCAFFOLD_TGZ"; return 0; }
 
 check_worktree(){ local d="$1" b h repo f st rb ro rn gd cdir
   SCAFFOLD=""
@@ -230,6 +267,9 @@ check_worktree(){ local d="$1" b h repo f st rb ro rn gd cdir
   gd=$("$GIT" -C "$d" rev-parse --path-format=absolute --git-dir 2>/dev/null)
   cdir=$("$GIT" -C "$d" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
   [ -n "$gd" ] && [ "$gd" != "$cdir" ] || { REASON=not-a-linked-worktree; return 1; }   # submodule / separate git-dir
+  # `git worktree lock` is the owner's explicit "do not remove" (the `locked` line of `git worktree list
+  # --porcelain` is this file). Kept before any other rule, so apply never touches a locked tree's files.
+  [ -e "$gd/locked" ] && { REASON=locked; return 1; }
   wt_recently_touched "$d" && { REASON=touched-recently; return 1; }
   cwd_inside "$d" && { REASON=a-process-is-inside; return 1; }
   st=$("$GIT" -C "$d" status --porcelain 2>/dev/null) || { REASON=git-status-failed; return 1; }
@@ -288,8 +328,13 @@ plan(){ local cat p k prev="" n=0 r=0 t0=$SECONDS
 remove_item(){ local cat="$1" p="$2" common
   if [ "$cat" = worktrees ]; then
     common=$("$GIT" -C "$p" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
-    if [ -n "$SCAFFOLD" ]; then wt_archive_scaffold "$p" || { log "scaffold archive failed, kept $p"; return 1; }; fi
-    "$GIT" -C "$p" worktree remove "$p" >>"$HYG_LOG" 2>&1 || return 1
+    if [ -n "$SCAFFOLD" ]; then
+      wt_archive_scaffold "$p" || { log "scaffold archive failed, kept $p"; return 1; }
+      /usr/bin/touch -r "$p" "$TMPD/wt-mtime" 2>/dev/null
+      # archive → delete → remove is not atomic: any failure after the archive puts the files back
+      if ! wt_delete_scaffold "$p" || ! "$GIT" -C "$p" worktree remove "$p" >>"$HYG_LOG" 2>&1; then
+        wt_restore_scaffold "$p" "$TMPD/wt-mtime"; return 1; fi
+    else "$GIT" -C "$p" worktree remove "$p" >>"$HYG_LOG" 2>&1 || return 1; fi
     [ -n "$common" ] && "$GIT" --git-dir="$common" worktree prune >/dev/null 2>&1
   else /bin/rm -rf -- "$p" || return 1; fi; return 0; }
 
