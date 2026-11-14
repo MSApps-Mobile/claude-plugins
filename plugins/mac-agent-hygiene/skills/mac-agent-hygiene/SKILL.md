@@ -21,7 +21,7 @@ Run the four MCP tools in this order. Never skip the plan.
    is building, whether the LaunchAgent is loaded, and the last log lines.
 2. **`hygiene_plan`** — dry run. Every candidate comes back with `remove` or `keep`, its size, and a
    reason. Read the `keep` reasons as carefully as the `remove` ones: `dirty-uncommitted-work`,
-   `unpushed-commits`, `a-process-is-inside`, `profile-in-use`, `xcode-building` are the routine
+   `unpushed-commits`, `a-process-is-inside`, `cwd-unobservable` (lsof could not list process cwds), `profile-in-use`, `xcode-building` are the routine
    working. The plan returns a `plan_id` valid for 30 minutes.
 3. **`hygiene_apply`** with that `plan_id` and `confirm: true` — each item is re-checked at apply
    time by the same function that planned it; anything that changed since the plan is refused, not
@@ -42,6 +42,7 @@ Without the MCP server (plain shell): `bash scripts/hygiene.sh status | plan | r
 |---|---|---|
 | `derived-data` | `~/Library/Developer/Xcode/DerivedData/*` | everything, while `xcodebuild`, Xcode or `XCBBuildService` is running |
 | `plugin-clones` | `~/.claude/plugins/cache/temp_git_*` older than 24 h | younger clones (an install may still be using them) |
+| `plugin-versions` | a superseded `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>` dir: not in `installed_plugins.json`, not among the newest `HYG_PLUGIN_VERSION_KEEP` (2) by version order or by mtime, no file modified within `HYG_PLUGIN_VERSION_MIN_AGE_MIN` (2880 = 48 h), nobody's cwd, and `lsof -t +D` empty within `HYG_LSOF_TIMEOUT_S` (30 s, perl alarm) | the installed version, the newest 2, anything touched in 48 h or held open, every version of a plugin missing from `installed_plugins.json`, and everything when the list is unreadable / unparseable, jq or lsof is missing, lsof times out or errors, or a dir cannot be dated |
 | `browser-caches` | inside each `~/.cache/playwright-*` profile, ONLY: `Default/Cache`, `Default/Code Cache`, `Default/GPUCache`, `Default/Service Worker/CacheStorage` + `ScriptCache`, Dawn / Graphite / shader caches, `BrowserMetrics*` | Cookies, Local Storage, IndexedDB, Login Data, Local State, Preferences, Session Storage, Network — the profile IS a login; any profile with a `SingletonLock` or open files is skipped whole |
 | `model-caches` | the directories in `HYG_MODEL_CACHES` (default `~/.cache/whisper`, `~/.cache/codex-runtimes`), idle > `HYG_MODEL_CACHE_AGE_DAYS` (7) | when a process has them open or they were used this week |
 | `worktrees` | a linked worktree under `HYG_WT_ROOT` (default `~/code`) — a direct child matching `HYG_WT_GLOB` (default `*wt-*`), or up to `HYG_WT_DEPTH` (3) levels below a top-level dir in `HYG_WT_NESTED` (default `wt _worktrees`, i.e. `~/code/wt/{sup,ref,pipe}-*/...` and `~/code/_worktrees/...`) — that is untouched > `HYG_WT_AGE_DAYS` (7), is nobody's cwd, has an empty `git status --porcelain`, and whose HEAD is on a remote-tracking ref, equals the head of a merged PR (`gh pr list --state merged`), or sits on the branch of a merged PR whose commits (`gh pr view --json commits`) match every local-only commit subject (rebased / force-pushed heads) | dirty, unpushed, unmerged, in-use, recently touched, or a full clone (`.git` is a directory, not a file) |

@@ -15,6 +15,7 @@ and Desktop together held 2 GB. The space was in:
 |---|---|---|
 | `~/code/*wt-*` | most of the 233 GB under `~/code` | 774 linked git worktrees (up to 1 GB each) agents created per task and never removed |
 | `~/.claude/plugins/cache/temp_git_*` | 34 GB | 937 leftover clones from plugin installs |
+| `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>` | ~6.5 GB | superseded plugin versions (14 `claude-mem` versions cached, 1 installed) |
 | `~/.cache/playwright-*` | 7 GB | agent browser profiles — half of it Chromium's regenerable caches |
 | `~/Library/Developer/Xcode/DerivedData` | 6 GB | build output |
 | `~/.claude/projects` | 13 GB | session transcripts (Claude Code prunes these itself) |
@@ -42,6 +43,8 @@ dirty, unpushed or in use; disk went from 16 GB free to 219 GB free.
 - macOS (Apple Silicon or Intel), Node.js 18+ (for the MCP server; the scripts themselves are bash).
 - Optional: GitHub CLI `gh`, authenticated — enables the merged-PR check for squash-merged worktrees.
   Without it the routine keeps any worktree whose HEAD is not on a remote ref.
+- `jq` (`/usr/bin/jq` on macOS 15+, or Homebrew) to read `installed_plugins.json` for the
+  `plugin-versions` category. Without it every plugin version is kept.
 - No `sudo`. Nothing is installed outside `~/Library/LaunchAgents`, `~/Library/Logs` and
   `~/.local/share/mac-agent-hygiene` (a stable copy of `hygiene.sh` the LaunchAgent runs, so a plugin
   update never leaves the scheduled job pointing at a moved file — re-run install after updating).
