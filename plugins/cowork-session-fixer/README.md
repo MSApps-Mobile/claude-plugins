@@ -50,6 +50,17 @@ Claude will walk you through the fix step by step, asking permission before any 
 - [#25707](https://github.com/anthropics/claude-code/issues/25707) — Task didn't load properly
 - [#24190](https://github.com/anthropics/claude-code/issues/24190) — Error on opening session
 
+## Usage
+
+```
+/cowork-session-fixer:fix [error message or symptom]
+
+# Examples:
+/cowork-session-fixer:fix
+/cowork-session-fixer:fix RPC error: process with name already running
+/cowork-session-fixer:fix session won't load
+```
+
 ## Support
 
 - Website: [msapps.mobi](https://msapps.mobi)

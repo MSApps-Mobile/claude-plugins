@@ -55,6 +55,14 @@ is optional and only exists so the task name shows up in the sidebar.
 
 ## Usage
 
+```
+/github-cli-health-check:check [no arguments]
+
+# Examples:
+/github-cli-health-check:check
+```
+
+
 Trigger either path by saying any of:
 - "Run a GitHub CLI health check"
 - "Check if gh is working"

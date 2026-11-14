@@ -36,6 +36,14 @@ No additional MCPs or environment variables are required. Desktop Commander must
 
 ## Usage
 
+```
+/gcloud-cli-health-check:check [no arguments]
+
+# Examples:
+/gcloud-cli-health-check:check
+```
+
+
 Trigger the skill by saying any of:
 - "Run a gcloud health check"
 - "Check if gcloud is working"

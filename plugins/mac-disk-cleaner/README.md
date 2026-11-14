@@ -55,6 +55,21 @@ To run the cleanup automatically every week, ask Claude:
   - **Claude Code** (CLI) — uses native Bash tool to run cleanup commands
   - **Claude Cowork** with Desktop Commander
 
+## Usage
+
+```
+/mac-disk-cleaner:explore-disk [folder to focus on]
+
+# Examples:
+/mac-disk-cleaner:explore-disk
+/mac-disk-cleaner:explore-disk ~/Library
+
+/mac-disk-cleaner:clean-mac [no arguments]
+
+# Examples:
+/mac-disk-cleaner:clean-mac
+```
+
 ## Author
 
 Built by [MSApps](https://msapps.mobi)
