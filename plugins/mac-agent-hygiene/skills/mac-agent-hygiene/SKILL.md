@@ -67,11 +67,21 @@ HYG_WT_AGE_DAYS=7
 HYG_MODEL_CACHES="$HOME/.cache/whisper $HOME/.cache/codex-runtimes"
 HYG_MODEL_CACHE_AGE_DAYS=7    # model caches go when not MODIFIED this long (a read does not count)
 HYG_WT_MERGED_PR_CHECK=1      # 0 = pushed-only (no gh call)
+HYG_WT_KEEP_UNPUSHED=1        # 0 = age-only: idle dirty/unpushed worktrees go too, archived first
 ```
 
 Environment variables win over the config file (an MCP `worktree_age_days` override applies to that
 run only). "Untouched" means no regular file inside the worktree (outside `.git`) is newer than the
 age. "Clean" is `git status --porcelain` empty, so gitignored files go with the worktree.
+
+`HYG_WT_KEEP_UNPUSHED=0` is the user's opt-in to an age-only worktree policy: idle (> age) and nobody's
+cwd is enough, dirty or unpushed included (reasons `idle-dirty-archived`, `idle-unpushed-archived`).
+HEAD is pinned at `refs/hygiene-archive/<date>/<path>` in the parent repo and tracked edits at `…-wip`
+before `git worktree remove --force`; untracked files are lost. Recover with
+`git for-each-ref refs/hygiene-archive/` then `git branch <name> <ref>`. The opt-in also enables the
+`wt-clones` category (full clones under a `HYG_WT_NESTED` dir, idle > age, nobody's cwd; reason
+`idle-clone-archived`): local-only commits and tracked edits go to a git bundle under `HYG_ARCHIVE_DIR`
+(`git clone <bundle>` to recover). Never set it for the user.
 
 The browser-cache allowlist is fixed in code on purpose. The LaunchAgent carries an explicit `PATH`
 (`/usr/bin:/bin:/usr/sbin:/sbin` plus the Homebrew bin that holds `gh`) because launchd does not
