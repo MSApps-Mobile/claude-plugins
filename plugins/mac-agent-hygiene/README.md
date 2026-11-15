@@ -31,7 +31,11 @@ This plugin turns the fix into a routine any Mac can install:
 A worktree is removed only when it is untouched for 7 days, clean, nobody's current directory, and
 its HEAD is pushed (or is the head of a merged pull request, or every local-only commit of a rebased
 branch appears in that branch's merged pull request). Browser profiles are logins: only their
-cache subfolders go; cookies and local storage stay. DerivedData is skipped while Xcode builds. The
+cache subfolders go; cookies and local storage stay. DerivedData is skipped while Xcode builds.
+Nothing is removed under a running agent phase folder: a folder above the worktree with an
+`.in-use-by-*` marker, a `launch.log` written in the last 3 hours (`HYG_LIVE_TTL_MIN`), or a process
+sitting in it keeps every worktree below it. If `lsof` cannot list process folders, nothing under
+`~/code` is removed that run. Every removal and every refusal is logged with its reason and path. The
 full reasoning is in `skills/mac-agent-hygiene/references/safety-model.md`.
 
 First real run on the reference machine: 420 worktrees removed (133 GB), 80 kept because they were

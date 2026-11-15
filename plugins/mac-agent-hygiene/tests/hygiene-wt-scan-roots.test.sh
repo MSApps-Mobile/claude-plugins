@@ -46,6 +46,13 @@ export HYG_LOG="$FX/hygiene.log" HYG_DERIVED_DATA="$HOME/dd-none" HYG_PLUGIN_CAC
 export HYG_PW_GLOB="$HOME/pw-none-*" HYG_MODEL_CACHES="$HOME/mc-none"
 export HYG_WT_AGE_DAYS=1 HYG_WT_MERGED_PR_CHECK=0 HYG_GIT="$GITBIN" HYG_GH=""
 
+# lsof: the real one when present; otherwise a stub that lists no cwd (hygiene.sh treats a MISSING lsof as
+# unmeasured and keeps everything, card wURBXBTk, so the fixture states "nobody is inside" explicitly).
+if [ -z "${HYG_LSOF:-}" ]; then
+  if [ -x /usr/sbin/lsof ]; then export HYG_LSOF=/usr/sbin/lsof
+  else mkdir -p "$FX/lsof-stub"; printf '#!/bin/bash\nexit 0\n' > "$FX/lsof-stub/lsof"; chmod +x "$FX/lsof-stub/lsof"; export HYG_LSOF="$FX/lsof-stub/lsof"; fi
+fi
+
 PASS=0; FAILN=0
 ok(){ PASS=$((PASS+1)); echo "ok   - $1"; }
 bad(){ FAILN=$((FAILN+1)); echo "FAIL - $1"; }
