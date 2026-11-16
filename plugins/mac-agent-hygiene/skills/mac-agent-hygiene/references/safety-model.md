@@ -60,6 +60,28 @@ second line of defence) followed by `git worktree prune` in the main repository.
 The first real run on the reference machine removed 420 worktrees / 133 GB and kept 80 — every kept
 one was dirty, unpushed, in use, or a full clone.
 
+## Superseded plugin versions (`plugin-versions`)
+
+Claude Code keeps every plugin version it ever downloaded under
+`~/.claude/plugins/cache/<marketplace>/<plugin>/<version>`. Measured 2026-10-29 on the reference machine:
+`plugins/cache` = 15 GB, of which `thedotmack/claude-mem` = 7.3 GB in 14 versions (one release a day,
+~780 MB each) while `installed_plugins.json` listed only `15.5.0` — ~6.5 GB superseded. But a session
+started on an older version may still run its hooks or MCP server from that directory, and `ps` showed
+no version in the args. So a version is removed only when ALL hold (card 2frXvtE1):
+
+1. it is NOT in `installed_plugins.json` (by `installPath`, or `<plugin>/<version>`);
+2. it is NOT among the newest `HYG_PLUGIN_VERSION_KEEP` (2, the minimum) — by version order AND by
+   directory mtime, so a mis-sorting version string cannot expose the version just installed;
+3. its directory and every file in it are older than `HYG_PLUGIN_VERSION_MIN_AGE_MIN` (48 h);
+4. no process has its cwd inside, and `lsof -w -t +D <dir>` prints no pid, bounded by a perl
+   `alarm` of `HYG_LSOF_TIMEOUT_S`. lsof exits 1 under `+D` even when it finds holders, so a printed
+   pid means in use whatever the exit code.
+
+Fail closed: a missing jq, an unreadable or unparseable `installed_plugins.json` (anything but
+`{plugins: {"<plugin>@<marketplace>": [ {...} ]}}`), an lsof that times out, writes to stderr or is
+missing, a directory that cannot be dated, or a plugin with no entry in the list means KEEP, with the
+reason in the plan row. `tests/hygiene-plugin-versions.test.sh` covers each case with a fixture cache.
+
 ## Paths are compared as strings, never as patterns
 
 A worktree named `wt-[x` once slipped past a cwd check that used the path as a `grep` pattern (the `[`

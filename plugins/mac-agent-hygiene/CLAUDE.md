@@ -21,6 +21,8 @@
   clean, and pushed / merged-PR head / merged PR on the same branch whose commits cover every local-only
   commit subject. `gh` failure ⇒ keep. Never `--force`. macOS `/bin/bash` is 3.2: no `declare -A`;
   per-repo gh results are cache files in `$TMPD`.
+- Plugin versions: never the installed one, never the newest 2 (by version and by mtime), never touched < 48 h,
+  never held open (`lsof -t +D`, perl-alarm bounded). Unparseable list / lsof timeout or error / undatable ⇒ keep.
 - DerivedData skipped while Xcode builds. Never sudo. Paths outside `$HOME` refused at apply.
 - System binaries by absolute path; explicit PATH in the plist; `mktemp` with a `${TMPDIR:-/tmp}` template.
 - Paths compared as fixed strings (never a grep pattern); `.`/`..` components refused at the apply gate; every
@@ -33,6 +35,7 @@ bash -n scripts/*.sh && node --check server/index.js
 bash tests/hygiene-worktrees.test.sh        # fixture git repos + stubbed gh; runs on Linux too
 bash tests/hygiene-wt-scan-roots.test.sh    # default scope incl. ~/code/_worktrees, keep rules, status count
 bash tests/hygiene-keeps-logins.test.sh     # macOS only
+bash tests/hygiene-plugin-versions.test.sh  # fixture plugin cache + stub lsof; needs jq and perl
 bash scripts/hygiene.sh status
 bash scripts/hygiene.sh plan | awk -F'\t' '{print $1, $2, $4}' | sort | uniq -c
 printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05"}}' \

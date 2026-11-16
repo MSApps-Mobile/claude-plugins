@@ -19,7 +19,7 @@ const plans = new Map(); // plan_id → { at, items }
 const TOOLS = [
   {
     name: 'hygiene_status', annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-    description: 'Read-only snapshot: disk free, Xcode DerivedData size, leftover plugin clone count, Playwright profile count (locked / in use), stale worktree census, Xcode build state, LaunchAgent state, last log lines. Never changes anything.',
+    description: 'Read-only snapshot: disk free, Xcode DerivedData size, leftover plugin clone count, plugin version dir count, Playwright profile count (locked / in use), stale worktree census, Xcode build state, LaunchAgent state, last log lines. Never changes anything.',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false },
   },
   {
@@ -28,7 +28,7 @@ const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        categories: { type: 'array', items: { type: 'string', enum: ['derived-data', 'plugin-clones', 'browser-caches', 'model-caches', 'worktrees'] }, description: 'Restrict the plan to these categories (default: all).' },
+        categories: { type: 'array', items: { type: 'string', enum: ['derived-data', 'plugin-clones', 'browser-caches', 'model-caches', 'worktrees', 'plugin-versions'] }, description: 'Restrict the plan to these categories (default: all).' },
         worktree_age_days: { type: 'integer', minimum: 1, description: 'Override HYG_WT_AGE_DAYS for this plan (default 7).' },
       },
       additionalProperties: false,
@@ -78,7 +78,7 @@ function toolStatus() {
   o.log_tail = tail;
   return o;
 }
-const CATS = ['derived-data', 'plugin-clones', 'browser-caches', 'model-caches', 'worktrees'];
+const CATS = ['derived-data', 'plugin-clones', 'browser-caches', 'model-caches', 'worktrees', 'plugin-versions'];
 function toolPlan(args = {}) {
   if (args.categories !== undefined && !(Array.isArray(args.categories) && args.categories.every((c) => CATS.includes(c)))) return { isError: true, text: `categories must be a subset of ${CATS.join(', ')}` };
   if (args.worktree_age_days !== undefined && !(Number.isInteger(args.worktree_age_days) && args.worktree_age_days >= 1)) return { isError: true, text: 'worktree_age_days must be an integer >= 1' };
