@@ -11,6 +11,10 @@
 #   KNOWN-NEGATIVE  a full clone under wt/sup-*/... is never listed, and apply refuses a hand-written line for it
 #   KNOWN-NEGATIVE  a linked worktree outside the agent dirs (~/code/project-feature) is never listed
 #   KNOWN-POSITIVE  apply removes exactly the planned worktrees; branch refs survive (`git worktree remove`)
+#   KNOWN-POSITIVE  HYG_WT_KEEP_UNPUSHED=0: idle dirty / unpushed worktrees go; HEAD and tracked edits are
+#                   pinned under refs/hygiene-archive first; idle clones under wt/ go after a git bundle of their
+#                   local-only commits; a recently touched worktree or clone, the main clone and an
+#                   out-of-scope worktree stay; without the opt-in a dirty idle worktree is still kept
 #
 # Needs git and the absolute-path tools hygiene.sh calls (/usr/bin/find, /usr/bin/du, ...); prints SKIP
 # without them. lsof is optional (missing ⇒ no cwd is "inside"). Nothing here touches the real HOME.
@@ -36,7 +40,7 @@ git config --global advice.detachedHead false
 CODE="$HOME/code"
 export HYG_LOG="$FX/hygiene.log" HYG_DERIVED_DATA="$HOME/dd-none" HYG_PLUGIN_CACHE="$HOME/pc-none"
 export HYG_PW_GLOB="$HOME/pw-none-*" HYG_MODEL_CACHES="$HOME/mc-none" HYG_WT_ROOT="$CODE"
-export HYG_WT_AGE_DAYS=1 HYG_WT_MERGED_PR_CHECK=1 HYG_GIT="$GITBIN" HYG_GH="$FX/bin/gh"
+export HYG_ARCHIVE_DIR="$FX/archive" HYG_WT_AGE_DAYS=1 HYG_WT_MERGED_PR_CHECK=1 HYG_GIT="$GITBIN" HYG_GH="$FX/bin/gh"
 
 PASS=0; FAILN=0
 ok(){ PASS=$((PASS+1)); echo "ok   - $1"; }
@@ -135,6 +139,56 @@ for d in "$INCONC" "$CLONE" "$OWN" "$MAIN"; do [ -d "$d" ] && ok "kept $d" || ba
   || bad "branch ref feat-rebased is gone"
 ! "$GITBIN" -C "$MAIN" worktree list --porcelain | grep -qF "$REBASED" && ok "git worktree list no longer has the rebased worktree" \
   || bad "worktree metadata not pruned"
+
+# ---- HYG_WT_KEEP_UNPUSHED=0: age-only policy — idle dirty / unpushed worktrees go, archived first ----
+DIRTY="$CODE/wt/pipe-900/demo"; mkdir -p "$(dirname "$DIRTY")"
+q -C "$MAIN" worktree add -q -b feat-dirty "$DIRTY"
+echo "uncommitted edit" > "$DIRTY/initial"
+FRESH="$CODE/wt/pipe-901/demo"; mkdir -p "$(dirname "$FRESH")"
+q -C "$MAIN" worktree add -q -b feat-fresh "$FRESH"; commit "$FRESH" "fresh local work"
+commit "$CLONE" "clone-only local work"; CLONE_HEAD="$("$GITBIN" -C "$CLONE" rev-parse HEAD)"
+FRESHCLONE="$CODE/wt/sup-2/demo"; mkdir -p "$(dirname "$FRESHCLONE")"; q clone -q "$ORIGIN" "$FRESHCLONE"
+# a dirty worktree that holds a full clone inside it: kept until the nested clone has gone on its own
+HOST="$CODE/wt/pipe-902"
+q -C "$MAIN" worktree add -q -b feat-host "$HOST"; echo "host edit" > "$HOST/initial"
+INNER="$HOST/inner"; q clone -q "$ORIGIN" "$INNER"; commit "$INNER" "inner local work"; INNER_HEAD="$("$GITBIN" -C "$INNER" rev-parse HEAD)"
+UNBORN="$CODE/wt/sup-3/scratch"; mkdir -p "$UNBORN"; q init -q "$UNBORN"; echo data > "$UNBORN/out.txt"
+find "$HOST" "$UNBORN" -exec touch -t 202001010000 {} + 2>/dev/null
+find "$DIRTY" "$INCONC" "$CLONE" -exec touch -t 202001010000 {} + 2>/dev/null
+INCONC_HEAD="$("$GITBIN" -C "$INCONC" rev-parse HEAD)"
+HYG_WT_KEEP_UNPUSHED=0 bash "$HYG" plan > "$PLAN" 2>"$FX/plan.err" || bad "age-only plan exited non-zero: $(cat "$FX/plan.err")"
+expect "$INCONC" "remove idle-unpushed-archived" "age-only: idle unpushed worktree"
+expect "$DIRTY"  "remove idle-dirty-archived"    "age-only: idle dirty worktree"
+expect "$FRESH"  "keep touched-recently"         "age-only: recently touched worktree"
+crow(){ awk -F'\t' -v p="$1" '$1=="wt-clones" && $5==p {print $2" "$4}' "$PLAN"; }
+[ "$(crow "$CLONE")" = "remove idle-clone-archived" ] && ok "age-only: idle clone under wt/ planned as remove" \
+  || bad "age-only: idle clone: got '$(crow "$CLONE")'"
+[ "$(crow "$FRESHCLONE")" = "keep touched-recently" ] && ok "age-only: fresh clone kept" || bad "age-only: fresh clone: got '$(crow "$FRESHCLONE")'"
+expect "$HOST" "keep contains-nested-repo" "age-only: worktree holding a nested clone"
+[ "$(crow "$INNER")" = "remove idle-clone-archived" ] && ok "age-only: nested clone planned on its own" || bad "nested clone: got '$(crow "$INNER")'"
+[ "$(crow "$UNBORN")" = "remove idle-clone-archived" ] && ok "age-only: never-committed repo planned" || bad "unborn repo: got '$(crow "$UNBORN")'"
+[ -z "$(crow "$MAIN")" ] && ok "age-only: main clone outside wt/ not listed" || bad "age-only: main clone listed"
+[ -z "$(row "$OWN")" ] && ok "age-only: own worktree still not listed" || bad "age-only: own worktree listed"
+awk -F'\t' '$2=="remove"{print $1"\t"$5}' "$PLAN" > "$FX/age.tsv"
+HYG_WT_KEEP_UNPUSHED=0 bash "$HYG" apply "$FX/age.tsv" > "$FX/age.out" 2>&1
+for d in "$INCONC" "$DIRTY" "$CLONE" "$INNER" "$UNBORN"; do [ ! -e "$d" ] && ok "age-only removed $d" || bad "age-only still present: $d"; done
+bun="$(find "$FX/archive" -name 'wt_sup-1_demo.bundle' 2>/dev/null | head -1)"
+[ -n "$bun" ] && "$GITBIN" bundle list-heads "$bun" 2>/dev/null | grep -q "^$CLONE_HEAD" \
+  && ok "clone's local-only commit saved in a bundle" || bad "no bundle with the clone's local commit (${bun:-none})"
+find "$FX/archive" -name 'wt_pipe-902_inner.bundle' -exec "$GITBIN" bundle list-heads {} \; 2>/dev/null | grep -q "^$INNER_HEAD" \
+  && ok "nested clone archived before removal" || bad "nested clone's local commit not in a bundle"
+for d in "$FRESH" "$FRESHCLONE" "$OWN" "$MAIN" "$HOST"; do [ -d "$d" ] && ok "age-only kept $d" || bad "age-only removed $d"; done
+arch="$("$GITBIN" -C "$MAIN" for-each-ref --format='%(refname) %(objectname)' refs/hygiene-archive/)"
+printf '%s\n' "$arch" | grep -q "wt_ref-789_demo $INCONC_HEAD" && ok "unpushed HEAD pinned under refs/hygiene-archive" \
+  || bad "no archive ref for the unpushed HEAD: $arch"
+wip="$(printf '%s\n' "$arch" | awk '$1 ~ /wt_pipe-900_demo-wip$/ {print $2}')"
+[ -n "$wip" ] && [ "$("$GITBIN" -C "$MAIN" show "$wip:initial")" = "uncommitted edit" ] \
+  && ok "dirty edit recoverable from the -wip archive ref" || bad "dirty edit not archived: $arch"
+# default policy is unchanged: without the opt-in, a dirty idle worktree is kept
+q -C "$MAIN" worktree add -q -b feat-dirty2 "$DIRTY"; echo "edit" > "$DIRTY/initial"
+find "$DIRTY" -exec touch -t 202001010000 {} + 2>/dev/null
+bash "$HYG" plan > "$PLAN" 2>/dev/null
+expect "$DIRTY" "keep dirty-uncommitted-work" "default policy: idle dirty worktree"
 
 echo "---"; echo "pass=$PASS fail=$FAILN"
 [ "$FAILN" = 0 ]
