@@ -80,6 +80,7 @@ HYG_WT_GLOB="*wt-*"           # how they are named
 HYG_WT_NESTED="wt _worktrees" # also ~/code/wt/*/... and ~/code/_worktrees/*/... (agent worktrees); "" = off
 HYG_WT_DEPTH=3
 HYG_WT_AGE_DAYS=7
+HYG_WT_BUDGET_SEC=600          # worktrees pass wall clock per plan; the rest read keep/scan-budget-exceeded; 0 = no limit
 HYG_MODEL_CACHES="$HOME/.cache/whisper $HOME/.cache/codex-runtimes"
 HYG_MODEL_CACHE_AGE_DAYS=7     # model caches go only when idle this long
 ```

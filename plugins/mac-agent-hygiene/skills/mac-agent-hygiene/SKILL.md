@@ -21,7 +21,7 @@ Run the four MCP tools in this order. Never skip the plan.
    is building, whether the LaunchAgent is loaded, and the last log lines.
 2. **`hygiene_plan`** — dry run. Every candidate comes back with `remove` or `keep`, its size, and a
    reason. Read the `keep` reasons as carefully as the `remove` ones: `dirty-uncommitted-work`,
-   `unpushed-commits`, `a-process-is-inside`, `profile-in-use`, `xcode-building` are the routine
+   `unpushed-commits`, `a-process-is-inside`, `cwd-unobservable` (lsof could not list process cwds), `profile-in-use`, `xcode-building` are the routine
    working. The plan returns a `plan_id` valid for 30 minutes.
 3. **`hygiene_apply`** with that `plan_id` and `confirm: true` — each item is re-checked at apply
    time by the same function that planned it; anything that changed since the plan is refused, not
@@ -67,6 +67,7 @@ HYG_WT_AGE_DAYS=7
 HYG_MODEL_CACHES="$HOME/.cache/whisper $HOME/.cache/codex-runtimes"
 HYG_MODEL_CACHE_AGE_DAYS=7    # model caches go when not MODIFIED this long (a read does not count)
 HYG_WT_MERGED_PR_CHECK=1      # 0 = pushed-only (no gh call)
+HYG_WT_BUDGET_SEC=600         # worktrees pass wall clock per plan; past it: keep/scan-budget-exceeded, never removed; 0 = off
 ```
 
 Environment variables win over the config file (an MCP `worktree_age_days` override applies to that

@@ -18,7 +18,10 @@
 #   plan            is read-only: every dir and every `git worktree list` entry survives it
 #   apply           removes exactly the planned ones; branch refs survive
 #
-# Nothing here touches the real HOME: HOME is a fixture dir. lsof is optional (the cwd case SKIPs).
+#   KNOWN-NEGATIVE  lsof blind (exit 0 with no cwd, non-zero with a partial list, missing) → every
+#                   worktree is kept cwd-unobservable, and apply refuses it (card 2frXvtE1, review B1)
+#
+# Nothing here touches the real HOME: HOME is a fixture dir. lsof is a stub, so the cwd case never skips.
 # shellcheck disable=SC2015  # ok()/bad() always return 0, so A && ok || bad is safe here
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -31,8 +34,7 @@ GITBIN="$(command -v git)" || { echo "SKIP: git not found"; exit 0; }
 
 FX="$(mktemp -d "${TMPDIR:-/tmp}/hygiene-scanroot-test.XXXXXX")" || exit 1
 FX="$(cd "$FX" && pwd -P)"   # macOS: /var → /private/var, so git's absolute paths compare equal
-SLEEPER=""
-trap '[ -n "$SLEEPER" ] && { kill "$SLEEPER"; wait "$SLEEPER"; } 2>/dev/null; rm -rf "$FX"' EXIT
+trap 'rm -rf "$FX"' EXIT
 export HOME="$FX/home" XDG_CONFIG_HOME="$FX/home/.config"
 mkdir -p "$HOME"
 export GIT_CONFIG_NOSYSTEM=1 GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@example.com GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@example.com
@@ -77,8 +79,13 @@ q -C "$MAIN" fetch -q origin
 find "$CODE" -exec touch -t 202001010000 {} + 2>/dev/null
 touch "$K_RECENT/wt-recent_work"
 
-# A process whose cwd is inside K_CWD (only meaningful when lsof exists).
-if [ -x /usr/sbin/lsof ]; then (cd "$K_CWD" && exec sleep 300) & SLEEPER=$!; sleep 1; fi
+# A stub lsof reports one process cwd, inside K_CWD: the same -Fn rows the real one prints.
+mkdir -p "$FX/bin"
+printf '#!/bin/sh\nprintf "p4242\\nfcwd\\nn%s\\n" "%s"\n' '%s' "$K_CWD" > "$FX/bin/lsof-ok"
+printf '#!/bin/sh\nexit 0\n' > "$FX/bin/lsof-empty"
+printf '#!/bin/sh\nprintf "p4242\\nfcwd\\nn%s\\n" "%s"\nexit 1\n' '%s' "$K_CWD" > "$FX/bin/lsof-partial"
+chmod +x "$FX/bin/lsof-ok" "$FX/bin/lsof-empty" "$FX/bin/lsof-partial"
+export HYG_LSOF="$FX/bin/lsof-ok"
 
 PLAN="$FX/plan.tsv"
 WT_BEFORE="$("$GITBIN" -C "$MAIN" worktree list --porcelain | grep -c '^worktree ')"
@@ -95,9 +102,7 @@ expect "$K_DIRTY"     "keep dirty-uncommitted-work" "_worktrees dirty"
 expect "$K_UNPUSHED"  "keep unpushed-commits"       "_worktrees unpushed"
 expect "$K_RECENT"    "keep touched-recently"       "_worktrees touched recently"
 expect "$K_SESSDIRTY" "keep dirty-uncommitted-work" "AC-2 wt/<session>/<wt> dirty"
-if [ -n "$SLEEPER" ] && /usr/sbin/lsof -d cwd -Fn 2>/dev/null | grep -qxF "n$K_CWD"; then
-  expect "$K_CWD" "keep a-process-is-inside" "_worktrees with a process cwd inside"
-else echo "SKIP - cwd-inside case (lsof cannot see the fixture process)"; fi
+expect "$K_CWD"       "keep a-process-is-inside"    "_worktrees with a process cwd inside"
 [ -z "$(row "$CLONE" "$PLAN")" ] && ok "full clone under _worktrees is not listed" || bad "clone listed: $(row "$CLONE" "$PLAN")"
 [ -z "$(row "$DEEP" "$PLAN")" ] && ok "worktree deeper than HYG_WT_DEPTH is not listed" || bad "deep listed: $(row "$DEEP" "$PLAN")"
 [ -z "$(row "$MAIN" "$PLAN")" ] && ok "parent clone is not listed" || bad "parent clone listed"
@@ -120,6 +125,18 @@ GIT_N="$("$GITBIN" -C "$MAIN" worktree list --porcelain | sed -n 's/^worktree //
 ST_N="$(bash "$HYG" status 2>/dev/null | awk -F'\t' '$1=="worktrees_total"{print $2}')"
 [ "$GIT_N" = 8 ] && [ "$ST_N" = "$GIT_N" ] && ok "status worktrees_total=$ST_N reconciles with git worktree list ($GIT_N)" \
   || bad "status worktrees_total=$ST_N, git in-scope count=$GIT_N (expected 8)"
+
+# ---- lsof blind: an unobservable cwd read is a KEEP, in plan and in apply (card 2frXvtE1, review B1) ------
+for stub in "$FX/bin/lsof-empty" "$FX/bin/lsof-partial" "$FX/no-such-lsof"; do
+  name="${stub##*/}"; BLIND="$FX/plan-$name.tsv"
+  HYG_LSOF="$stub" bash "$HYG" plan > "$BLIND" 2>/dev/null || bad "$name: plan exited non-zero"
+  got="$(row "$P_FLAT" "$BLIND")"
+  [ "$got" = "keep cwd-unobservable" ] && ok "$name: a pushed idle worktree is kept" || bad "$name: expected keep cwd-unobservable, got '${got:-<not listed>}'"
+  [ "$(awk -F'\t' '$1=="worktrees" && $2=="remove"' "$BLIND" | wc -l | tr -d ' ')" = 0 ] && ok "$name: plan removes no worktree" || bad "$name: plan still removes a worktree"
+  printf 'worktrees\t%s\n' "$P_FLAT" > "$FX/blind-apply.tsv"
+  HYG_LSOF="$stub" bash "$HYG" apply "$FX/blind-apply.tsv" > "$FX/blind-apply.out" 2>&1
+  [ -d "$P_FLAT" ] && ok "$name: apply leaves the worktree" || bad "$name: apply removed $P_FLAT"
+done
 
 # ---- apply: refuses a hand-written line for the clone and the dirty one; removes the planned ones -----
 printf 'worktrees\t%s\nworktrees\t%s\n' "$CLONE" "$K_DIRTY" > "$FX/evil.tsv"
