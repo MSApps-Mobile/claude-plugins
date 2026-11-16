@@ -18,7 +18,7 @@
 #   plan            is read-only: every dir and every `git worktree list` entry survives it
 #   apply           removes exactly the planned ones; branch refs survive
 #
-# Nothing here touches the real HOME: HOME is a fixture dir. lsof is optional (the cwd case SKIPs).
+# Nothing here touches the real HOME: HOME is a fixture dir. lsof is required (hygiene.sh keeps everything without it: fail closed).
 # shellcheck disable=SC2015  # ok()/bad() always return 0, so A && ok || bad is safe here
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -77,8 +77,9 @@ q -C "$MAIN" fetch -q origin
 find "$CODE" -exec touch -t 202001010000 {} + 2>/dev/null
 touch "$K_RECENT/wt-recent_work"
 
-# A process whose cwd is inside K_CWD (only meaningful when lsof exists).
-if [ -x /usr/sbin/lsof ]; then (cd "$K_CWD" && exec sleep 300) & SLEEPER=$!; sleep 1; fi
+# A process whose cwd is inside K_CWD. lsof is resolved the way hygiene.sh does (macOS /usr/sbin, Linux /usr/bin).
+LSOF=""; for c in /usr/sbin/lsof /usr/bin/lsof; do [ -x "$c" ] && { LSOF="$c"; break; }; done
+(cd "$K_CWD" && exec sleep 300) & SLEEPER=$!; sleep 1
 
 PLAN="$FX/plan.tsv"
 WT_BEFORE="$("$GITBIN" -C "$MAIN" worktree list --porcelain | grep -c '^worktree ')"
@@ -95,9 +96,10 @@ expect "$K_DIRTY"     "keep dirty-uncommitted-work" "_worktrees dirty"
 expect "$K_UNPUSHED"  "keep unpushed-commits"       "_worktrees unpushed"
 expect "$K_RECENT"    "keep touched-recently"       "_worktrees touched recently"
 expect "$K_SESSDIRTY" "keep dirty-uncommitted-work" "AC-2 wt/<session>/<wt> dirty"
-if [ -n "$SLEEPER" ] && /usr/sbin/lsof -d cwd -Fn 2>/dev/null | grep -qxF "n$K_CWD"; then
-  expect "$K_CWD" "keep a-process-is-inside" "_worktrees with a process cwd inside"
-else echo "SKIP - cwd-inside case (lsof cannot see the fixture process)"; fi
+# lsof must see the fixture process: a SKIP here would let a busy worktree be removed unnoticed (PR #89's CWD_SEEN skip).
+if [ -n "$LSOF" ] && "$LSOF" -d cwd -Fn 2>/dev/null | grep -qxF "n$K_CWD"; then ok "lsof ($LSOF) sees the fixture process in $K_CWD"
+else bad "lsof cannot see the fixture process (lsof=[$LSOF]); the busy-worktree case would prove nothing"; fi
+expect "$K_CWD" "keep a-process-is-inside" "_worktrees with a process cwd inside"
 [ -z "$(row "$CLONE" "$PLAN")" ] && ok "full clone under _worktrees is not listed" || bad "clone listed: $(row "$CLONE" "$PLAN")"
 [ -z "$(row "$DEEP" "$PLAN")" ] && ok "worktree deeper than HYG_WT_DEPTH is not listed" || bad "deep listed: $(row "$DEEP" "$PLAN")"
 [ -z "$(row "$MAIN" "$PLAN")" ] && ok "parent clone is not listed" || bad "parent clone listed"
