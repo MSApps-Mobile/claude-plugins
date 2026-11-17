@@ -407,3 +407,18 @@ jobs:
       # git push must stay green.
       - name: Shipped plugins — prove the guard can FAIL
         run: python3 scripts/check-no-default-push.test.py
+
+      # ── Card lONGiMw1 ──────────────────────────────────────────
+      # opsagent-shopify pinned its Shopify API version in seven carriers that
+      # did not agree, all past Shopify's 12-month support window, and nothing
+      # here read any of them. Fail a PR unless every carrier declares the one
+      # pin (DEFAULT_SHOPIFY_API_VERSION) and that pin is supported today. This
+      # step also goes red with no code change once the pin ages out.
+      # Node built-ins only (preinstalled on ubuntu-latest): no new action.
+      - name: Shopify API version — one pin, inside the support window
+        run: node scripts/shopify-api-version.mjs --root .
+
+      # Negative control: planted out-of-window versions (a source literal, an
+      # install carrier, a README line, an aged-out pin) must red on every run.
+      - name: Shopify API version — prove the guard can FAIL
+        run: node --test --test-concurrency=3 scripts/shopify-api-version.test.mjs

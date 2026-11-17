@@ -11,10 +11,12 @@
  * exponential backoff on 429s and cost-aware retry.
  */
 
+import { DEFAULT_SHOPIFY_API_VERSION } from "./storefront.js";
+
 export interface AdminContext {
   shop: string;            // e.g. u5rtvy-0a.myshopify.com
   adminToken: string;      // Admin API access token
-  apiVersion?: string;     // default 2025-04
+  apiVersion?: string;     // default DEFAULT_SHOPIFY_API_VERSION
 }
 
 export class AdminError extends Error {
@@ -29,7 +31,11 @@ export class AdminError extends Error {
   }
 }
 
-const DEFAULT_API_VERSION = "2025-04";
+// Card Q0W9KeDW: the Admin client used to carry its own literal, one quarter apart from
+// the Storefront one — and both were past end-of-support. `SHOPIFY_API_VERSION` is a
+// SINGLE env var for both APIs, so two defaults could never both be honoured anyway.
+// One constant, in storefront.ts, guarded by scripts/shopify-api-version.test.mjs.
+const DEFAULT_API_VERSION = DEFAULT_SHOPIFY_API_VERSION;
 const MAX_RETRIES = 3;
 const RETRY_BASE_MS = 500;
 

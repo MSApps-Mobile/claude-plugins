@@ -56,7 +56,7 @@
       "title": "API version",
       "description": "Shopify API version for both Storefront and Admin.",
       "required": false,
-      "default": "2025-04"
+      "default": "2026-10"
     }
   },
   "compatibility": {
