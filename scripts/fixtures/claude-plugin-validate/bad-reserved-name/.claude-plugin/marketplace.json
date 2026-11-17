@@ -1,0 +1,7 @@
+{
+  "name": "fixture-marketplace",
+  "owner": { "name": "Fixture" },
+  "plugins": [
+    { "name": "claude-x", "source": "./plugins/claude-x", "description": "Fixture plugin for the claude plugin validate negative control", "version": "0.0.1" }
+  ]
+}
