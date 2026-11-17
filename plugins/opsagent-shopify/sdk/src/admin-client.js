@@ -12,7 +12,10 @@
 
 import { z } from "zod";
 
-const DEFAULT_API_VERSION = "2025-04";
+import { DEFAULT_SHOPIFY_API_VERSION } from "./api-version.js";
+
+// Card Q0W9KeDW: one constant for the whole SDK — see api-version.js.
+const DEFAULT_API_VERSION = DEFAULT_SHOPIFY_API_VERSION;
 const MAX_RETRIES = 3;
 const RETRY_BASE_MS = 500;
 const RETRYABLE_HTTP = new Set([408, 429, 500, 502, 503, 504]);

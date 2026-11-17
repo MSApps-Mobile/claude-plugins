@@ -7,10 +7,32 @@
  * falls back to SHOPIFY_DEFAULT_SHOP from env. No per-shop state is stored in-process.
  */
 
+/**
+ * The ONE Shopify API version this package ships.
+ *
+ * Cards Q0W9KeDW and lONGiMw1: this plugin carried the version as a string literal
+ * repeated across SEVEN carriers — `storefront.ts` (the 2025 Q1 release), `admin.ts`,
+ * `sdk/src/storefront-client.js`, `sdk/src/admin-client.js` (the 2025 Q2 release each),
+ * `manifest.json`, `.env.example` and `.claude-plugin/plugin.json` — and they did not
+ * even AGREE. Every one of those versions was already past Shopify's 12-month support
+ * window. Worse, the env carriers set `SHOPIFY_API_VERSION` to the 2025 Q2 release,
+ * which wins over the source default at runtime, so the version a reader finds in the
+ * source was not the version the shipped plugin actually sent.
+ *
+ * Shopify's contract (https://shopify.dev/docs/api/usage/versioning): versions ship
+ * quarterly on the 1st of Jan/Apr/Jul/Oct and stay accessible for 12 months, until
+ * 15:00 UTC on the 16th of that month one year later.
+ *
+ * `scripts/shopify-api-version.mjs` (run in CI by .github/workflows/validate-pr.yml)
+ * goes RED on its own once this pin ages out, and RED if any carrier stops agreeing
+ * with it. Bump HERE and in `sdk/src/api-version.js`; the guard names the rest.
+ */
+export const DEFAULT_SHOPIFY_API_VERSION = "2026-10";
+
 export interface ShopContext {
   shop: string;                 // e.g. mama-sally.myshopify.com
   storefrontToken?: string;     // Storefront API token (GraphQL only)
-  apiVersion?: string;          // default 2025-01
+  apiVersion?: string;          // default DEFAULT_SHOPIFY_API_VERSION
   mcpPath?: string;             // default /api/mcp
 }
 
@@ -37,7 +59,7 @@ function resolveContext(partial: Partial<ShopContext>): ShopContext {
   return {
     shop,
     storefrontToken: partial.storefrontToken || process.env.SHOPIFY_STOREFRONT_TOKEN,
-    apiVersion: partial.apiVersion || process.env.SHOPIFY_API_VERSION || "2025-01",
+    apiVersion: partial.apiVersion || process.env.SHOPIFY_API_VERSION || DEFAULT_SHOPIFY_API_VERSION,
     mcpPath: partial.mcpPath || process.env.SHOPIFY_MCP_PATH || "/api/mcp",
   };
 }

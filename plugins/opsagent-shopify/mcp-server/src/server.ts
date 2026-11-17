@@ -116,10 +116,13 @@ server.tool(
   },
   async ({ shop, handle }) => {
     try {
-      const data = await storefrontGraphQL<{ productByHandle: unknown }>(
+      // Card Q0W9KeDW: `productByHandle` is DEPRECATED; the supported spelling is the
+      // top-level `product(handle:)`. Leaving the old spelling behind a version bump is
+      // exactly what produced this card, so the guard test pins it.
+      const data = await storefrontGraphQL<{ product: unknown }>(
         /* GraphQL */ `
           query ProductByHandle($handle: String!) {
-            productByHandle(handle: $handle) {
+            product(handle: $handle) {
               id
               title
               handle
@@ -149,10 +152,10 @@ server.tool(
         { handle },
         { shop }
       );
-      if (!data.productByHandle) {
+      if (!data.product) {
         return asError(`No product found with handle "${handle}".`);
       }
-      return asText(data.productByHandle);
+      return asText(data.product);
     } catch (e) {
       return asError(e);
     }

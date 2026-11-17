@@ -8,6 +8,10 @@
  * - MCP tool contracts for discovery and validation
  */
 
+// The shipped Shopify API version (card Q0W9KeDW) — one constant, guarded by
+// scripts/shopify-api-version.test.mjs.
+export { DEFAULT_SHOPIFY_API_VERSION } from "./api-version.js";
+
 // Clients
 export { createAdminClient } from "./admin-client.js";
 export { createStorefrontClient } from "./storefront-client.js";
