@@ -3,7 +3,7 @@
 # plus every protected path, aged far past the threshold. Then:
 #   1. dry run lists exactly the expected candidates and deletes nothing
 #   2. apply removes exactly those, and every protected / negative path survives
-# Run: bash plugins/claude-folder-janitor/tests/janitor.test.sh
+# Run: bash plugins/folder-janitor/tests/janitor.test.sh
 
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
