@@ -122,9 +122,9 @@ scenario("manifest re-synced to the unchanged plugin.json version (drift repair)
 # ---- the card's AC: unchanged 1.0.3 -> release patch bump -> 1.0.4 in both files, marketplace-versions passes
 print("release path (bump-version.sh on an unchanged 1.0.3):")
 with tempfile.TemporaryDirectory(prefix="nmb-bump-") as d:
-    os.makedirs(os.path.join(d, "scripts"))
-    for f in ("bump-version.sh", "marketplace-versions.py"):
-        shutil.copy(os.path.join(HERE, f), os.path.join(d, "scripts", f))
+    # Copy the whole scripts/ dir (not a hand-picked list) so a helper main adds to bump-version.sh
+    # (e.g. check-plugin-name.sh from #104) cannot break this harness again.
+    shutil.copytree(HERE, os.path.join(d, "scripts"), ignore=shutil.ignore_patterns("__pycache__", "fixtures"))
     run("git", "init", "-q", "-b", "main", cwd=d)
     plugin(d, "alpha", "1.0.3")
     manifest(d, {"alpha": "1.0.3"})
