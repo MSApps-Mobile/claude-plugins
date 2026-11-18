@@ -25,6 +25,17 @@
 #                    Note: "clean" is `git status --porcelain`, so gitignored files (a local .env,
 #                    node_modules) go with the worktree. The branch ref stays — nothing is unrecoverable.
 #
+# Live phase folders (card wURBXBTk; the same three legs as phase-worktree-cleanup.mjs, card 9X0oxnMt):
+# a candidate under HYG_WT_ROOT that its category would remove is KEPT while any folder between it and
+# its top-level scan dir (~/code/wt, ~/code/_worktrees, ...) belongs to a running phase:
+#   - an `.in-use-by-*` marker file in that folder (this leg also runs on the checkout itself),
+#   - a `launch.log` in that folder written within HYG_LIVE_TTL_MIN minutes (default 180 = 3 h),
+#   - a process whose cwd is at or under that folder (with or without a launch.log).
+# A clean pushed reference clone under a live phase is that phase's working copy: pushed is not dead.
+# lsof unable to list cwds (missing, or failing with no output) is UNMEASURED and keeps every candidate
+# under HYG_WT_ROOT. cwds are re-read at the start of apply, so a phase started after plan still counts.
+# Every removal and every apply refusal is logged with its reason and path.
+#
 # Config: ~/.config/mac-agent-hygiene/config.env (optional). Environment variables win over the
 # config file, so an MCP call can override one value for one run.
 # Never sudo. Never /System, /Library, ~/Library/Application Support, keychains, mail, ~/.ssh.
@@ -32,7 +43,7 @@ set -u
 umask 077
 
 # ---------- configuration: defaults < config file < environment ----------
-VARS="HYG_LOG HYG_DERIVED_DATA HYG_PLUGIN_CACHE HYG_PLUGIN_CLONE_MIN_AGE_MIN HYG_PW_GLOB HYG_MODEL_CACHES HYG_MODEL_CACHE_AGE_DAYS HYG_WT_ROOT HYG_WT_GLOB HYG_WT_NESTED HYG_WT_DEPTH HYG_WT_AGE_DAYS HYG_WT_MERGED_PR_CHECK HYG_GIT HYG_GH"
+VARS="HYG_LOG HYG_DERIVED_DATA HYG_PLUGIN_CACHE HYG_PLUGIN_CLONE_MIN_AGE_MIN HYG_PW_GLOB HYG_MODEL_CACHES HYG_MODEL_CACHE_AGE_DAYS HYG_WT_ROOT HYG_WT_GLOB HYG_WT_NESTED HYG_WT_DEPTH HYG_WT_AGE_DAYS HYG_WT_MERGED_PR_CHECK HYG_LIVE_TTL_MIN HYG_GIT HYG_GH HYG_LSOF"
 for v in $VARS; do eval "ENV_$v=\"\${$v-}\""; done
 CONF="${XDG_CONFIG_HOME:-$HOME/.config}/mac-agent-hygiene/config.env"
 # shellcheck disable=SC1090
@@ -52,8 +63,10 @@ HYG_WT_NESTED="${HYG_WT_NESTED-wt _worktrees}"   # set to "" to scan direct chil
 HYG_WT_DEPTH="${HYG_WT_DEPTH:-3}"
 HYG_WT_AGE_DAYS="${HYG_WT_AGE_DAYS:-7}"
 HYG_WT_MERGED_PR_CHECK="${HYG_WT_MERGED_PR_CHECK:-1}"
+HYG_LIVE_TTL_MIN="${HYG_LIVE_TTL_MIN:-180}"   # a launch.log newer than this marks a phase folder live
+HYG_LSOF="${HYG_LSOF:-/usr/sbin/lsof}"
 HYG_DERIVED_DATA="${HYG_DERIVED_DATA%/}"; HYG_PLUGIN_CACHE="${HYG_PLUGIN_CACHE%/}"
-case "$HYG_WT_AGE_DAYS$HYG_MODEL_CACHE_AGE_DAYS$HYG_PLUGIN_CLONE_MIN_AGE_MIN$HYG_WT_DEPTH" in *[!0-9]*) echo "age settings must be integers" >&2; exit 2;; esac
+case "$HYG_WT_AGE_DAYS$HYG_MODEL_CACHE_AGE_DAYS$HYG_PLUGIN_CLONE_MIN_AGE_MIN$HYG_WT_DEPTH$HYG_LIVE_TTL_MIN" in *[!0-9]*) echo "age settings must be integers" >&2; exit 2;; esac
 
 GIT="${HYG_GIT:-}"
 if [ -z "$GIT" ]; then GIT=/usr/bin/git; [ -x "$HOME/.local/bin/git" ] && GIT="$HOME/.local/bin/git"; fi   # honour a user's git shim unless HYG_GIT is explicit
@@ -82,10 +95,23 @@ emit(){ printf '%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" "$5"; }   # category a
 inuse(){ /usr/sbin/lsof +D "$1" >/dev/null 2>&1; }
 xcode_building(){ /usr/bin/pgrep -qx xcodebuild || /usr/bin/pgrep -qx Xcode || /usr/bin/pgrep -qx XCBBuildService; }
 has_dot_component(){ case "/$1/" in */./*|*/../*) return 0;; esac; return 1; }
-# Every process's cwd, read ONCE per run; compared as fixed strings (never as a pattern).
-CWDS=""; load_cwds(){ [ -n "$CWDS" ] || CWDS=$(/usr/sbin/lsof -d cwd -Fn 2>/dev/null | /usr/bin/sed -n 's/^n//p'); }
+# Every process's cwd, read ONCE per plan and again at apply; compared as fixed strings (never as a pattern).
+# CWDS_P holds "pid<TAB>cwd" lines. lsof exits 1 when it could not read some processes but still lists
+# the rest (that is measured); missing, any other exit, or exit 1 with no output is UNMEASURED.
+CWDS=""; CWDS_P=""; CWDS_STATE=""   # state: "" not read yet / ok / unmeasured
+load_cwds(){ local out rc
+  [ -n "$CWDS_STATE" ] && return 0
+  if [ -x "$HYG_LSOF" ]; then out=$("$HYG_LSOF" -n -P -d cwd -Fpn 2>/dev/null); rc=$?; else out=""; rc=127; fi
+  if [ "$rc" = 0 ] || { [ "$rc" = 1 ] && [ -n "$out" ]; }; then
+    CWDS_P=$(printf '%s\n' "$out" | /usr/bin/awk '/^p/{p=substr($0,2); next} /^n/ && p!=""{print p "\t" substr($0,2)}')
+    CWDS=$(printf '%s\n' "$CWDS_P" | /usr/bin/awk -F'\t' 'NF>=2{print substr($0, index($0,"\t")+1)}')
+    CWDS_STATE=ok
+  else CWDS=""; CWDS_P=""; CWDS_STATE=unmeasured; fi; }
 cwd_inside(){ local c; load_cwds
   while IFS= read -r c; do [ -n "$c" ] || continue; [ "$c" = "$1" ] && return 0; case "$c" in "$1"/*) return 0;; esac; done <<< "$CWDS"; return 1; }
+# pid of the first process whose cwd is at or under $1 (fixed-string compare), or nothing.
+cwd_pid_under(){ load_cwds
+  printf '%s\n' "$CWDS_P" | /usr/bin/awk -F'\t' -v d="$1" 'NF>=2 { c=substr($0, index($0,"\t")+1); if (c==d || index(c, d "/")==1) { print $1; exit } }'; }
 TMPD=$(/usr/bin/mktemp -d "${TMPDIR:-/tmp}/mac-agent-hygiene.XXXXXX") || { echo "mktemp failed" >&2; exit 2; }
 trap '/bin/rm -rf "$TMPD"' EXIT
 
@@ -197,12 +223,44 @@ check_worktree(){ local d="$1" b h repo f st rb ro rn gd cdir
   fi
   REASON=unpushed-commits; return 1; }
 
+# ---------- live phase folders (card wURBXBTk = the legs of phase-worktree-cleanup.mjs, card 9X0oxnMt) ----------
+# Name of the first `.in-use-by-*` marker directly in $1, or nothing.
+live_marker(){ local m; for m in "$1"/.in-use-by-*; do [ -e "$m" ] && { printf '%s\n' "${m##*/}"; return 0; }; done; return 1; }
+# Why folder $1 is a running phase's, in LIVE_WHY; 1 when it is not. Legs: marker, then a launch.log newer
+# than HYG_LIVE_TTL_MIN, then (whether or not a launch.log exists) a process cwd at or under the folder.
+live_folder(){ local d="$1" m real pid
+  m=$(live_marker "$d") && { LIVE_WHY="$m marker in $d"; return 0; }
+  if [ -e "$d/launch.log" ] && [ -n "$(/usr/bin/find "$d/launch.log" -maxdepth 0 -mmin -"$HYG_LIVE_TTL_MIN" 2>/dev/null)" ]; then
+    LIVE_WHY="launch.log in $d written < $HYG_LIVE_TTL_MIN min ago"; return 0; fi
+  pid=$(cwd_pid_under "$d")
+  if [ -z "$pid" ]; then real=$(cd "$d" 2>/dev/null && pwd -P); [ -n "$real" ] && [ "$real" != "$d" ] && pid=$(cwd_pid_under "$real"); fi
+  [ -n "$pid" ] && { LIVE_WHY="pid $pid has its cwd in $d"; return 0; }
+  return 1; }
+# 0 (KEEP, REASON set) when candidate $1 under HYG_WT_ROOT sits in a live phase folder or cannot be
+# measured; 1 otherwise (REASON untouched). Folders checked: the candidate itself (marker leg only — a
+# process inside it is already `a-process-is-inside`), then every ancestor below its top-level scan dir.
+live_phase_keep(){ local p="$1" rel top d m
+  case "$p" in "$HYG_WT_ROOT"/*) ;; *) return 1;; esac
+  load_cwds
+  [ "$CWDS_STATE" = ok ] || { REASON="cwd-unmeasured: $HYG_LSOF could not list process cwds"; return 0; }
+  m=$(live_marker "$p") && { REASON="live-phase-folder: $m marker in $p"; return 0; }
+  rel="${p#"$HYG_WT_ROOT"/}"; top="$HYG_WT_ROOT/${rel%%/*}"
+  d=$(dirname "$p")
+  while case "$d" in "$top"/*) true;; *) false;; esac; do
+    live_folder "$d" && { REASON="live-phase-folder: $LIVE_WHY"; return 0; }
+    d=$(dirname "$d")
+  done
+  return 1; }
+
 check_item(){ # category path → 0 removable (REASON=why) / 1 keep (REASON=why)
   case "$2" in "$HOME"/*) ;; *) REASON=outside-home; return 1;; esac
   has_dot_component "$2" && { REASON=dot-component-in-path; return 1; }
   case "$1" in
     derived-data) check_derived "$2";; plugin-clones) check_clone "$2";; browser-caches) check_pwcache "$2";;
-    model-caches) check_model "$2";; worktrees) check_worktree "$2";; *) REASON=unknown-category; return 1;; esac; }
+    model-caches) check_model "$2";; worktrees) check_worktree "$2";; *) REASON=unknown-category; return 1;; esac || return 1
+  # A category said removable: anything under HYG_WT_ROOT still has to clear the live-phase legs.
+  live_phase_keep "$2" && return 1
+  return 0; }
 
 # ---------- candidates ----------
 candidates(){  # category<TAB>path
@@ -239,12 +297,13 @@ remove_item(){ local cat="$1" p="$2" common
 
 apply(){ local file="$1" cat p k freed=0 n=0 refused=0
   [ -f "$file" ] || { echo "apply: plan file not found" >&2; exit 2; }
+  CWDS=""; CWDS_P=""; CWDS_STATE=""   # re-read cwds now: a phase may have started since plan
   while IFS=$'\t' read -r cat p; do
     [ -n "$p" ] || continue
     if check_item "$cat" "$p"; then k=$(kb "$p"); [ -n "$k" ] || k=0
-      if remove_item "$cat" "$p"; then emit "$cat" removed "$k" "$REASON" "$p"; log "removed [$cat] $((k/1024))MB $REASON $p"; freed=$((freed+k)); n=$((n+1))
-      else emit "$cat" refused "$k" remove-failed "$p"; refused=$((refused+1)); fi
-    else emit "$cat" refused 0 "$REASON" "$p"; refused=$((refused+1)); fi
+      if remove_item "$cat" "$p"; then emit "$cat" removed "$k" "$REASON" "$p"; log "removed [$cat] $((k/1024))MB reason=$REASON path=$p"; freed=$((freed+k)); n=$((n+1))
+      else emit "$cat" refused "$k" remove-failed "$p"; log "refused [$cat] reason=remove-failed path=$p"; refused=$((refused+1)); fi
+    else emit "$cat" refused 0 "$REASON" "$p"; log "refused [$cat] reason=$REASON path=$p"; refused=$((refused+1)); fi
   done < "$file"
   log "apply done: $n removed, ~$((freed/1024))MB freed, $refused refused"
   emit summary done "$freed" "removed=$n refused=$refused" "$(dfree) free"

@@ -21,6 +21,12 @@
   clean, and pushed / merged-PR head / merged PR on the same branch whose commits cover every local-only
   commit subject. `gh` failure ⇒ keep. Never `--force`. macOS `/bin/bash` is 3.2: no `declare -A`;
   per-repo gh results are cache files in `$TMPD`.
+- Live phase folders (card wURBXBTk, the legs of skills-and-plugins `scripts/phase-worktree-cleanup.mjs`,
+  card 9X0oxnMt): after a category says removable, `check_item` runs `live_phase_keep` on every path under
+  `HYG_WT_ROOT`. KEEP on an `.in-use-by-*` marker (candidate or any ancestor below the top-level scan dir),
+  a `launch.log` newer than `HYG_LIVE_TTL_MIN` (180), or a process cwd at/under an ancestor. lsof missing
+  or failing with no output ⇒ `cwd-unmeasured` ⇒ KEEP. `apply` re-reads cwds. Keep these legs in step
+  with that script; never add an `--ended`-style bypass here (the LaunchAgent never owns a phase).
 - DerivedData skipped while Xcode builds. Never sudo. Paths outside `$HOME` refused at apply.
 - System binaries by absolute path; explicit PATH in the plist; `mktemp` with a `${TMPDIR:-/tmp}` template.
 - Paths compared as fixed strings (never a grep pattern); `.`/`..` components refused at the apply gate; every
@@ -32,6 +38,7 @@
 bash -n scripts/*.sh && node --check server/index.js
 bash tests/hygiene-worktrees.test.sh        # fixture git repos + stubbed gh; runs on Linux too
 bash tests/hygiene-wt-scan-roots.test.sh    # default scope incl. ~/code/_worktrees, keep rules, status count
+bash tests/hygiene-live-phase.test.sh      # live phase folders keep their worktrees; stubbed lsof
 bash tests/hygiene-keeps-logins.test.sh     # macOS only
 bash scripts/hygiene.sh status
 bash scripts/hygiene.sh plan | awk -F'\t' '{print $1, $2, $4}' | sort | uniq -c

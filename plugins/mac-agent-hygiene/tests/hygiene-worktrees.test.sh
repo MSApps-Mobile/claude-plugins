@@ -13,7 +13,7 @@
 #   KNOWN-POSITIVE  apply removes exactly the planned worktrees; branch refs survive (`git worktree remove`)
 #
 # Needs git and the absolute-path tools hygiene.sh calls (/usr/bin/find, /usr/bin/du, ...); prints SKIP
-# without them. lsof is optional (missing ⇒ no cwd is "inside"). Nothing here touches the real HOME.
+# without them. lsof is optional (missing ⇒ a stub that lists no cwd). Nothing here touches the real HOME.
 # shellcheck disable=SC2015  # ok()/bad() always return 0, so A && ok || bad is safe here
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -37,6 +37,13 @@ CODE="$HOME/code"
 export HYG_LOG="$FX/hygiene.log" HYG_DERIVED_DATA="$HOME/dd-none" HYG_PLUGIN_CACHE="$HOME/pc-none"
 export HYG_PW_GLOB="$HOME/pw-none-*" HYG_MODEL_CACHES="$HOME/mc-none" HYG_WT_ROOT="$CODE"
 export HYG_WT_AGE_DAYS=1 HYG_WT_MERGED_PR_CHECK=1 HYG_GIT="$GITBIN" HYG_GH="$FX/bin/gh"
+
+# lsof: the real one when present; otherwise a stub that lists no cwd (hygiene.sh treats a MISSING lsof as
+# unmeasured and keeps everything, card wURBXBTk, so the fixture states "nobody is inside" explicitly).
+if [ -z "${HYG_LSOF:-}" ]; then
+  if [ -x /usr/sbin/lsof ]; then export HYG_LSOF=/usr/sbin/lsof
+  else mkdir -p "$FX/lsof-stub"; printf '#!/bin/bash\nexit 0\n' > "$FX/lsof-stub/lsof"; chmod +x "$FX/lsof-stub/lsof"; export HYG_LSOF="$FX/lsof-stub/lsof"; fi
+fi
 
 PASS=0; FAILN=0
 ok(){ PASS=$((PASS+1)); echo "ok   - $1"; }
