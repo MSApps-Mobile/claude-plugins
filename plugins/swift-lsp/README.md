@@ -35,6 +35,16 @@ Gives Claude instant diagnostics, go-to-definition, find-references, and type in
 
 **Impact:** Low | **SOSA Level:** 1
 
+## Usage
+
+```
+/swift-lsp:setup [project path]
+
+# Examples:
+/swift-lsp:setup
+/swift-lsp:setup ./MyApp
+```
+
 ## License
 
 MIT

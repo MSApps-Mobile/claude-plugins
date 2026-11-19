@@ -1,5 +1,6 @@
 ---
 description: Disk hygiene snapshot for this Mac — free space, caches, stale worktrees, LaunchAgent state
+argument-hint: "[no arguments]"
 ---
 
 Call the `hygiene_status` MCP tool from the mac-agent-hygiene server and present the result as a short

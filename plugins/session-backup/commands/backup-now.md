@@ -1,6 +1,7 @@
 ---
 name: backup-now
 description: Run an immediate backup of all Cowork data to Google Drive
+argument-hint: "[no arguments]"
 ---
 
 Run the full backup workflow now:

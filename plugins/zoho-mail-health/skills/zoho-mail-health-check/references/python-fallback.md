@@ -9,7 +9,7 @@ Before using the fallback script, configure your credentials as environment vari
 ```bash
 export ZOHO_ACCOUNT1_EMAIL="your-email@example.com"
 export ZOHO_ACCOUNT1_CLIENT_ID="your-client-id"
-export ZOHO_ACCOUNT1_CLIENT_SECRET="your-client-secret"
+export ZOHO_ACCOUNT1_CLIENT_SECRET="<your-client-secret>"
 export ZOHO_ACCOUNT1_REFRESH_TOKEN="your-refresh-token"
 export ZOHO_ACCOUNT1_INBOX_FOLDER_ID="your-folder-id"
 ```

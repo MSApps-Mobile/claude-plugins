@@ -94,6 +94,29 @@ Some operations consume [Apollo credits](https://docs.apollo.io/):
 
 ---
 
+## Usage
+
+```
+/apollo:enrich-lead <name, company, LinkedIn URL, or email>
+
+# Examples:
+/apollo:enrich-lead Dana Levi, Acme Ltd
+/apollo:enrich-lead https://www.linkedin.com/in/example
+/apollo:enrich-lead dana@example.com
+
+/apollo:prospect <ideal customer description or MSApps segment>
+
+# Examples:
+/apollo:prospect CTOs at Israeli fintech startups, 20-200 employees
+/apollo:prospect e-commerce founders using Shopify
+
+/apollo:sequence-load <lead criteria> [sequence name]
+
+# Examples:
+/apollo:sequence-load VPs of Product at SaaS companies in Tel Aviv
+/apollo:sequence-load Shopify store owners, sequence: Q4 outreach
+```
+
 ## License
 
 MIT — see [LICENSE](LICENSE) for details.
