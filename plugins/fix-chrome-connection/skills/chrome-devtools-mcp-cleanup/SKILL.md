@@ -47,7 +47,7 @@ If only ONE parent shows up: the wedge is unrelated to staleness — verify the 
 grep -A6 '"chrome-devtools"' ~/.claude.json | head -10
 ```
 
-Should show `"--isolated"` in the args array. If missing, add it (close every Claude Code window first; the change picks up at next launch).
+Should show `"--isolated"` and `"--no-usage-statistics"` in the args array. If either is missing, add it (close every Claude Code window first; the change picks up at next launch).
 
 ## Cleanup — only when ≥2 parents found
 
@@ -106,11 +106,14 @@ You should see:
   "command": "npx",
   "args": [
     "chrome-devtools-mcp@latest",
-    "--isolated"
+    "--isolated",
+    "--no-usage-statistics"
   ],
   "env": {}
 }
 ```
+
+`--no-usage-statistics` opts out of the upstream server's default usage reporting to Google; keep it so this setup sends no usage data off the machine.
 
 With `--isolated` in place, future sessions will each get their own Chromium profile directory under a tmp path — no more SingletonLock collisions, even if multiple Claude Code windows are open.
 
@@ -128,4 +131,4 @@ With `--isolated` in place, future sessions will each get their own Chromium pro
 
 - Card #223: https://trello.com/c/CvjIx0qZ
 - Sibling skill (Claude-in-Chrome extension): `/fix-chrome-connection`
-- Permanent fix landed: `~/.claude.json` chrome-devtools args now `["chrome-devtools-mcp@latest", "--isolated"]` (2026-05-06)
+- Permanent fix landed: `~/.claude.json` chrome-devtools args now `["chrome-devtools-mcp@latest", "--isolated", "--no-usage-statistics"]` (`--isolated` 2026-05-06)

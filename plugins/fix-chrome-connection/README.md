@@ -61,6 +61,19 @@ No UI interaction. Works every time.
 
 ---
 
+## Privacy and data disclosure
+
+- By default this plugin reports no usage anywhere and sends no run data to any outside endpoint. Diagnostics and fixes run locally, learnings are written to local files only, and the plugin never commits or publishes to a git remote.
+- The fix and health-check flows open pages in Chrome. You, the fix flow or the scheduled task can start them:
+  - `https://claude.ai` and `https://clau.de/chrome/reconnect`, to re-pair the Claude in Chrome extension.
+  - The account-switch sign-in: `https://claude.ai/logout`, then the webmail inbox of the sign-in address, to open the magic link. The documented example is Zoho Workplace, `https://workplace.zoho.com`.
+  - `https://example.com`, as the cleanup smoke test.
+- Optional: the `trello_run_logging` option (userConfig, default **off**) lets the scheduled task and health check log run results to a Trello board (trello.com). Nothing is sent unless you enable it. The skills read the option as `${user_config.trello_run_logging}` (environment variable `CLAUDE_PLUGIN_OPTION_TRELLO_RUN_LOGGING`); unset means off.
+- The `chrome-devtools-mcp` setup documented here passes `--no-usage-statistics`, so the upstream server's own usage reporting is disabled. That flag does not turn off the server's other contacts: upstream `chrome-devtools-mcp` still makes its own npm and CrUX requests.
+- Privacy policy: https://opsagents.agency/privacy
+
+---
+
 ## Author
 
 [MSApps](https://msapps.mobi) · [All plugins](https://msapps-mobile.github.io/claude-plugins/)
