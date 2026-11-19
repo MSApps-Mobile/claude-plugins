@@ -16,7 +16,7 @@
 # before it is listed and again before it is removed.
 #
 # Output: one TAB-separated line per candidate — rule, KB, path, reason — then a summary line.
-# Exit: 0 ok · 2 bad usage or missing ~/.claude.
+# Exit: 0 ok · 2 bad usage, a non-integer JANITOR_MIN_AGE_DAYS, or missing ~/.claude.
 
 set -u
 
@@ -30,6 +30,14 @@ esac
 CLAUDE_DIR="${JANITOR_CLAUDE_DIR:-$HOME/.claude}"
 KEEP_BACKUPS="${JANITOR_KEEP_BACKUPS:-1}"
 MIN_AGE_DAYS="${JANITOR_MIN_AGE_DAYS:-7}"
+
+# The age check is only as good as this number: find -mtime rejects (GNU) or reinterprets (BSD "7d") anything
+# that is not a plain integer, and a failed find used to read as "untouched". Refuse before listing anything.
+case "$MIN_AGE_DAYS" in
+  ''|*[!0-9]*)
+    echo "janitor: JANITOR_MIN_AGE_DAYS must be a whole number of days (got '$MIN_AGE_DAYS')" >&2
+    exit 2 ;;
+esac
 
 if [ ! -d "$CLAUDE_DIR" ]; then
   echo "janitor: $CLAUDE_DIR does not exist — nothing to do" >&2
@@ -72,8 +80,12 @@ add() {  # rule path reason
 
 # "true" when nothing under $1 was modified in the last MIN_AGE_DAYS days.
 # (find includes $1 itself, so this also covers an empty directory.)
+# A find that exits non-zero (an unreadable folder, a bad argument) cannot vouch for anything: "unclear means
+# keep", so that is "false", never "untouched".
 untouched() {
-  [ -z "$(find "$1" -mtime "-${MIN_AGE_DAYS}" -print 2>/dev/null | head -1)" ]
+  local recent
+  recent="$(find "$1" -mtime "-${MIN_AGE_DAYS}" -print 2>/dev/null)" || return 1
+  [ -z "$recent" ]
 }
 
 # ── rule 1: stale ~/.claude.json backups ────────────────────────────────────
