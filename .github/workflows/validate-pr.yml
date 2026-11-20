@@ -16,6 +16,8 @@ on:
       # Card TNCrQi31: a PR that edits only this workflow ran none of its
       # jobs, so a change to the gate itself was never exercised before merge.
       - '.github/workflows/validate-pr.yml'
+      # Card rkdB5zOu: the hero plugin count lives in the docs page.
+      - 'docs/index.html'
 
 # Card DMqfyLzZ: no job here writes to the repo or the PR, so the token gets
 # read-only scope instead of the repo default.
@@ -350,6 +352,15 @@ jobs:
       # EXECUTES the red branch on every run, against committed fixtures.
       - name: Marketplace coverage — prove the guard can FAIL
         run: python3 scripts/check-marketplace-coverage.test.py
+
+      # ── Card rkdB5zOu ──────────────────────────────────────────
+      # The docs hero said 29 plugins while the page rendered 30 cards. Fail a
+      # PR where the hero number and the .card count disagree.
+      - name: Docs hero plugin count — hero vs .card entries
+        run: python3 scripts/check-hero-plugin-count.py --page docs/index.html
+
+      - name: Docs hero plugin count — prove the guard can FAIL
+        run: python3 scripts/check-hero-plugin-count.test.py
 
       # ── Card okOoGKTA ──────────────────────────────────────────
       # release.yml bumped plugin.json but never marketplace.json, so 17 of 33
