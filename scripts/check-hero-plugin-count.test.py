@@ -3,7 +3,8 @@
 Trello rkdB5zOu - negative control for check-hero-plugin-count.py.
 
 mismatch.html is the page as it stood (hero 29, 30 cards) and MUST red;
-match.html (hero 30, 30 cards) and the real docs/index.html MUST pass.
+match.html (hero 30, 30 cards), comments-templates.html (hero 30, 30 rendered cards plus
+cards inside a comment, a <template> and a script string) and the real docs/index.html MUST pass.
 
 Run: python3 scripts/check-hero-plugin-count.test.py
 Exit 0 = every case behaved as declared, INCLUDING the one that must fail.
@@ -31,6 +32,8 @@ def case(label, page, expect_rc):
 
 case("mismatch fixture (hero 29, 30 cards) must red", os.path.join(FIX, "mismatch.html"), 1)
 case("matching fixture must pass", os.path.join(FIX, "match.html"), 0)
+case("card inside a comment, a <template> and a script string is not counted (hero 30, 30 rendered cards) must pass",
+     os.path.join(FIX, "comments-templates.html"), 0)
 case("real docs/index.html must pass", PAGE, 0)
 
 sys.exit(1 if failures else 0)
