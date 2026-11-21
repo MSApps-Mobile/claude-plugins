@@ -362,6 +362,17 @@ jobs:
       - name: Docs hero plugin count — prove the guard can FAIL
         run: python3 scripts/check-hero-plugin-count.test.py
 
+      # ── Card IMjjDwAS ──────────────────────────────────────────
+      # The marketplace published 38 plugins while the page listed 30 cards.
+      # Fail a PR where a plugin that should be shown has no card, a card names
+      # a plugin the marketplace does not publish, or the hidden-plugin
+      # allow-list (scripts/catalogue-hidden-plugins.json) has a stale entry.
+      - name: Docs catalogue — cards vs marketplace.json
+        run: python3 scripts/check-catalogue-matches-marketplace.py --root .
+
+      - name: Docs catalogue — prove the guard can FAIL
+        run: python3 scripts/check-catalogue-matches-marketplace.test.py
+
       # ── Card okOoGKTA ──────────────────────────────────────────
       # release.yml bumped plugin.json but never marketplace.json, so 17 of 33
       # listings advertised a stale version with every build green. Fail a PR
