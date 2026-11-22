@@ -88,8 +88,8 @@
         .sosa-links { text-align: center; margin-top: 36px; font-size: 0.95rem; }
         .sosa-links a { color: var(--accent2); text-decoration: none; }
         .sosa-links a:hover { text-decoration: underline; }
-        /* Card cU8YguWk: footer and standalone text links get a 44px-tall hit area (WCAG 2.5.8). Vertical padding on inline links does not change the layout. */
-        footer a, .sosa-links a, .sosa .section-subtitle a, .faq-a a { padding: 14px 0; }
+        /* Card cU8YguWk: footer and standalone text links get a 44px-tall hit area (WCAG 2.5.8). Inline-block makes the padded box part of its line box, so the padding cannot reach a neighbouring line when a link wraps. */
+        footer a, .sosa-links a, .sosa .section-subtitle a, .faq-a a { display: inline-block; padding: 14px 0; }
     </style>
 </head>
 <body>
