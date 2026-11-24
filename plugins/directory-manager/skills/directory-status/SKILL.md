@@ -36,7 +36,7 @@ extension bridge. Never copy cookies out of the user's browser.
 |---|---|---|
 | Published, no newer version | nobody | Live |
 | Published + "Publish requested" / Scan passed + "publish request is waiting" | Anthropic | Waiting for reviewer |
-| Published or Scan passed + a **Publish update** button and no request | us | Needs a publish request (see `publish-requests`) |
+| Published or Scan passed + a **Publish update** button (a newer version of a published plugin) or a **Publish** button (a first publish: never published, scan passed) and no request | us | Needs a publish request (see `publish-requests`) |
 | Needs changes / "Directory policy blocks" / "couldn't fetch" | us | Blocked, with the exact reason line |
 | Scanning + "Scans … have failed repeatedly" | us | Scan failing; read the version's history |
 | In review / Held | Anthropic | In review, with the held category |
