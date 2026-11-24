@@ -6,6 +6,7 @@
         "--directory",
         "${WHATSAPP_MCP_PATH}/whatsapp-mcp-server",
         "run",
+        "--frozen",
         "main.py"
       ],
       "env": {
