@@ -74,6 +74,16 @@ apify-scraper/
 - **Validation**: Zod schemas
 - **API**: Apify REST API v2
 
+## Usage
+
+```
+/apify-scraper:scrape <website URL or Apify Actor name> [what to extract]
+
+# Examples:
+/apify-scraper:scrape https://example.com extract all product names and prices
+/apify-scraper:scrape apify/web-scraper https://example.com/blog
+```
+
 ## Author
 
 MSApps

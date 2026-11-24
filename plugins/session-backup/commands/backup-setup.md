@@ -1,6 +1,7 @@
 ---
 name: backup-setup
 description: Configure the Google Drive backup connection
+argument-hint: "[no arguments]"
 ---
 
 Guide the user through setting up the backup:

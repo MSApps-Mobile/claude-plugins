@@ -63,6 +63,17 @@ skills/md-composer/
 
 Based on Kjramsy's Medium post [*"Your CLAUDE.md is eating your token budget (here's how to fix it)"*](https://medium.com/@kjramsy/your-claude-md-is-eating-your-token-budget-heres-how-to-fix-it-b8d6c4d1c986) (Jan 2026). Credit to the author for the recipe-book framing and the 200-line rule.
 
+## Usage
+
+```
+/md-composer:compose [path to CLAUDE.md, or a description of the project]
+
+# Examples:
+/md-composer:compose
+/md-composer:compose CLAUDE.md
+/md-composer:compose write a CLAUDE.md for this project
+```
+
 ## License
 
 MIT

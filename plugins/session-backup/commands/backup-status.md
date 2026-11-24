@@ -1,6 +1,7 @@
 ---
 name: backup-status
 description: Check the status of the last backup
+argument-hint: "[no arguments]"
 ---
 
 Check backup health:

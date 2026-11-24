@@ -18,6 +18,21 @@ SOSA Level 3 plugin that audits and optimizes token usage across skills, schedul
 
 ## Usage
 
+```
+/token-efficiency-audit:audit [scope: skill, task, plugin, project]
+
+# Examples:
+/token-efficiency-audit:audit
+/token-efficiency-audit:audit plugins/cowork-mem
+
+/token-efficiency-audit:expert-review <prompt, skill, or agent fleet to review>
+
+# Examples:
+/token-efficiency-audit:expert-review skills/my-skill/SKILL.md
+/token-efficiency-audit:expert-review model token-hour spend for 5 scheduled agents
+```
+
+
 Initiate audits through natural language commands like "Run a token audit" or "Optimize my tokens."
 
 The plugin operates in three phases:

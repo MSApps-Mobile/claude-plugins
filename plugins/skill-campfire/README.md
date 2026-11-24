@@ -57,6 +57,17 @@ Full archetype details in `skills/campfire/references/archetypes.md`.
 - Claude Desktop (Cowork mode)
 - At least 3 installed skills (more = better campfire)
 
+## Usage
+
+```
+/skill-campfire:campfire [hangout | standup | audit]
+
+# Examples:
+/skill-campfire:campfire
+/skill-campfire:campfire standup
+/skill-campfire:campfire audit
+```
+
 ## Author
 
 Built by [Michal Shatz](https://github.com/MSApps-Mobile) / MSApps

@@ -68,6 +68,40 @@ plugins/notion-memory/
     └── notion-spec-to-implementation/
 ```
 
+## Usage
+
+```
+/notion-memory:remember <what to remember or recall>
+
+# Examples:
+/notion-memory:remember remember that I prefer concise answers
+/notion-memory:remember what do you remember about the Acme project?
+
+/notion-memory:capture [topic or what to capture]
+
+# Examples:
+/notion-memory:capture
+/notion-memory:capture how we set up the deploy pipeline
+
+/notion-memory:meeting-prep <meeting topic or Notion page>
+
+# Examples:
+/notion-memory:meeting-prep Q4 planning with Acme
+/notion-memory:meeting-prep https://www.notion.so/example-page
+
+/notion-memory:research <research topic>
+
+# Examples:
+/notion-memory:research customer onboarding feedback
+/notion-memory:research what we know about competitor pricing
+
+/notion-memory:spec-to-tasks <Notion spec page URL or title>
+
+# Examples:
+/notion-memory:spec-to-tasks https://www.notion.so/example-spec
+/notion-memory:spec-to-tasks Checkout redesign spec
+```
+
 ## License
 
 MIT for the plugin packaging and the `notion-memory` skill. The 4 bundled Anthropic skills (SKILL.md, reference/, examples/, evaluations/) are © Anthropic.

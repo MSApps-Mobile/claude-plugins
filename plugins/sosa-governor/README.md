@@ -72,6 +72,17 @@ Daily JSONL files in `audit/` (e.g., `audit/2026-03-31.jsonl`). Each line:
 
 Full spec: https://github.com/MSApps-Mobile/claude-plugins/blob/main/docs/SOSA.md
 
+## Usage
+
+```
+/sosa-governor:report [audit | trust | budget | log]
+
+# Examples:
+/sosa-governor:report
+/sosa-governor:report trust scores
+/sosa-governor:report token budget
+```
+
 ## License
 
 MIT — MSApps Research, 2026

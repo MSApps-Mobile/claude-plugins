@@ -62,6 +62,16 @@ These are **best effort**, not a guarantee: OmniSharp may not apply every option
 | `.cs`     | C# (standard) |
 | `.csx`    | C# script |
 
+## Usage
+
+```
+/csharp-lsp:setup [project path]
+
+# Examples:
+/csharp-lsp:setup
+/csharp-lsp:setup ./src/MyApp
+```
+
 ## Part of the LSP plugin series
 
 Sibling plugins: `kotlin-lsp`, `swift-lsp`, `python-lsp`, `typescript-lsp`, `java-lsp`

@@ -52,6 +52,22 @@ This plugin gives Claude two capabilities for working with X (Twitter):
 **Feed scanning:**
 > "Search X for what people are saying about Claude Code and summarize the key themes"
 
+## Usage
+
+```
+/x-content-intelligence:insights <topic, account or community>
+
+# Examples:
+/x-content-intelligence:insights what is trending in AI agents
+/x-content-intelligence:insights analyze this X community
+
+/x-content-intelligence:write <topic> [format]
+
+# Examples:
+/x-content-intelligence:write a thread about plugin security
+/x-content-intelligence:write three posts about our launch
+```
+
 ## License
 
 MIT
