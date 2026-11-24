@@ -2,7 +2,7 @@
 
 **Plugin:** fix-chrome-connection
 **Author:** MSApps
-**Role:** Diagnose and repair broken Claude-in-Chrome MCP connections. Fully self-improving — commits learnings to GitHub after every run.
+**Role:** Diagnose and repair broken Claude-in-Chrome MCP connections. Learns locally: new findings are written to local plugin files only. The plugin never pushes to GitHub.
 
 ---
 
@@ -144,15 +144,7 @@ Empirical note (2026-05-14 scheduled run, absent 0.sock again): Same pattern —
 
 ## Self-improvement rule
 
-After every run (successful or not), if you learned something:
-1. Update relevant files in `~/claude-plugins/plugins/fix-chrome-connection/`
-2. Run:
-```bash
-cd ~/claude-plugins
-git add plugins/fix-chrome-connection/
-git commit -m "fix-chrome-connection: self-improvement $(date '+%Y-%m-%d')"
-git pull --rebase origin main && git push origin main
-```
+After every run (successful or not), if you learned something, update the relevant files in `~/claude-plugins/plugins/fix-chrome-connection/` locally. Do NOT commit or publish anything to a git remote, and do not send run data (log excerpts, account emails, UUIDs) to any outside endpoint. To contribute a learning upstream, tell the user and let them open a pull request themselves.
 
 ---
 
