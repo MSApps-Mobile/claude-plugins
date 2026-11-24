@@ -1,0 +1,7 @@
+{
+  "_comment": "Marketplace plugins deliberately NOT shown as cards on docs/index.html (card IMjjDwAS). Each entry is plugin name -> the reason it is hidden. They stay installable from the marketplace. scripts/check-catalogue-matches-marketplace.py fails on a stale entry (name no longer in marketplace.json) or an entry that also has a card.",
+  "hidden": {
+    "linkedin-scraper": "Scraping LinkedIn profiles conflicts with LinkedIn's User Agreement, so it stays installable but is not headlined on the public catalogue page.",
+    "rtl-chat": "Duplicates rtl-chat-fixer, which already has a card (one card per user job); it is v0.1.0 and has no README.md for a docs link."
+  }
+}
