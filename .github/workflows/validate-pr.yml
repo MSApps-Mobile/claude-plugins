@@ -35,7 +35,7 @@ jobs:
       tested_plugins: ${{ steps.detect.outputs.tested_plugins }}
       has_tests: ${{ steps.detect.outputs.has_tests }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -115,7 +115,7 @@ jobs:
       PLUGIN: ${{ matrix.plugin }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # ── 1. Structure check ─────────────────────────────────────
       - name: Check plugin structure
@@ -291,7 +291,7 @@ jobs:
       PLUGIN: ${{ matrix.plugin }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run plugins/<plugin>/tests/*.test.sh
         run: |
@@ -325,7 +325,7 @@ jobs:
     name: SOSA Compliance
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: SOSA lint
         run: |
@@ -439,7 +439,7 @@ jobs:
     name: No manual version bump
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 

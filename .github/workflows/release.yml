@@ -21,7 +21,7 @@ jobs:
       plugins: ${{ steps.detect.outputs.plugins }}
       has_changes: ${{ steps.detect.outputs.has_changes }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 2   # need parent commit for diff
 
@@ -68,7 +68,7 @@ jobs:
       max-parallel: 1   # defense-in-depth: serialize within a single run too
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
@@ -218,7 +218,7 @@ jobs:
       # Last step that mutates remote state. Creates the tag on the bump
       # commit we just pushed and uploads the .plugin artifact.
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           tag_name: ${{ matrix.plugin }}-v${{ steps.bump.outputs.new_version }}
           name: "${{ matrix.plugin }} v${{ steps.bump.outputs.new_version }}"
