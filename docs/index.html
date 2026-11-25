@@ -88,6 +88,8 @@
         .sosa-links { text-align: center; margin-top: 36px; font-size: 0.95rem; }
         .sosa-links a { color: var(--accent2); text-decoration: none; }
         .sosa-links a:hover { text-decoration: underline; }
+        /* Card I6sF6fRf: a link inside a sentence is underlined, so colour is not the only cue (WCAG 1.4.1). */
+        .text-link { color: var(--accent2); text-decoration: underline; text-underline-offset: 2px; }
     </style>
 </head>
 <body>
@@ -373,7 +375,7 @@
     <div class="container">
         <div class="sosa-badge-wrap"><span class="sosa-badge">SOSA™ Compliant</span></div>
         <h2 class="section-title">Built on SOSA™ Methodology</h2>
-        <p class="section-subtitle">Every MSApps plugin is built on <strong>SOSA™ — Supervised Orchestrated Secured Agents</strong>, a four-pillar framework for safe, production-grade autonomous AI. <a href="sosa-whitepaper" style="color:var(--accent2);text-decoration:none;">Read the whitepaper (Shatz, 2026) →</a></p>
+        <p class="section-subtitle">Every MSApps plugin is built on <strong>SOSA™ — Supervised Orchestrated Secured Agents</strong>, a four-pillar framework for safe, production-grade autonomous AI. <a class="text-link" href="sosa-whitepaper">Read the whitepaper (Shatz, 2026) →</a></p>
         <div class="pillars">
             <div class="pillar">
                 <div class="pillar-icon" aria-hidden="true">👁️</div>
