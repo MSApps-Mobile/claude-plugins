@@ -362,6 +362,16 @@ jobs:
       - name: Docs hero plugin count — prove the guard can FAIL
         run: python3 scripts/check-hero-plugin-count.test.py
 
+      # ── Card I6sF6fRf ──────────────────────────────────────────
+      # The SOSA subtitle link had text-decoration:none and a colour 1.01:1
+      # from its sentence (WCAG 1.4.1). Fail a PR that leaves a link inside
+      # running text without an underline.
+      - name: Docs inline links — underlined in running text
+        run: python3 scripts/check-inline-links-underlined.py --page docs/index.html
+
+      - name: Docs inline links — prove the guard can FAIL
+        run: python3 scripts/check-inline-links-underlined.test.py
+
       # ── Card IMjjDwAS ──────────────────────────────────────────
       # The marketplace published 38 plugins while the page listed 30 cards.
       # Fail a PR where a plugin that should be shown has no card, a card names
