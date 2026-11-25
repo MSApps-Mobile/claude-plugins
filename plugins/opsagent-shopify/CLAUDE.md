@@ -38,7 +38,7 @@ The `mcp-server/` directory contains a stdio MCP server with **22 tools** across
 Set env vars in plugin config or `.env`:
 
 ```
-SHOPIFY_DEFAULT_SHOP=your-store.myshopify.com
+SHOPIFY_DEFAULT_SHOP=<handle>.myshopify.com
 SHOPIFY_ADMIN_TOKEN=shpat_xxxxx
 SHOPIFY_STOREFRONT_TOKEN=your-storefront-token
 ```

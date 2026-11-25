@@ -23,7 +23,7 @@ multi-tenant.
 - "What's in `<client-handle>`'s catalog right now?"
 - "Find products in shop X under $50 that contain 'linen'."
 - "Build me a cart with three of variant ID ..."
-- "Read the shipping policy of `foo.myshopify.com`."
+- "Read the shipping policy of `<handle>.myshopify.com`."
 - "Describe the storefront of this shop before we swap the theme."
 - "Why is `selectModel()` returning undefined on the product page of `<shop>`?"
   → call `shopify_describe_theme` first to confirm which theme + version is
