@@ -16,7 +16,7 @@ npm install @opsagents/shopify-sdk
 import { createAdminClient } from "@opsagents/shopify-sdk";
 
 const admin = createAdminClient({
-  shopDomain: "your-store.myshopify.com",
+  shopDomain: "<handle>.myshopify.com",
   accessToken: "shpat_xxxxx",
 });
 
@@ -41,7 +41,7 @@ const health = await admin.healthCheck();
 import { createStorefrontClient } from "@opsagents/shopify-sdk";
 
 const storefront = createStorefrontClient({
-  shopDomain: "your-store.myshopify.com",
+  shopDomain: "<handle>.myshopify.com",
   storefrontToken: process.env.SHOPIFY_STOREFRONT_TOKEN, // Storefront API token — never hardcode it
 });
 
