@@ -96,7 +96,7 @@ export function createStorefrontClient(config) {
 
     async searchProducts(query, { limit = 10 } = {}) {
       // Shopify renamed `search_shop_catalog` -> `search_catalog` and nested
-      // the args (card N1UJorTX, probed live 2026-08-26 on u5rtvy-0a; the old
+      // the args (card N1UJorTX, probed live 2026-08-26 on a live store; the old
       // name answers JSON-RPC -32602 "Tool not found"). Results are UCP-shaped;
       // money amounts are MINOR units (29900 = 299.00 USD).
       return callMcp("search_catalog", { catalog: { query, pagination: { limit } } });

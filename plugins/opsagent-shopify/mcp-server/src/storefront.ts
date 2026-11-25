@@ -8,7 +8,7 @@
  */
 
 export interface ShopContext {
-  shop: string;                 // e.g. mama-sally.myshopify.com
+  shop: string;                 // e.g. <handle>.myshopify.com
   storefrontToken?: string;     // Storefront API token (GraphQL only)
   apiVersion?: string;          // default 2025-01
   mcpPath?: string;             // default /api/mcp

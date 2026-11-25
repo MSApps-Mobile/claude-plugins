@@ -12,7 +12,7 @@
  */
 
 export interface AdminContext {
-  shop: string;            // e.g. u5rtvy-0a.myshopify.com
+  shop: string;            // e.g. <handle>.myshopify.com
   adminToken: string;      // Admin API access token
   apiVersion?: string;     // default 2025-04
 }

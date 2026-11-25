@@ -51,7 +51,7 @@ const shopArg = {
     .regex(/^[a-z0-9-]+\.myshopify\.com$/i)
     .optional()
     .describe(
-      "Shop domain, e.g. mama-sally.myshopify.com. Falls back to SHOPIFY_DEFAULT_SHOP env var."
+      "Shop domain, e.g. <handle>.myshopify.com. Falls back to SHOPIFY_DEFAULT_SHOP env var."
     ),
 };
 
@@ -94,7 +94,7 @@ server.tool(
     try {
       const result = await callStorefrontMcp(
         // Shopify renamed the tool and nested the args (card N1UJorTX,
-        // probed live 2026-08-26 on u5rtvy-0a: the old name answers
+        // probed live 2026-08-26 on a live store: the old name answers
         // JSON-RPC -32602 "Tool not found: search_shop_catalog").
         "search_catalog",
         { catalog: { query, pagination: { limit: limit ?? 10 } } },
