@@ -97,6 +97,55 @@ try:
         failures.append(f"bump-version.sh accepted a non-x.y.z version: rc={r3.returncode} version={after!r} pwned={os.path.exists(os.path.join(work3, 'PWNED'))}")
     else:
         print("  ok  non-x.y.z version refused, nothing executed, plugin.json untouched")
+
+    # Card tIL3cCkK: the plugin name (a folder name from merged repo content)
+    # and the plugin.json path built from it were pasted into inline Python
+    # source, so a crafted folder name ran code in release.yml's bump step.
+    # Each payload below must leave no PWNED file, and bump-version.sh must
+    # either refuse (non-zero, plugin.json untouched) or bump normally.
+    payloads = [
+        # the card's literal example
+        "a'];import os;os.system('touch PWNED');#",
+        # breaks out of the single-quoted open('...') in the version read
+        "a'+str(__import__('os').system('touch PWNED'))+'",
+        # breaks out of the double-quoted path = \"...\" in the bump heredoc
+        'a"+str(__import__("os").system("touch PWNED"))+"',
+    ]
+
+    def evil_tree(label, plugin):
+        """A copy of the agrees fixture whose only plugin lives in folder `plugin`."""
+        work = os.path.join(tmp, label)
+        shutil.copytree(os.path.join(FIX, "agrees"), work)
+        shutil.copytree(HERE, os.path.join(work, "scripts"), ignore=shutil.ignore_patterns("fixtures", "__pycache__"))
+        os.rename(os.path.join(work, "plugins", "alpha"), os.path.join(work, "plugins", plugin))
+        return work
+
+    def no_injection(label, work, plugin, run_dir=None):
+        pjson = os.path.join(work, "plugins", plugin, ".claude-plugin", "plugin.json")
+        before = json.load(open(pjson))["version"]
+        r = subprocess.run(["bash", "scripts/bump-version.sh", plugin, "patch"], cwd=work, env=env, capture_output=True, text=True)
+        after = json.load(open(pjson))["version"]
+        pwned = [p for p in (os.path.join(work, "PWNED"), os.path.join(work, "scripts", "PWNED")) if os.path.exists(p)]
+        refused = r.returncode != 0 and after == before
+        bumped = r.returncode == 0 and before == "1.0.0" and after == "1.0.1"
+        if pwned or not (refused or bumped):
+            failures.append(f"{label}: rc={r.returncode} version {before}->{after} pwned={pwned} err={r.stderr[-300:]!r}")
+        else:
+            print(f"  ok  {label}: {'refused' if refused else 'bumped normally'}, nothing executed")
+
+    for i, plugin in enumerate(payloads):
+        no_injection(f"crafted plugin name #{i + 1}", evil_tree(f"evil-name-{i}", plugin), plugin)
+
+    # The plugin.json path also carries the checkout path (REPO_ROOT), which a
+    # name allow-list does not cover: a quote in the checkout directory must
+    # not reach Python source either. The plugin name here is a valid one, so
+    # this must bump normally.
+    for i, payload in enumerate(payloads[1:]):
+        root = os.path.join(tmp, f"evil-root-{i}", payload)
+        os.makedirs(os.path.dirname(root))
+        shutil.copytree(os.path.join(FIX, "agrees"), root)
+        shutil.copytree(HERE, os.path.join(root, "scripts"), ignore=shutil.ignore_patterns("fixtures", "__pycache__"))
+        no_injection(f"crafted checkout path #{i + 1}", root, "alpha")
 finally:
     shutil.rmtree(tmp, ignore_errors=True)
 

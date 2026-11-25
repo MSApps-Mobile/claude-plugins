@@ -52,7 +52,7 @@ The NIST AI Risk Management Framework [10] provides comprehensive guidelines for
 
 ### 2.5 Trust and Safety Frameworks
 
-Capability-based security [13] provides a theoretical foundation for fine-grained access control that SOSA adopts for agent permission management. The principle of least privilege, when applied to AI agents, demands that each agent possesses only the credentials and tool access necessary for its defined role — a requirement that most existing frameworks honor in documentation but not in enforcement. Zero-trust architecture principles [14] inform SOSA's inter-agent communication model, where every message requires mutual attestation regardless of network topology.
+Capability-based security [13] provides a theoretical foundation for fine-grained access control that SOSA adopts for agent permission management. The principle of least privilege, when applied to AI agents, demands that each agent possesses only the credentials and tool access necessary for its defined role — a requirement that most existing frameworks honor in documentation but not in enforcement. Zero-trust architecture [14] verifies every request regardless of network location. SOSA takes it as a design goal for the calls an agent makes to tools and services. It is not a property this paper claims for our fleet today.
 
 ### 2.6 DevOps and CI/CD Automation
 
@@ -130,7 +130,7 @@ In software engineering contexts, the orchestrator additionally enforces **merge
 
 > *Note: this section describes the SOSA target model. The plugins in this repository do not implement the isolated execution, zero-trust boundaries or immutable audit store described here; see [SECURITY.md](../SECURITY.md) for what is actually in place.*
 
-Security in SOSA is not a perimeter — it is a property of every layer. Each agent runs in an isolated execution environment with scoped credentials, zero-trust network boundaries, and cryptographically verifiable audit trails. No agent can access resources beyond its declared permission set, and all inter-agent communication passes through authenticated channels.
+Security in SOSA is not a perimeter — it is a property of every layer. Each agent runs in an isolated execution environment with scoped credentials, network boundaries that follow a zero-trust design goal (not implemented in these plugins), and cryptographically verifiable audit trails. No agent can access resources beyond its declared permission set, and all inter-agent communication passes through authenticated channels.
 
 > *Each agent Aᵢ is assigned a capability set Cᵢ ⊆ C enforced at runtime. Cross-agent communication requires mutual attestation: msg(Aᵢ, Aⱼ) is valid iff auth(Aᵢ) ∧ auth(Aⱼ) = true.*
 
@@ -224,7 +224,7 @@ The SOSA methodology directly addresses the primary barriers to enterprise AI ag
 
 **Reliability.** By mandating orchestration and structured inter-agent context sharing, SOSA eliminates the coordination failures that plague multi-agent deployments. The DAG-based scheduling ensures that agents respect data dependencies. The structured registry model prevents cascading failures. The Plan-Act-Verify loop with its trust gradient ensures that unreliable agents are automatically constrained before they can cause organizational damage.
 
-**Compliance.** By treating security as a first-class design constraint rather than an afterthought, SOSA enables deployment in environments where data sensitivity precludes the use of conventional SaaS-based AI solutions. The zero-trust architecture, scoped credentials, and data-in-transit processing model mean that sensitive data never resides on third-party servers — a requirement for financial services, healthcare, legal, and government contexts.
+**Compliance.** By treating security as a first-class design constraint rather than an afterthought, SOSA enables deployment in environments where data sensitivity precludes the use of conventional SaaS-based AI solutions. The scoped-credentials and data-in-transit processing design goals (not implemented in these plugins) are intended to mean that sensitive data never resides on third-party servers — a requirement for financial services, healthcare, legal, and government contexts.
 
 **Code Quality Assurance.** By mandating the Plan-Act-Verify loop with codebase-aware governance, SOSA ensures that agent-authored code meets the same quality standards as human-authored code. The domain knowledge model K provides agents with the contextual awareness that prevents architectural drift. The trust gradient ensures that quality standards are not static rules but adaptive expectations that tighten in response to observed failures and relax in response to demonstrated reliability.
 
@@ -240,7 +240,7 @@ These properties collectively justify premium positioning. Organizations adoptin
 
 SOSA represents a necessary evolution from ad-hoc AI agent deployment to principled, production-grade AI operations. By integrating supervision, orchestration, security, and agent design into a unified methodology, SOSA provides organizations with a framework that scales from initial pilot to full operational deployment without sacrificing governance or accountability — whether the agents automate business operations or write production code.
 
-The methodology demonstrates that principled governance does not require sacrificing the productivity gains that AI agents provide. Graduated supervision levels for code changes, orchestrated multi-agent development coordination, zero-trust security for code access and execution, and formally specified agent roles with codebase knowledge models — these governance primitives make agents more reliable, not less productive. The Plan-Act-Verify execution model, with its adaptive trust gradient, creates a system where agents earn autonomy through verifiable performance rather than demanding it through configuration.
+The methodology demonstrates that principled governance does not require sacrificing the productivity gains that AI agents provide. Graduated supervision levels for code changes, orchestrated multi-agent development coordination, scoped security design goals for code access and execution (zero-trust is a design goal, not implemented in these plugins), and formally specified agent roles with codebase knowledge models — these governance primitives make agents more reliable, not less productive. The Plan-Act-Verify execution model, with its adaptive trust gradient, creates a system where agents earn autonomy through verifiable performance rather than demanding it through configuration.
 
 The implications extend beyond individual tools. As the industry converges on agent-assisted workflows as a standard practice, organizations that adopt structured governance frameworks will deploy agents that produce consistent, secure, and architecturally coherent output. Organizations that do not will accumulate agent-authored technical debt and operational drift at a pace that no human team can remediate.
 

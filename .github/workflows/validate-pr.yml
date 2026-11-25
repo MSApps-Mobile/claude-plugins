@@ -16,6 +16,8 @@ on:
       # Card TNCrQi31: a PR that edits only this workflow ran none of its
       # jobs, so a change to the gate itself was never exercised before merge.
       - '.github/workflows/validate-pr.yml'
+      # Card rkdB5zOu: the hero plugin count lives in the docs page.
+      - 'docs/index.html'
 
 # Card DMqfyLzZ: no job here writes to the repo or the PR, so the token gets
 # read-only scope instead of the repo default.
@@ -351,6 +353,26 @@ jobs:
       - name: Marketplace coverage — prove the guard can FAIL
         run: python3 scripts/check-marketplace-coverage.test.py
 
+      # ── Card rkdB5zOu ──────────────────────────────────────────
+      # The docs hero said 29 plugins while the page rendered 30 cards. Fail a
+      # PR where the hero number and the .card count disagree.
+      - name: Docs hero plugin count — hero vs .card entries
+        run: python3 scripts/check-hero-plugin-count.py --page docs/index.html
+
+      - name: Docs hero plugin count — prove the guard can FAIL
+        run: python3 scripts/check-hero-plugin-count.test.py
+
+      # ── Card IMjjDwAS ──────────────────────────────────────────
+      # The marketplace published 38 plugins while the page listed 30 cards.
+      # Fail a PR where a plugin that should be shown has no card, a card names
+      # a plugin the marketplace does not publish, or the hidden-plugin
+      # allow-list (scripts/catalogue-hidden-plugins.json) has a stale entry.
+      - name: Docs catalogue — cards vs marketplace.json
+        run: python3 scripts/check-catalogue-matches-marketplace.py --root .
+
+      - name: Docs catalogue — prove the guard can FAIL
+        run: python3 scripts/check-catalogue-matches-marketplace.test.py
+
       # ── Card okOoGKTA ──────────────────────────────────────────
       # release.yml bumped plugin.json but never marketplace.json, so 17 of 33
       # listings advertised a stale version with every build green. Fail a PR
@@ -388,3 +410,43 @@ jobs:
       # (block, heredoc, inline, folded) must red on every run.
       - name: Workflow run bodies — prove the guard can FAIL
         run: python3 scripts/check-workflow-run-expressions.test.py
+
+      # ── Card TJ93ychx ──────────────────────────────────────────
+      # Two plugins shipped instructions that push transcript-derived content
+      # to the public repo on every run, which contradicts a "no telemetry"
+      # statement and trips the directory review. Fail a plugin whose shipped
+      # .md/.sh files instruct a push unless the push sits in a fenced block
+      # naming a default-off userConfig option. Plugin tests/ are not scanned.
+      # token-efficiency-audit (#76) and fix-chrome-connection (#77) are
+      # allow-listed line by line (plugin + path + exact line) in the script;
+      # a stale entry FAILS, so #76/#77 delete their entries when they merge.
+      - name: Shipped plugins — no push by default
+        run: python3 scripts/check-no-default-push.py --root .
+
+      # Negative control: committed fixtures (the real token-efficiency-audit
+      # CLAUDE.md as on main, a shell push, an 'update https://github.com/'
+      # prompt, ...) must red on every run; the real docs that merely mention
+      # git push must stay green.
+      - name: Shipped plugins — prove the guard can FAIL
+        run: python3 scripts/check-no-default-push.test.py
+
+  # ── Job 4: PRs never change a plugin version ────────────────────
+  # Card Jmv8kJnp: release.yml patch-bumps on every merge to main, so a PR that
+  # also bumped by hand stacked a second bump (#76 advertised 1.0.4 and would
+  # have shipped 1.0.5). Rule (b), recorded in CONTRIBUTING.md: PRs never bump.
+  # Needs full history: the check diffs against the merge base with main.
+  no-manual-bump:
+    name: No manual version bump
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Plugin versions unchanged vs the merge base
+        run: python3 scripts/check-no-manual-bump.py --root . --base origin/main --head HEAD
+
+      # Negative control: throwaway git repos where a bumped plugin.json or
+      # marketplace.json entry must red, and a new/deleted plugin must not.
+      - name: Manual-bump check — prove the guard can FAIL
+        run: python3 scripts/check-no-manual-bump.test.py
