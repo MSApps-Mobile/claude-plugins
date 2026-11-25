@@ -43,9 +43,11 @@ The docs say "the settings include" these three, so a row not in this table is u
    for the user with the row's text.
 3. Show the list as a table (plugin, version, outcome) and ask the user for a yes. Name every plugin
    whose click goes live. A yes covers that list only; a new plugin needs a new yes.
-4. For each approved plugin, one at a time: open its page and click the publish button (role button;
-   the docs name it **Publish**, the portal has shown **Publish update** on a version row; match the
-   button on the page and settle which from the page, not from this text). If a dialog opens, read its
+4. For each approved plugin, one at a time: open its page and click the publish button (role button).
+   It is **Publish** for a first publish (never published, scan passed) and **Publish update** for a
+   newer version of a plugin that already has a live version (claude.com/docs/plugins/submit, read
+   2026-11-25; `directory-status` matches either). Click whichever of the two the page shows; if it
+   shows neither, or both, stop and tell the user. If a dialog opens, read its
    text and confirm only a publish or request button. Never click Delist, Withdraw, Remove or Rotate.
 5. Verify by reloading the page. A click is not proof. Accept either outcome, matched to step 2:
    - reviewer: the status line says the publish request is waiting for an Anthropic reviewer, and the
