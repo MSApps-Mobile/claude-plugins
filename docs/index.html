@@ -12,9 +12,7 @@
         gtag('js', new Date());
         gtag('config', 'G-HFSWQXJ57Q');
     </script>
-    <!-- GitHub Buttons -->
-    <script async defer src="https://buttons.github.io/buttons.js"></script>
-    <meta name="description" content="Free Claude plugins by MSApps — Google Drive Upload, Toggl, YouTube Transcriber, WhatsApp MCP, Notion Memory, LinkedIn Scraper, Apify Scraper, Apollo, RTL Chat Fixer, VM Disk Cleanup, X Content Intelligence, WordPress MCP, and more. Open source, zero cost.">
+    <meta name="description" content="Free Claude plugins by MSApps — Google Drive Upload, Toggl, YouTube Transcriber, WhatsApp MCP, Notion Memory, Apify Scraper, Apollo, RTL Chat Fixer, VM Disk Cleanup, X Content Intelligence, WordPress MCP, and more. Open source, zero cost.">
     <style>
         :root {
             --bg: #0f0f13;
@@ -45,8 +43,17 @@
         .section-title { text-align: center; font-size: 1.8rem; font-weight: 700; margin-bottom: 12px; }
         .section-subtitle { text-align: center; color: var(--text-muted); margin-bottom: 48px; font-size: 1rem; }
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
-        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px 28px; transition: transform 0.2s, border-color 0.2s; text-decoration: none; color: inherit; display: block; }
+        .card { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px 28px; transition: transform 0.2s, border-color 0.2s; color: inherit; display: block; }
         .card:hover { transform: translateY(-4px); border-color: var(--accent); }
+        /* The title link covers the whole card, so the card stays one click target with a short link name. */
+        .card-link { color: inherit; text-decoration: none; }
+        .card-link::after { content: ''; position: absolute; inset: 0; border-radius: 16px; }
+        .card-link:focus-visible { outline: none; }
+        .card-link:focus-visible::after { outline: 3px solid var(--accent2); outline-offset: 3px; }
+        .star-link { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; padding: 10px 22px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-weight: 600; text-decoration: none; }
+        .star-link:hover { border-color: var(--accent); }
+        a:focus-visible { outline: 3px solid var(--accent2); outline-offset: 3px; border-radius: 4px; }
+        .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
         .card-icon { font-size: 2.2rem; margin-bottom: 16px; }
         .card h3 { font-size: 1.2rem; font-weight: 600; margin-bottom: 8px; }
         .card p { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 20px; min-height: 60px; }
@@ -59,15 +66,14 @@
         .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 32px; margin-top: 40px; }
         .step { text-align: center; padding: 24px; }
         .step-num { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px; background: rgba(108, 99, 255, 0.15); color: var(--accent2); font-weight: 700; font-size: 1.1rem; margin-bottom: 16px; }
-        .step h4 { font-size: 1.05rem; margin-bottom: 8px; }
+        .step h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; }
         .step p { color: var(--text-muted); font-size: 0.9rem; }        .faq { padding: 60px 0 80px; }
         .faq-item { border-bottom: 1px solid var(--border); padding: 24px 0; }
         .faq-item:first-child { border-top: 1px solid var(--border); }
         .faq-q { font-weight: 600; font-size: 1.05rem; margin-bottom: 8px; }
         .faq-a { color: var(--text-muted); font-size: 0.95rem; }
         footer { text-align: center; padding: 40px 0; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; }
-        footer a { color: var(--accent2); text-decoration: none; }
-        footer a:hover { text-decoration: underline; }
+        footer a { color: var(--accent2); text-decoration: underline; text-underline-offset: 2px; }
         @media (max-width: 600px) { .hero h1 { font-size: 2rem; } .hero-stats { gap: 24px; } .stat-num { font-size: 1.5rem; } }
     
         .sosa { padding: 64px 0; background: linear-gradient(135deg, rgba(108,99,255,0.07) 0%, rgba(167,139,250,0.04) 100%); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
@@ -77,7 +83,7 @@
         .pillar { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 28px 24px; text-align: center; transition: border-color 0.2s; }
         .pillar:hover { border-color: var(--accent); }
         .pillar-icon { font-size: 2rem; margin-bottom: 14px; }
-        .pillar h4 { font-size: 1rem; font-weight: 700; margin-bottom: 10px; color: var(--accent2); }
+        .pillar h3 { font-size: 1rem; font-weight: 700; margin-bottom: 10px; color: var(--accent2); }
         .pillar p { color: var(--text-muted); font-size: 0.875rem; line-height: 1.55; }
         .sosa-links { text-align: center; margin-top: 36px; font-size: 0.95rem; }
         .sosa-links a { color: var(--accent2); text-decoration: none; }
@@ -86,18 +92,19 @@
 </head>
 <body>
 
+<main>
 <section class="hero">
     <div class="container">
         <div class="hero-badge">100% Free &amp; Open Source</div>
         <h1>Claude Plugins by MSApps</h1>
         <p>Supercharge your Claude experience with production-ready plugins. No paywalls, no license keys — just install and go.</p>
         <div class="hero-stats">
-            <div class="stat"><div class="stat-num">29</div><div class="stat-label">Plugins</div></div>
+            <div class="stat"><div class="stat-num">36</div><div class="stat-label">Plugins</div></div>
             <div class="stat"><div class="stat-num">$0</div><div class="stat-label">Forever Free</div></div>
             <div class="stat"><div class="stat-num">MIT</div><div class="stat-label">Licensed</div></div>
         </div>
     <div style="margin-top:28px;text-align:center;">
-      <a class="github-button" href="https://github.com/MSApps-Mobile/claude-plugins" data-icon="octicon-star" data-size="large" data-show-count="true" aria-label="Star MSApps-Mobile/claude-plugins on GitHub">⭐ Star on GitHub</a>
+      <a class="star-link" href="https://github.com/MSApps-Mobile/claude-plugins"><span aria-hidden="true">&#11088;</span>&nbsp;Star on GitHub</a>
     </div>
     </div>
 </section>
@@ -106,217 +113,259 @@
         <h2 class="section-title">Our Plugins</h2>
         <p class="section-subtitle">Each plugin installs in seconds. Click any card to see full docs.</p>
         <div class="grid">
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/google-drive-upload/README.md">
-                <div class="card-icon">📁</div>
-                <h3>Google Drive Upload</h3>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">📁</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/google-drive-upload/README.md">Google Drive Upload<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Upload any file from Claude directly to your Google Drive. Say "upload to Drive" and it works. Supports all file types up to 50MB.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">Unlimited uploads</span><span class="tag">All file types</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/toggl-time-tracker/README.md">
-                <div class="card-icon">⏱️</div>
-                <h3>Toggl Time Tracker</h3>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">⏱️</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/toggl-time-tracker/README.md">Toggl Time Tracker<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Track time directly from Claude — start/stop timers, log hours to projects, and get weekly summaries without leaving your conversation.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">Start/Stop timers</span><span class="tag">Weekly reports</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/youtube-transcriber/README.md">
-                <div class="card-icon">🎬</div>
-                <h3>YouTube Transcriber</h3>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">🎬</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/youtube-transcriber/README.md">YouTube Transcriber<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Transcribe any YouTube video or entire playlists. Browser-based caption extraction — no API key needed, any language supported.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">Zero config</span><span class="tag">Any language</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/whatsapp-mcp/README.md">
-                <div class="card-icon">💬</div>
-                <h3>WhatsApp MCP</h3>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">💬</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/whatsapp-mcp/README.md">WhatsApp MCP<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Connect Claude to WhatsApp — search messages, read conversations, send texts and media, and manage business outreach. Works in any language.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">Send &amp; receive</span><span class="tag">Business outreach</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/notion-memory/README.md">
-                <div class="card-icon">🧠</div>
-                <h3>Notion Memory</h3>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">🧠</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/notion-memory/README.md">Notion Memory<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Long-term memory for Claude. Remembers your preferences, decisions, and project context across sessions using Notion as persistent storage.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">Cross-session</span><span class="tag">Auto-saves</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/session-backup/README.md">
-                <div class="card-icon">💾</div>
-                <h3>Session Backup</h3>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">💾</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/session-backup/README.md">Session Backup<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Automated daily backups of your Cowork skills, plugins, scheduled tasks, and configs to Google Drive. Set it and forget it.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">Daily backups</span><span class="tag">Google Drive</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/mac-disk-cleaner/README.md">
-                <div class="card-icon">🧹</div>
-                <h3>Mac Disk Cleaner</h3>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">🧹</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/mac-disk-cleaner/README.md">Mac Disk Cleaner<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Free up disk space by clearing caches, finding large files, and getting smart storage recommendations — all from a conversation with Claude. Works in any language.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">Any language</span><span class="tag">Scheduled cleanup</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
 
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/apify-scraper/README.md">
-                <div class="card-icon">🕷️</div>
-                <h3>Apify Scraper</h3>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">🕷️</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/apify-scraper/README.md">Apify Scraper<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Full Apify web scraping platform integration — run Actors, manage datasets, key-value stores, schedules, webhooks, and tasks directly from Claude.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">27 tools</span><span class="tag">Web scraping</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/apollo/README.md">
-                <div class="card-icon">🚀</div>
-                <h3>Apollo</h3>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">🚀</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/apollo/README.md">Apollo<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Enrich leads, prospect by ICP, and load outreach sequences with Apollo.io — 3 power skills that chain Apollo APIs into complete sales workflows.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">Lead enrichment</span><span class="tag">Sales automation</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/rtl-chat-fixer/README.md">
-                <div class="card-icon">🔤</div>
-                <h3>RTL Chat Fixer</h3>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">🔤</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/rtl-chat-fixer/README.md">RTL Chat Fixer<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Fixes jumbled mixed-direction text in Claude chat. Supports Hebrew, Arabic, Persian, Urdu and other RTL languages mixed with English.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">Hebrew / Arabic</span><span class="tag">RTL support</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/vm-disk-cleanup/README.md">
-                <div class="card-icon">🗑️</div>
-                <h3>VM Disk Cleanup</h3>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">🗑️</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/vm-disk-cleanup/README.md">VM Disk Cleanup<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Prevent and recover from disk-full errors in Cowork VMs and Claude Code environments. 3-phase cleanup clears caches, temp files, and build artifacts.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">3-phase cleanup</span><span class="tag">ENOSPC fix</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/claude-folder-janitor/README.md">
-                <div class="card-icon">🧽</div>
-                <h3>Claude Folder Janitor</h3>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">🧽</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/claude-folder-janitor/README.md">Claude Folder Janitor<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Shrink ~/.claude safely — old backups, empty session folders, a stale changelog and transcripts of projects that no longer exist. Dry run first; deletes only on /janitor apply.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">Dry run first</span><span class="tag">Claude Code</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/x-content-intelligence/README.md">
-                <div class="card-icon">𝕏</div>
-                <h3>X Content Intelligence</h3>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">𝕏</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/x-content-intelligence/README.md">X Content Intelligence<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Scrape X (Twitter) for insights, analyze community trends and tone, and generate matching posts, threads, and content calendars — powered by Apify.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">X scraping</span><span class="tag">Content calendar</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/wordpress-mcp/README.md">
-                <div class="card-icon">📝</div>
-                <h3>WordPress MCP</h3>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">📝</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/wordpress-mcp/README.md">WordPress MCP<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Manage any WordPress site from Claude — create and publish posts, administer users and plugins, and handle WooCommerce orders through natural conversation.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">WordPress 6.9+</span><span class="tag">WooCommerce</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
             
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/fix-chrome-connection/README.md">
-                <div class="card-icon">🔌</div>
-                <h3>Fix Chrome Connection</h3>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">🔌</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/fix-chrome-connection/README.md">Fix Chrome Connection<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Automatically diagnoses and repairs broken Claude in Chrome MCP connections — most common after switching macOS users. One command, fixed in seconds.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">macOS</span><span class="tag">Auto-fix</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/cowork-session-fixer/README.md">
-                <div class="card-icon">🔧</div>
-                <h3>Cowork Session Fixer</h3>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">🔧</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/cowork-session-fixer/README.md">Cowork Session Fixer<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Fixes the &quot;RPC error: process with name already running&quot; bug that blocks Cowork sessions after a crash or connection drop. 5-tier automated recovery.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">All platforms</span><span class="tag">Session recovery</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/sosa-compliance-checker/README.md">
-                <div class="card-icon">🛡️</div>
-                <h3>SOSA™ Compliance Checker</h3>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">🛡️</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/sosa-compliance-checker/README.md">SOSA™ Compliance Checker<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Audit your Claude plugins and skills against the SOSA™ methodology — Supervised Orchestrated Secured Agents. Four-pillar scoring with prioritized fix suggestions.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">SOSA audit</span><span class="tag">Read-only</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/token-efficiency-audit/README.md">
-                <div class="card-icon">⚡</div>
-                <h3>Token Efficiency Audit</h3>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">⚡</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/token-efficiency-audit/README.md">Token Efficiency Audit<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Audit and optimize token usage across your entire Claude setup. Finds bloated skills, unused MCPs, and duplicate plugins — applies fixes with your approval. SOSA O6.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">Token savings</span><span class="tag">SOSA O6</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/github-cli-health-check/README.md">
-                <div class="card-icon">🐙</div>
-                <h3>GitHub CLI Health Check</h3>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">🐙</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/github-cli-health-check/README.md">GitHub CLI Health Check<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Scheduled health check for the GitHub CLI on MSApps machines. Verifies installation, authentication, repo access, and API rate limit — saves a structured &#x2705;/&#x274C; report.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">Scheduled</span><span class="tag">gh CLI</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/zoho-mail-health/README.md">
-                <div class="card-icon">📧</div>
-                <h3>Zoho Mail Health</h3>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">📧</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/zoho-mail-health/README.md">Zoho Mail Health<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Daily health check for MSApps Zoho Mail accounts. Verifies both inboxes are reachable, reads recent messages, sends a test email, and saves a structured &#x2705;/&#x274C; report.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">Daily check</span><span class="tag">Zoho Mail</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/gcloud-cli-health-check/README.md">
-                <div class="card-icon">&#x2601;&#xFE0F;</div>
-                <h3>GCloud CLI Health Check</h3>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">&#x2601;&#xFE0F;</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/gcloud-cli-health-check/README.md">GCloud CLI Health Check<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Scheduled health check for the Google Cloud CLI on MSApps machines &#x2014; verifies gcloud installation, auth, active project, critical APIs, billing, and Cloud Run services.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">Scheduled</span><span class="tag">gcloud</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/skill-campfire/README.md">
-                <div class="card-icon">&#x1F525;</div>
-                <h3>Skill Campfire</h3>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">&#x1F525;</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/skill-campfire/README.md">Skill Campfire<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Turn your Cowork skills into living characters who hang out around a virtual campfire &#x2014; personality-driven social hangouts, standups, and audit modes. Zero config.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">Zero config</span><span class="tag">Social</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/sosa-governor/README.md">
-                <div class="card-icon">&#x1F3DB;&#xFE0F;</div>
-                <h3>SOSA Governor</h3>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">&#x1F3DB;&#xFE0F;</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/sosa-governor/README.md">SOSA Governor<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Real-time SOSA governance layer for Claude Code &#x2014; classifies every MCP tool call by impact level, gates high-impact actions with approval requirements, and audit-logs all tool use.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">SOSA S1</span><span class="tag">Governance</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/sosa-orchestrator/README.md">
-                <div class="card-icon">&#x1F3AF;</div>
-                <h3>SOSA Orchestrator</h3>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">&#x1F3AF;</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/sosa-orchestrator/README.md">SOSA Orchestrator<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Token-aware task prioritization and budget management &#x2014; ranks tasks by a Priority Score, monitors token consumption in real time, and pauses over-budget tasks with explanation.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">SOSA O6</span><span class="tag">Token budget</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/cowork-mem/README.md">
-                <div class="card-icon">🧠</div>
-                <h3>Cowork Mem</h3>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>            <div class="card">
+                <div class="card-icon" aria-hidden="true">🧠</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/cowork-mem/README.md">Cowork Mem<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Persistent memory across Cowork sessions — Claude remembers decisions, bugs fixed, architecture, and files changed so you pick up right where you left off. SQLite + FTS5.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">Cross-session</span><span class="tag">SQLite memory</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/swift-lsp/README.md">
-                <div class="card-icon">🍎</div>
-                <h3>Swift LSP</h3>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">🍎</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/swift-lsp/README.md">Swift LSP<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Real-time Swift code intelligence for Claude &#x2014; diagnostics, go-to-definition, find-references, and hover types via Apple&#x2019;s SourceKit-LSP. Ships with Xcode.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">Zero config</span><span class="tag">Xcode</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/kotlin-lsp/README.md">
-                <div class="card-icon">🟣</div>
-                <h3>Kotlin LSP</h3>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">🟣</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/kotlin-lsp/README.md">Kotlin LSP<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Real-time Kotlin code intelligence for Claude &#x2014; diagnostics, go-to-definition, find-references, and hover types via kotlin-language-server. Install with Homebrew.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">Homebrew</span><span class="tag">Kotlin</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/md-composer/README.md">
-                <div class="card-icon">&#x1F4DD;</div>
-                <h3>Claude MD Composer</h3>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">🐍</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/python-lsp/README.md">Python LSP<span class="visually-hidden"> &#x2014; View docs &amp; setup</span></a></h3>
+                <p>Real-time Python code intelligence for Claude &#x2014; type errors, go-to-definition, find-references, and hover types via the Pyright language server.</p>
+                <div class="card-tags"><span class="tag free">Free</span><span class="tag">Pyright</span><span class="tag">Python</span></div>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">🔷</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/typescript-lsp/README.md">TypeScript LSP<span class="visually-hidden"> &#x2014; View docs &amp; setup</span></a></h3>
+                <p>Real-time TypeScript and JavaScript code intelligence for Claude &#x2014; diagnostics, go-to-definition, find-references, and hover types via typescript-language-server.</p>
+                <div class="card-tags"><span class="tag free">Free</span><span class="tag">TypeScript</span><span class="tag">JavaScript</span></div>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">🟪</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/csharp-lsp/README.md">C# LSP<span class="visually-hidden"> &#x2014; View docs &amp; setup</span></a></h3>
+                <p>Real-time C# code intelligence for Claude &#x2014; Roslyn diagnostics, go-to-definition, find-references, and type info via OmniSharp. No Visual Studio required.</p>
+                <div class="card-tags"><span class="tag free">Free</span><span class="tag">OmniSharp</span><span class="tag">C#</span></div>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">☕</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/java-lsp/README.md">Java LSP<span class="visually-hidden"> &#x2014; View docs &amp; setup</span></a></h3>
+                <p>Real-time Java code intelligence for Claude &#x2014; compile errors, go-to-definition, find-references, and Javadoc hover via Eclipse JDT Language Server. Supports Maven and Gradle.</p>
+                <div class="card-tags"><span class="tag free">Free</span><span class="tag">jdtls</span><span class="tag">Java</span></div>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">🧹</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/mac-agent-hygiene/README.md">Mac Agent Hygiene<span class="visually-hidden"> &#x2014; View docs &amp; setup</span></a></h3>
+                <p>Keeps a Mac that runs Claude Code agents from filling its disk &#x2014; a daily LaunchAgent and MCP server that clear regenerable caches and stale git worktrees, after a dry-run plan you confirm.</p>
+                <div class="card-tags"><span class="tag free">Free</span><span class="tag">Dry-run first</span><span class="tag">macOS</span></div>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">🌐</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/digital-presence/README.md">Digital Presence<span class="visually-hidden"> &#x2014; View docs &amp; setup</span></a></h3>
+                <p>Audit your online presence across LinkedIn, Instagram, X, Facebook, YouTube, GitHub, and your website &#x2014; create and repurpose content, plan content calendars, and check brand consistency.</p>
+                <div class="card-tags"><span class="tag free">Free</span><span class="tag">Content calendar</span><span class="tag">Brand audit</span></div>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">&#x1F4DD;</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/md-composer/README.md">Claude MD Composer<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Audit and refactor CLAUDE.md files using the &quot;recipe book, not filing cabinet&quot; pattern &#x2014; keep memory files scannable, token-lean, and organized across the 4-level hierarchy (enterprise &#x2192; project &#x2192; user &#x2192; local).</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">Memory</span><span class="tag">Token-optimization</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/agents-md-optimizer/README.md">
-                <div class="card-icon">&#x2702;&#xFE0F;</div>
-                <h3>Agents MD Optimizer</h3>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">&#x2702;&#xFE0F;</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/agents-md-optimizer/README.md">Agents MD Optimizer<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Audit bloated agent-instruction files (CLAUDE.md, AGENTS.md) and rewrite them lean &#x2014; or author a new one from scratch using the 200-line &quot;recipe book&quot; principle.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">Memory</span><span class="tag">Token-optimization</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
-            <a class="card" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/opsagent-shopify/README.md">
-                <div class="card-icon">&#x1F6CD;&#xFE0F;</div>
-                <h3>OpsAgent Shopify</h3>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
+            <div class="card">
+                <div class="card-icon" aria-hidden="true">&#x1F6CD;&#xFE0F;</div>
+                <h3><a class="card-link" href="https://github.com/MSApps-Mobile/claude-plugins/blob/main/plugins/opsagent-shopify/README.md">OpsAgent Shopify<span class="visually-hidden"> — View docs &amp; setup</span></a></h3>
                 <p>Shopify operating skills bundle &#x2014; Storefront MCP usage, Symmetry theme install playbook, and the Shopify Partner marketing assessment guide.</p>
                 <div class="card-tags"><span class="tag free">Free</span><span class="tag">Shopify</span><span class="tag">MCP</span></div>
-                <span class="card-cta">View docs &amp; setup</span>
-            </a>
+                <span class="card-cta" aria-hidden="true">View docs &amp; setup</span>
+            </div>
         </div>
     </div>
 </section>
@@ -327,23 +376,23 @@
         <p class="section-subtitle">Every MSApps plugin is built on <strong>SOSA™ — Supervised Orchestrated Secured Agents</strong>, a four-pillar framework for safe, production-grade autonomous AI. <a href="sosa-whitepaper" style="color:var(--accent2);text-decoration:none;">Read the whitepaper (Shatz, 2026) →</a></p>
         <div class="pillars">
             <div class="pillar">
-                <div class="pillar-icon">👁️</div>
-                <h4>Supervised</h4>
+                <div class="pillar-icon" aria-hidden="true">👁️</div>
+                <h3>Supervised</h3>
                 <p>High-impact actions require human approval. Low-impact actions run autonomously. Trust is earned through consistent performance.</p>
             </div>
             <div class="pillar">
-                <div class="pillar-icon">🔄</div>
-                <h4>Orchestrated</h4>
+                <div class="pillar-icon" aria-hidden="true">🔄</div>
+                <h3>Orchestrated</h3>
                 <p>Agents follow Plan → Act → Verify. Outputs are structured. Token efficiency is enforced — context is a shared resource, not an afterthought.</p>
             </div>
             <div class="pillar">
-                <div class="pillar-icon">🔒</div>
-                <h4>Secured</h4>
+                <div class="pillar-icon" aria-hidden="true">🔒</div>
+                <h3>Secured</h3>
                 <p>No hardcoded credentials. External data is treated as untrusted input; plugins in this repository do not scan it for prompt injection. Package versions are pinned for reproducibility.</p>
             </div>
             <div class="pillar">
-                <div class="pillar-icon">🤖</div>
-                <h4>Agents</h4>
+                <div class="pillar-icon" aria-hidden="true">🤖</div>
+                <h3>Agents</h3>
                 <p>Each agent has a formal role spec, declared tool access, defined memory model, and an explicit planning policy.</p>
             </div>
         </div>
@@ -358,9 +407,9 @@
     <div class="container">
         <h2 class="section-title">Get Started in 3 Steps</h2>
         <div class="steps">
-            <div class="step"><div class="step-num">1</div><h4>Add Marketplace</h4><p>Run <code>/plugin marketplace add MSApps-Mobile/claude-plugins</code> in Claude</p></div>
-            <div class="step"><div class="step-num">2</div><h4>Install a Plugin</h4><p>Run <code>/plugin install [plugin-name]@msapps-plugins</code></p></div>
-            <div class="step"><div class="step-num">3</div><h4>Just Use It</h4><p>Start talking to Claude — the plugin activates automatically when relevant</p></div>
+            <div class="step"><div class="step-num">1</div><h3>Add Marketplace</h3><p>Run <code>/plugin marketplace add MSApps-Mobile/claude-plugins</code> in Claude</p></div>
+            <div class="step"><div class="step-num">2</div><h3>Install a Plugin</h3><p>Run <code>/plugin install [plugin-name]@msapps-plugins</code></p></div>
+            <div class="step"><div class="step-num">3</div><h3>Just Use It</h3><p>Start talking to Claude — the plugin activates automatically when relevant</p></div>
         </div>
     </div>
 </section>
@@ -377,6 +426,7 @@
         </div>
     </div>
 </section>
+</main>
 
 <footer>
     <div class="container">
