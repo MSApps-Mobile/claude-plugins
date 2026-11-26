@@ -12,7 +12,10 @@
 // Re-export the existing Storefront MCP client factory and schemas
 // from @opsagent/core if available, otherwise provide a standalone version.
 
-const DEFAULT_API_VERSION = "2025-04";
+import { DEFAULT_SHOPIFY_API_VERSION } from "./api-version.js";
+
+// Card Q0W9KeDW: one constant for the whole SDK — see api-version.js.
+const DEFAULT_API_VERSION = DEFAULT_SHOPIFY_API_VERSION;
 
 /**
  * @typedef {Object} StorefrontClientConfig
@@ -103,9 +106,11 @@ export function createStorefrontClient(config) {
     },
 
     async getProduct(handle) {
+      // Card Q0W9KeDW: `productByHandle` is DEPRECATED — the supported spelling is
+      // the top-level `product(handle:)`.
       const data = await graphql(`
         query($handle: String!) {
-          productByHandle(handle: $handle) {
+          product(handle: $handle) {
             id title handle description(truncateAt: 500) vendor productType tags
             availableForSale totalInventory
             priceRange { minVariantPrice { amount currencyCode } maxVariantPrice { amount currencyCode } }
@@ -114,7 +119,7 @@ export function createStorefrontClient(config) {
           }
         }
       `, { handle });
-      return data.productByHandle;
+      return data.product;
     },
 
     async listCollections({ limit = 20 } = {}) {

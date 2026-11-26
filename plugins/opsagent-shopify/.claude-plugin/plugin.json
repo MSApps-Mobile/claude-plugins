@@ -31,7 +31,7 @@
         "SHOPIFY_DEFAULT_SHOP": "",
         "SHOPIFY_STOREFRONT_TOKEN": "",
         "SHOPIFY_ADMIN_TOKEN": "",
-        "SHOPIFY_API_VERSION": "2025-04"
+        "SHOPIFY_API_VERSION": "2026-10"
       }
     }
   }
