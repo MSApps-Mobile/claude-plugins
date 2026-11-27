@@ -30,6 +30,9 @@ DEFAULT_WORKFLOWS = [
     # on every PR. Both stay clean only if the default run checks them.
     ".github/workflows/release.yml",
     ".github/workflows/sosa-lint.yml",
+    # Card twEGX0uv: the OpenSSF Scorecard workflow holds security-events and
+    # id-token write, so the default run guards it too.
+    ".github/workflows/scorecard.yml",
 ]
 
 RUN_KEY = re.compile(r"^(?P<indent>\s*)(?P<dash>-\s+)?run:\s*(?P<rest>.*)$")
